@@ -86,7 +86,7 @@ export default function OnboardingPage() {
   }
 
   const fieldClass =
-    'w-full border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition bg-white';
+    'w-full border border-border rounded-lg bg-white px-3 py-2.5 text-sm text-dark placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition';
 
   const onStep2 = async (data: Step2Data) => {
     setSubmitError('');

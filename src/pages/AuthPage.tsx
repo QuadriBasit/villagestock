@@ -174,7 +174,7 @@ export default function AuthPage() {
   };
 
   const inputClass =
-    'w-full border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition';
+    'w-full border border-border rounded-lg bg-white px-3 py-2.5 text-sm text-dark placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition';
 
   return (
     <div className="min-h-svh flex flex-col items-center justify-center bg-surface px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-6 md:py-12 relative overflow-hidden">
@@ -191,7 +191,7 @@ export default function AuthPage() {
         <p className="text-muted text-sm mt-2 max-w-xs leading-relaxed">Electronics inventory for Computer Village — fast on mobile, ready offline.</p>
       </div>
 
-      <div className="w-full max-w-sm bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl shadow-slate-900/5 border border-border/70 p-6 md:p-8">
+      <div className="w-full max-w-sm bg-white/95 text-dark backdrop-blur-sm rounded-2xl shadow-xl shadow-slate-900/5 border border-border/70 p-6 md:p-8">
         {recoveryMode && !user && (
           <div className="flex flex-col items-center py-8 text-muted text-sm">
             <Loader2 className="animate-spin mb-3 text-primary" size={28} />
