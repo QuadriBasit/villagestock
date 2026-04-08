@@ -7,6 +7,14 @@ import { useReturnActions } from '@/hooks/useReturnActions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { useAuthStore } from '@/store/auth';
+import {
+  modalSheetBackdrop,
+  modalSheetBodyScroll,
+  modalSheetFooter,
+  modalSheetHandle,
+  modalSheetHeader,
+  modalSheetPanelMd,
+} from '@/lib/modalSheet';
 import { formatCurrency } from '@/lib/utils';
 import type { SalesRecord, ReturnReason, ReturnType, InventoryItem } from '@/types';
 
@@ -113,40 +121,37 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
   };
 
   const fieldClass =
-    'w-full border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition bg-white';
-  const labelClass = 'block text-sm font-medium text-dark mb-1';
+    'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
+  const labelClass = 'mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200';
   const readonlyClass =
-    'w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-surface text-muted cursor-not-allowed';
+    'w-full cursor-not-allowed rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2.5 text-sm text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400';
+
+  const cardSection =
+    'rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-900/5 dark:bg-zinc-800/50 dark:ring-white/10';
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="bg-surface w-full max-w-lg rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Handle bar */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-border" />
+    <div className={modalSheetBackdrop} onClick={onClose}>
+      <div className={modalSheetPanelMd} onClick={e => e.stopPropagation()}>
+        <div className={modalSheetHandle}>
+          <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+        <div className={modalSheetHeader}>
           <div className="flex items-center gap-2">
             <RotateCcw size={18} className="text-accent" />
-            <h2 className="font-heading font-bold text-dark text-base">Process Return</h2>
+            <h2 className="font-heading text-base font-bold text-zinc-900 dark:text-zinc-50">Process Return</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-border text-muted">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
             <X size={18} />
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
-          {/* Original sale snapshot */}
-          <section className="bg-white rounded-2xl p-4 space-y-2 shadow-sm">
+        <div className={`${modalSheetBodyScroll} space-y-5 bg-zinc-50/70 dark:bg-zinc-950/35`}>
+          <section className={`${cardSection} space-y-2`}>
             <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Original Sale</h3>
             <div className={readonlyClass}>{sale.item_name}</div>
             <div className="flex gap-2 text-xs text-muted">
@@ -163,7 +168,7 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
           </section>
 
           {/* Return details */}
-          <section className="bg-white rounded-2xl p-4 space-y-4 shadow-sm">
+          <section className={`${cardSection} space-y-4`}>
             <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Return Details</h3>
 
             <div>
@@ -243,13 +248,13 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
 
           {/* Exchange item picker */}
           {returnType === 'exchange' && (
-            <section className="bg-white rounded-2xl p-4 space-y-3 shadow-sm">
+            <section className={`${cardSection} space-y-3`}>
               <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Exchange Item</h3>
 
               {selectedExchangeItem ? (
-                <div className="flex items-center justify-between bg-teal/5 border border-teal/30 rounded-xl px-3 py-2.5">
+                <div className="flex items-center justify-between rounded-xl border border-teal/30 bg-teal/5 px-3 py-2.5 dark:border-teal/40 dark:bg-teal/10">
                   <div>
-                    <p className="text-sm font-medium text-dark">{selectedExchangeItem.name}</p>
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{selectedExchangeItem.name}</p>
                     <p className="text-xs text-muted">{selectedExchangeItem.brand} · {formatCurrency(selectedExchangeItem.price)} · {selectedExchangeItem.quantity} in stock</p>
                   </div>
                   <button
@@ -281,9 +286,9 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
                           key={item.id}
                           type="button"
                           onClick={() => setSelectedExchangeItem(item)}
-                          className="w-full text-left px-3 py-2 rounded-xl border border-border hover:bg-surface transition-colors"
+                          className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-left transition-colors hover:bg-zinc-100 dark:border-zinc-600 dark:hover:bg-zinc-800/80"
                         >
-                          <p className="text-sm font-medium text-dark">{item.name}</p>
+                          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{item.name}</p>
                           <p className="text-xs text-muted">{item.brand} · {formatCurrency(item.price)} · {item.quantity} in stock</p>
                         </button>
                       ))
@@ -298,8 +303,7 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-5 py-4 border-t border-border bg-white">
+        <div className={modalSheetFooter}>
           {error && (returnType !== 'exchange' || selectedExchangeItem) && (
             <p className="text-red-500 text-xs mb-2">{error}</p>
           )}

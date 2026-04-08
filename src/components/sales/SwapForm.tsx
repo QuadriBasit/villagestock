@@ -6,6 +6,14 @@ import { ArrowRightLeft, ChevronDown, Loader2, Receipt as ReceiptIcon, X } from 
 import { useSwapActions } from '@/hooks/useSwapActions';
 import { useTradingGateState } from '@/hooks/useStockSessions';
 import { useCreditActions } from '@/hooks/useCreditActions';
+import {
+  modalSheetBackdrop,
+  modalSheetBodyScroll,
+  modalSheetFooter,
+  modalSheetHandle,
+  modalSheetHeader,
+  modalSheetPanelLg,
+} from '@/lib/modalSheet';
 import { formatCurrency } from '@/lib/utils';
 import type { DeviceCondition, InventoryItem, PaymentMethod, PaymentStatus, SalesRecord } from '@/types';
 
@@ -138,32 +146,38 @@ export default function SwapForm({
   const canSwap = item.status === 'in_stock' && !tradeLocked;
 
   const fieldClass =
-    'w-full border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition bg-white';
-  const labelClass = 'block text-sm font-medium text-dark mb-1';
+    'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
+  const labelClass = 'mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200';
   const readonlyClass =
-    'w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-surface text-muted cursor-not-allowed';
+    'w-full cursor-not-allowed rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2.5 text-sm text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400';
+
+  const cardSection =
+    'rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-900/5 dark:bg-zinc-800/50 dark:ring-white/10';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="bg-surface w-full max-w-lg rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-border" />
+    <div className={modalSheetBackdrop} onClick={onClose}>
+      <div className={modalSheetPanelLg} onClick={(event) => event.stopPropagation()}>
+        <div className={modalSheetHandle}>
+          <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
         </div>
 
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+        <div className={modalSheetHeader}>
           <div className="flex items-center gap-2">
             <ArrowRightLeft size={18} className="text-primary" />
-            <h2 className="font-heading font-bold text-dark text-base">Device Swap / Trade-In</h2>
+            <h2 className="font-heading text-base font-bold text-zinc-900 dark:text-zinc-50">
+              Device Swap / Trade-In
+            </h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-border text-muted">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
             <X size={18} />
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+        <div className={`${modalSheetBodyScroll} space-y-5 bg-zinc-50/70 dark:bg-zinc-950/35`}>
           {tradeLocked && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
               {tradingGate.message}
@@ -174,7 +188,7 @@ export default function SwapForm({
               {submitError}
             </p>
           )}
-          <section className="bg-white rounded-2xl p-4 space-y-4 shadow-sm">
+          <section className={`${cardSection} space-y-4`}>
             <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Incoming Device</h3>
 
             <div className="grid grid-cols-2 gap-3">
@@ -220,12 +234,13 @@ export default function SwapForm({
               </div>
             </div>
 
-            <p className="text-xs text-muted bg-surface rounded-lg px-3 py-2 border border-border">
-              Incoming device category will match the selected outgoing item category: <span className="font-medium capitalize">{item.category}</span>.
+            <p className="rounded-lg border border-zinc-200 bg-zinc-100/80 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-400">
+              Incoming device category will match the selected outgoing item category:{' '}
+              <span className="font-medium capitalize">{item.category}</span>.
             </p>
           </section>
 
-          <section className="bg-white rounded-2xl p-4 space-y-4 shadow-sm">
+          <section className={`${cardSection} space-y-4`}>
             <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Outgoing Device</h3>
             <div className={readonlyClass}>{item.brand} {item.name}</div>
             <div className="flex gap-2 flex-wrap text-xs text-muted">
@@ -240,10 +255,10 @@ export default function SwapForm({
             </div>
           </section>
 
-          <section className="bg-white rounded-2xl p-4 space-y-4 shadow-sm">
+          <section className={`${cardSection} space-y-4`}>
             <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Settlement</h3>
 
-            <div className="rounded-xl border border-border bg-surface px-4 py-3">
+            <div className="rounded-xl border border-zinc-200 bg-zinc-100/90 px-4 py-3 dark:border-zinc-600 dark:bg-zinc-800/60">
               {balance >= 0 ? (
                 <>
                   <div className="text-xs text-muted">Balance to pay</div>
@@ -318,7 +333,7 @@ export default function SwapForm({
           </section>
         </div>
 
-        <div className="px-5 py-4 border-t border-border bg-white">
+        <div className={modalSheetFooter}>
           {completedSale ? (
             <div className="space-y-2">
               <p className="text-center text-sm font-medium text-teal mb-1">

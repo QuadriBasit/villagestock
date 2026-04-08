@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Phone, Wrench } from 'lucide-react';
+import { Phone, Wrench, X } from 'lucide-react';
 import { useActiveRepairs } from '@/hooks/useRepairs';
 import { useRepairActions } from '@/hooks/useRepairActions';
 import { db } from '@/lib/db';
@@ -7,6 +7,13 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import type { DeviceCondition, InventoryItem, RepairRecord } from '@/types';
+import {
+  modalSheetBackdrop,
+  modalSheetBodyScroll,
+  modalSheetHandle,
+  modalSheetHeader,
+  modalSheetPanelMd,
+} from '@/lib/modalSheet';
 
 export default function EngineersPage() {
   const { repairs, isLoading } = useActiveRepairs();
@@ -70,13 +77,27 @@ function RepairDetailsModal({ record, itemName, onClose }: { record: RepairRecor
   const [notes, setNotes] = useState('');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-surface w-full max-w-lg rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-border">
-          <h3 className="font-heading text-lg font-semibold text-dark">{itemName || 'Repair Job'}</h3>
-          <p className="text-sm text-muted">{record.engineer_name}</p>
+    <div className={modalSheetBackdrop} onClick={onClose}>
+      <div className={modalSheetPanelMd} onClick={e => e.stopPropagation()}>
+        <div className={modalSheetHandle}>
+          <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
         </div>
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+        <div className={modalSheetHeader}>
+          <div>
+            <h3 className="font-heading text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              {itemName || 'Repair Job'}
+            </h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{record.engineer_name}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className={`${modalSheetBodyScroll} space-y-4 bg-zinc-50/70 dark:bg-zinc-950/35`}>
           <Card>
             <CardContent className="p-4 space-y-2">
               <div className="text-sm text-dark">{record.issue_description}</div>

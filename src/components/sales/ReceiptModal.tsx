@@ -3,6 +3,15 @@ import { X, Share2, Download, Loader2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import Receipt from './Receipt';
+import {
+  modalSheetBackdrop,
+  modalSheetBodyScroll,
+  modalSheetFooter,
+  modalSheetHandle,
+  modalSheetHeader,
+  modalSheetPanelSm,
+} from '@/lib/modalSheet';
+import { cn } from '@/lib/utils';
 import { useShopProfile } from '@/hooks/useShopProfile';
 import type { SalesRecord } from '@/types';
 
@@ -82,48 +91,44 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="bg-surface w-full max-w-sm rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[95vh] flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Handle */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-border" />
+    <div className={cn(modalSheetBackdrop, 'bg-black/60 dark:bg-black/70')} onClick={onClose}>
+      <div className={modalSheetPanelSm} onClick={e => e.stopPropagation()}>
+        <div className={modalSheetHandle}>
+          <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-          <h2 className="font-heading font-bold text-dark text-base">Receipt</h2>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-border text-muted">
+        <div className={modalSheetHeader}>
+          <h2 className="font-heading text-base font-bold text-zinc-900 dark:text-zinc-50">Receipt</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
             <X size={18} />
           </button>
         </div>
 
-        {/* Receipt preview — scrollable */}
-        <div className="overflow-y-auto flex-1 py-4 px-2 bg-gray-100">
-          <div className="shadow-lg rounded-lg overflow-hidden">
+        <div className={`${modalSheetBodyScroll} bg-zinc-200/90 px-2 py-4 dark:bg-zinc-950/80`}>
+          <div className="overflow-hidden rounded-lg shadow-lg">
             <Receipt ref={receiptRef} sale={sale} shop={profile} />
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="px-5 py-4 border-t border-border bg-white flex gap-3">
+        <div className={`${modalSheetFooter} flex gap-3`}>
           <button
+            type="button"
             onClick={handleShare}
             disabled={isCapturing}
-            className="flex-1 flex items-center justify-center gap-2 border border-border bg-white text-dark rounded-xl py-3 text-sm font-medium hover:bg-surface transition-colors disabled:opacity-60"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
           >
             {isCapturing ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
             Share
           </button>
           <button
+            type="button"
             onClick={handleDownloadPDF}
             disabled={isCapturing}
-            className="flex-1 flex items-center justify-center gap-2 bg-primary text-white rounded-xl py-3 text-sm font-semibold hover:bg-primary-dark transition-colors disabled:opacity-60"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-60"
           >
             {isCapturing ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
             Download PDF

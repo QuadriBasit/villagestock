@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CreditCard, Loader2 } from 'lucide-react';
+import { CreditCard, Loader2, X } from 'lucide-react';
 import { useCredits } from '@/hooks/useCredits';
 import { useCreditActions } from '@/hooks/useCreditActions';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import type { CreditRecord, PaymentMethod } from '@/types';
+import {
+  modalSheetBackdrop,
+  modalSheetBodyScroll,
+  modalSheetHandle,
+  modalSheetHeader,
+  modalSheetPanelMd,
+} from '@/lib/modalSheet';
 
 export default function CreditsPage() {
   const { credits, isLoading } = useCredits();
@@ -57,13 +64,27 @@ function CreditDetailsModal({ record, onClose }: { record: CreditRecord; onClose
   const [isSaving, setIsSaving] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-surface w-full max-w-lg rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="px-5 py-4 border-b border-border">
-          <h3 className="font-heading text-lg font-semibold text-dark">{record.customer_name}</h3>
-          <p className="text-sm text-muted">{record.item_name}</p>
+    <div className={modalSheetBackdrop} onClick={onClose}>
+      <div className={modalSheetPanelMd} onClick={e => e.stopPropagation()}>
+        <div className={modalSheetHandle}>
+          <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
         </div>
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+        <div className={modalSheetHeader}>
+          <div>
+            <h3 className="font-heading text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              {record.customer_name}
+            </h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{record.item_name}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className={`${modalSheetBodyScroll} space-y-4 bg-zinc-50/70 dark:bg-zinc-950/35`}>
           <Card>
             <CardContent className="p-4 space-y-2">
               <Detail label="Phone" value={record.customer_phone} />
@@ -78,17 +99,21 @@ function CreditDetailsModal({ record, onClose }: { record: CreditRecord; onClose
             <CardHeader><CardTitle>Record Payment</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-dark mb-1">Amount</label>
+                <label className="mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200">Amount</label>
                 <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-dark mb-1">Date</label>
+                  <label className="mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200">Date</label>
                   <Input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-dark mb-1">Method</label>
-                  <select value={method} onChange={e => setMethod(e.target.value as PaymentMethod)} className="flex h-10 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-dark outline-none">
+                  <label className="mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200">Method</label>
+                  <select
+                    value={method}
+                    onChange={e => setMethod(e.target.value as PaymentMethod)}
+                    className="flex h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100"
+                  >
                     <option value="cash">Cash</option>
                     <option value="bank_transfer">Transfer</option>
                     <option value="pos">POS</option>
@@ -116,7 +141,12 @@ function CreditDetailsModal({ record, onClose }: { record: CreditRecord; onClose
 }
 
 function Detail({ label, value }: { label: string; value?: string }) {
-  return <div className="flex items-center justify-between gap-3 text-sm"><span className="text-muted">{label}</span><span className="text-dark font-medium text-right">{value || '—'}</span></div>;
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-zinc-500 dark:text-zinc-400">{label}</span>
+      <span className="text-right font-medium text-zinc-900 dark:text-zinc-100">{value || '—'}</span>
+    </div>
+  );
 }
 
 function readable(value: string) {

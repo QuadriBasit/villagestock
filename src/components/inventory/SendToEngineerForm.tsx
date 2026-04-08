@@ -7,6 +7,13 @@ import { useEngineerNames } from '@/hooks/useRepairs';
 import { useRepairActions } from '@/hooks/useRepairActions';
 import { useTradingGateState } from '@/hooks/useStockSessions';
 import type { InventoryItem } from '@/types';
+import {
+  modalSheetBackdrop,
+  modalSheetBodyScroll,
+  modalSheetHandle,
+  modalSheetHeader,
+  modalSheetPanelMd,
+} from '@/lib/modalSheet';
 
 const schema = z.object({
   engineer_name: z.string().min(1, 'Engineer name is required'),
@@ -48,8 +55,9 @@ export default function SendToEngineerForm({
     },
   });
 
-  const fieldClass = 'w-full border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition bg-white';
-  const labelClass = 'block text-sm font-medium text-dark mb-1';
+  const fieldClass =
+    'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
+  const labelClass = 'mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200';
 
   const tradeLocked =
     tradingGate.gateApplies && tradingGate.isReady && tradingGate.tradingBlocked;
@@ -75,17 +83,25 @@ export default function SendToEngineerForm({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-surface w-full max-w-lg rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-border" /></div>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+    <div className={modalSheetBackdrop} onClick={onClose}>
+      <div className={modalSheetPanelMd} onClick={e => e.stopPropagation()}>
+        <div className={modalSheetHandle}>
+          <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+        </div>
+        <div className={modalSheetHeader}>
           <div className="flex items-center gap-2">
             <Wrench size={18} className="text-accent" />
-            <h2 className="font-heading font-bold text-dark text-base">Send To Engineer</h2>
+            <h2 className="font-heading text-base font-bold text-zinc-900 dark:text-zinc-50">Send To Engineer</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-border text-muted"><X size={18} /></button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
+            <X size={18} />
+          </button>
         </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className={`${modalSheetBodyScroll} min-h-0 space-y-5 bg-zinc-50/70 dark:bg-zinc-950/35`}>
           {tradeLocked && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
               {tradingGate.message}
@@ -96,11 +112,15 @@ export default function SendToEngineerForm({
               {submitError}
             </p>
           )}
-          <section className="bg-white rounded-2xl p-4 space-y-4 shadow-sm">
-            <div className="text-sm font-medium text-dark">{item.brand} {item.name}</div>
-            <div className="text-xs text-muted">{item.imei || item.serial_number || 'No IMEI / serial recorded'}</div>
+          <section className="space-y-2 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-900/5 dark:bg-zinc-800/50 dark:ring-white/10">
+            <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+              {item.brand} {item.name}
+            </div>
+            <div className="text-xs text-zinc-500 dark:text-zinc-400">
+              {item.imei || item.serial_number || 'No IMEI / serial recorded'}
+            </div>
           </section>
-          <section className="bg-white rounded-2xl p-4 space-y-4 shadow-sm">
+          <section className="space-y-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-900/5 dark:bg-zinc-800/50 dark:ring-white/10">
             <div>
               <label className={labelClass} htmlFor="engineer_name">Engineer Name *</label>
               <input id="engineer_name" list="engineer-names" {...register('engineer_name')} className={fieldClass} />

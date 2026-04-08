@@ -12,6 +12,11 @@ import {
   useTodayStockSessionState,
 } from '@/hooks/useStockSessions';
 import { hasStockAccountabilityPlan } from '@/lib/stockSessionUtils';
+import {
+  modalSheetBackdrop,
+  modalSheetHandle,
+  modalSheetPanelMd,
+} from '@/lib/modalSheet';
 import { useAuthStore } from '@/store/auth';
 import type { InventoryItem, MissingResolution } from '@/types';
 import { Button } from '@/components/ui/Button';
@@ -261,14 +266,12 @@ function ResolveMissingModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl dark:bg-zinc-900 sm:rounded-3xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className={modalSheetBackdrop} onClick={onClose}>
+      <div className={modalSheetPanelMd} onClick={(e) => e.stopPropagation()}>
+        <div className={modalSheetHandle}>
+          <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+        </div>
+        <div className="max-h-[min(90vh,720px)] overflow-y-auto p-5 sm:max-h-[min(85vh,680px)]">
         <h3 className="font-heading text-lg font-bold text-zinc-900 dark:text-zinc-50">
           Resolve missing device
         </h3>
@@ -337,6 +340,7 @@ function ResolveMissingModal({
           >
             {busy ? 'Saving…' : 'Save'}
           </Button>
+        </div>
         </div>
       </div>
     </div>
