@@ -1,0 +1,656 @@
+import { useState, lazy, Suspense } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Loader2, ScanLine, ChevronDown, Plus, CheckCircle2 } from 'lucide-react';
+import { getCategoryMode, isAppleLaptopDevice, isAppleMobileDevice } from '@/types';
+import { BRAND_SUGGESTIONS, suggestedNamesForCategory } from '@/lib/devicePresets';
+import { ComboboxField } from '@/components/ui/ComboboxField';
+import type { InventoryItemInput, Category, DeviceCondition, AppleICloudStatus, AppleCarrierLock, AppleBiometricStatus, MacKeyboardStatus, MacScreenCondition } from '@/types';
+
+const BarcodeScanner = lazy(() => import('./BarcodeScanner'));
+
+// ─── Schemas (two variants) ───────────────────────────────────────────────────
+
+const baseSchema = {
+  name: z.string().min(1, 'Name is required'),
+  category: z.enum(['phones', 'laptops', 'tablets', 'accessories', 'parts']),
+  brand: z.string().min(1, 'Brand is required'),
+  price: z.coerce.number().positive('Price must be positive'),
+  cost_price: z.coerce.number().nonnegative().optional(),
+  description: z.string().optional(),
+  barcode: z.string().optional(),
+  battery_health: z.preprocess(v => v === '' ? undefined : v, z.coerce.number().min(0).max(100).optional()),
+  battery_cycle_count: z.preprocess(v => v === '' ? undefined : v, z.coerce.number().min(0).optional()),
+  icloud_lock_status: z.preprocess(v => v === '' ? undefined : v, z.enum(['clean', 'ibm', 'idm', 'icm', 'icloud_locked', 'find_my_on', 'find_my_off']).optional()),
+  carrier_lock: z.preprocess(v => v === '' ? undefined : v, z.enum(['factory_unlocked', 'network_locked', 'esim_only', 'dual_sim']).optional()),
+  biometric_status: z.preprocess(v => v === '' ? undefined : v, z.enum(['working', 'not_working']).optional()),
+  storage: z.preprocess(v => v === '' ? undefined : v, z.enum(['64GB', '128GB', '256GB', '512GB', '1TB', '2TB']).optional()),
+  color: z.string().optional(),
+  ram: z.preprocess(v => v === '' ? undefined : v, z.enum(['8GB', '16GB', '18GB', '24GB', '32GB', '36GB', '64GB']).optional()),
+  chip: z.string().optional(),
+  screen_size: z.preprocess(v => v === '' ? undefined : v, z.enum(['13"', '14"', '15"', '16"']).optional()),
+  keyboard_status: z.preprocess(v => v === '' ? undefined : v, z.enum(['working', 'faulty_keys', 'replaced']).optional()),
+  screen_condition: z.preprocess(v => v === '' ? undefined : v, z.enum(['perfect', 'minor_scratches', 'cracked', 'replaced']).optional()),
+};
+
+const serializedSchema = z.object({
+  ...baseSchema,
+  serial_number: z.string().optional(),
+  imei: z.string().optional(),
+  imei2: z.string().optional(),
+  condition: z.preprocess(
+    value => value === '' ? undefined : value,
+    z.enum(['working', 'minor_faults', 'major_faults', 'not_working']).optional()
+  ),
+  // Not used for serialized but must be in shape
+  quantity: z.coerce.number().optional(),
+  low_stock_threshold: z.coerce.number().optional(),
+});
+
+type FormData = z.infer<typeof serializedSchema> & {
+  quantity?: number;
+  low_stock_threshold?: number;
+};
+
+const CATEGORIES: { value: Category; label: string }[] = [
+  { value: 'phones', label: 'Phones' },
+  { value: 'laptops', label: 'Laptops' },
+  { value: 'tablets', label: 'Tablets' },
+  { value: 'accessories', label: 'Accessories' },
+  { value: 'parts', label: 'Parts' },
+];
+
+const CONDITION_OPTIONS: { value: DeviceCondition; label: string }[] = [
+  { value: 'working', label: 'Working' },
+  { value: 'minor_faults', label: 'Minor Faults' },
+  { value: 'major_faults', label: 'Major Faults' },
+  { value: 'not_working', label: 'Not Working' },
+];
+
+const ICLOUD_OPTIONS: { value: AppleICloudStatus; label: string }[] = [
+  { value: 'clean', label: 'Clean' },
+  { value: 'ibm', label: 'IBM (iCloud Bypassed - MDM)' },
+  { value: 'idm', label: 'IDM (iCloud Disabled - MDM)' },
+  { value: 'icm', label: 'ICM (iCloud Managed)' },
+  { value: 'icloud_locked', label: 'iCloud Locked' },
+  { value: 'find_my_on', label: 'Find My On' },
+  { value: 'find_my_off', label: 'Find My Off' },
+];
+
+const CARRIER_OPTIONS: { value: AppleCarrierLock; label: string }[] = [
+  { value: 'factory_unlocked', label: 'Factory Unlocked' },
+  { value: 'network_locked', label: 'Network Locked' },
+  { value: 'esim_only', label: 'eSIM Only' },
+  { value: 'dual_sim', label: 'Dual SIM' },
+];
+
+const BIOMETRIC_OPTIONS: { value: AppleBiometricStatus; label: string }[] = [
+  { value: 'working', label: 'Working' },
+  { value: 'not_working', label: 'Not Working' },
+];
+
+const MOBILE_STORAGE_OPTIONS = ['64GB', '128GB', '256GB', '512GB', '1TB'] as const;
+const LAPTOP_STORAGE_OPTIONS = ['256GB', '512GB', '1TB', '2TB'] as const;
+const RAM_OPTIONS = ['8GB', '16GB', '18GB', '24GB', '32GB', '36GB', '64GB'] as const;
+const SCREEN_SIZE_OPTIONS = ['13"', '14"', '15"', '16"'] as const;
+const KEYBOARD_OPTIONS: { value: MacKeyboardStatus; label: string }[] = [
+  { value: 'working', label: 'Working' },
+  { value: 'faulty_keys', label: 'Faulty Keys' },
+  { value: 'replaced', label: 'Replaced' },
+];
+const SCREEN_CONDITION_OPTIONS: { value: MacScreenCondition; label: string }[] = [
+  { value: 'perfect', label: 'Perfect' },
+  { value: 'minor_scratches', label: 'Minor Scratches' },
+  { value: 'cracked', label: 'Cracked' },
+  { value: 'replaced', label: 'Replaced' },
+];
+
+type ScanTarget = 'serial_number' | 'imei' | 'imei2' | 'barcode';
+
+const formFieldClass =
+  'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-100';
+const formLabelClass = 'mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200';
+const sectionTitleClass =
+  'font-heading text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100';
+
+interface ItemFormProps {
+  defaultValues?: (Partial<FormData> & { deviceDetails?: InventoryItemInput['deviceDetails'] });
+  onSubmit: (data: InventoryItemInput) => Promise<void>;
+  submitLabel?: string;
+  /** When set, shows "Add Another" button after successful save */
+  onAddAnother?: (baseValues: Partial<FormData>) => void;
+}
+
+export default function ItemForm({
+  defaultValues,
+  onSubmit,
+  submitLabel = 'Save Item',
+  onAddAnother,
+}: ItemFormProps) {
+  const [scanTarget, setScanTarget] = useState<ScanTarget | null>(null);
+  const [savedCount, setSavedCount] = useState(0);
+  const deviceDetails = defaultValues?.deviceDetails;
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(serializedSchema) as any,
+    defaultValues: {
+      quantity: 0,
+      low_stock_threshold: 5,
+      category: 'phones',
+      battery_health: deviceDetails && 'battery_health' in deviceDetails ? deviceDetails.battery_health : undefined,
+      battery_cycle_count: deviceDetails && 'battery_cycle_count' in deviceDetails ? deviceDetails.battery_cycle_count : undefined,
+      icloud_lock_status: deviceDetails && 'icloud_lock_status' in deviceDetails ? deviceDetails.icloud_lock_status : undefined,
+      carrier_lock: deviceDetails && 'carrier_lock' in deviceDetails ? deviceDetails.carrier_lock : undefined,
+      biometric_status: deviceDetails && 'biometric_status' in deviceDetails ? deviceDetails.biometric_status : undefined,
+      storage: deviceDetails && 'storage' in deviceDetails ? deviceDetails.storage : undefined,
+      color: deviceDetails && 'color' in deviceDetails ? deviceDetails.color : undefined,
+      ram: deviceDetails && 'ram' in deviceDetails ? deviceDetails.ram : undefined,
+      chip: deviceDetails && 'chip' in deviceDetails ? deviceDetails.chip : undefined,
+      screen_size: deviceDetails && 'screen_size' in deviceDetails ? deviceDetails.screen_size : undefined,
+      keyboard_status: deviceDetails && 'keyboard_status' in deviceDetails ? deviceDetails.keyboard_status : undefined,
+      screen_condition: deviceDetails && 'screen_condition' in deviceDetails ? deviceDetails.screen_condition : undefined,
+      ...defaultValues,
+    },
+  });
+
+  const category = watch('category') as Category;
+  const brand = watch('brand') ?? '';
+  const nameSuggestions = suggestedNamesForCategory(category);
+  const mode = getCategoryMode(category);
+  const isSerialized = mode === 'serialized';
+  const showImei = category === 'phones' || category === 'tablets';
+  const showAppleMobileFields = isAppleMobileDevice(brand, category);
+  const showAppleLaptopFields = isAppleLaptopDevice(brand, category);
+
+  const handleScan = (value: string) => {
+    if (scanTarget) setValue(scanTarget, value);
+    setScanTarget(null);
+  };
+
+  const submit = async (data: FormData) => {
+    const input: InventoryItemInput = {
+      name: data.name,
+      category: data.category as Category,
+      brand: data.brand,
+      price: data.price,
+      cost_price: data.cost_price,
+      description: data.description,
+      barcode: data.barcode,
+      serial_number: isSerialized ? data.serial_number : undefined,
+      imei: isSerialized && showImei ? data.imei : undefined,
+      imei2: isSerialized && showImei ? data.imei2 : undefined,
+      condition: isSerialized ? data.condition : undefined,
+      deviceDetails: showAppleMobileFields ? {
+        battery_health: data.battery_health,
+        battery_cycle_count: data.battery_cycle_count,
+        icloud_lock_status: data.icloud_lock_status,
+        carrier_lock: data.carrier_lock,
+        biometric_status: data.biometric_status,
+        storage: data.storage as '64GB' | '128GB' | '256GB' | '512GB' | '1TB' | undefined,
+        color: data.color || undefined,
+      } : showAppleLaptopFields ? {
+        battery_health: data.battery_health,
+        battery_cycle_count: data.battery_cycle_count,
+        storage: data.storage as '256GB' | '512GB' | '1TB' | '2TB' | undefined,
+        ram: data.ram,
+        chip: data.chip || undefined,
+        screen_size: data.screen_size,
+        keyboard_status: data.keyboard_status,
+        screen_condition: data.screen_condition,
+        color: data.color || undefined,
+      } : undefined,
+      quantity: isSerialized ? 1 : (data.quantity ?? 0),
+      low_stock_threshold: isSerialized ? 0 : (data.low_stock_threshold ?? 5),
+    };
+    await onSubmit(input);
+    setSavedCount(c => c + 1);
+  };
+
+  const handleAddAnother = handleSubmit(async (data) => {
+    await submit(data);
+    // Keep brand/name/price/cost_price/category — clear identifiers
+    const base: Partial<FormData> = {
+      name: data.name,
+      brand: data.brand,
+      category: data.category,
+      price: data.price,
+      cost_price: data.cost_price,
+      description: data.description,
+      battery_health: data.battery_health,
+      battery_cycle_count: data.battery_cycle_count,
+      icloud_lock_status: data.icloud_lock_status,
+      carrier_lock: data.carrier_lock,
+      biometric_status: data.biometric_status,
+      storage: data.storage,
+      color: data.color,
+      ram: data.ram,
+      chip: data.chip,
+      screen_size: data.screen_size,
+      keyboard_status: data.keyboard_status,
+      screen_condition: data.screen_condition,
+      low_stock_threshold: data.low_stock_threshold,
+      quantity: data.quantity,
+    };
+    if (onAddAnother) {
+      onAddAnother(base);
+    } else {
+      reset({ ...base, serial_number: '', imei: '', imei2: '', barcode: '' });
+    }
+  });
+
+  const fieldClass = formFieldClass;
+  const labelClass = formLabelClass;
+  const errorClass = 'text-red-500 text-xs mt-1';
+
+  return (
+    <>
+      <form onSubmit={handleSubmit(submit as never)} className="app-page py-4 md:py-6 space-y-4 pb-28 max-lg:pb-36 lg:pb-32">
+
+        {/* Saved count banner */}
+        {savedCount > 0 && onAddAnother && (
+          <div className="flex items-center gap-2 bg-teal/10 border border-teal/30 text-teal rounded-xl px-4 py-2.5 text-sm font-medium">
+            <CheckCircle2 size={16} />
+            {savedCount} unit{savedCount !== 1 ? 's' : ''} added
+          </div>
+        )}
+
+        {/* Basic info */}
+        <section className="space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4">
+          <h3 className={sectionTitleClass}>Basic Info</h3>
+
+          {nameSuggestions.length > 0 ? (
+            <Controller
+              name="name"
+              control={control}
+              render={({ field }) => (
+                <ComboboxField
+                  {...field}
+                  id="name"
+                  label="Item Name *"
+                  options={nameSuggestions}
+                  placeholder="Pick a model or type your own"
+                  error={errors.name?.message}
+                  emptyHint="Suggestions appear for phones & tablets — you can always type a custom name."
+                />
+              )}
+            />
+          ) : (
+            <div>
+              <label className={labelClass} htmlFor="name">
+                Item Name *
+              </label>
+              <input
+                id="name"
+                {...register('name')}
+                placeholder="e.g. USB-C Cable 2m"
+                className={fieldClass}
+              />
+              {errors.name && <p className={errorClass}>{errors.name.message}</p>}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <Controller
+              name="brand"
+              control={control}
+              render={({ field }) => (
+                <ComboboxField
+                  {...field}
+                  id="brand"
+                  label="Brand *"
+                  options={BRAND_SUGGESTIONS}
+                  placeholder="Apple, Samsung, or type…"
+                  error={errors.brand?.message}
+                  emptyHint="Pick from common brands or type any brand."
+                />
+              )}
+            />
+            <div>
+              <label className={labelClass} htmlFor="category">Category *</label>
+              <div className="relative">
+                <select id="category" {...register('category')} className={`${fieldClass} appearance-none pr-8`}>
+                  {CATEGORIES.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Mode hint */}
+          <p className="text-xs text-muted bg-surface rounded-lg px-3 py-2 border border-border">
+            {isSerialized
+              ? 'Serialized mode — each unit is a separate record. Add one unit at a time.'
+              : 'Non-serialized mode — tracked by quantity.'}
+          </p>
+
+          <div>
+            <label className={labelClass} htmlFor="description">Description</label>
+            <textarea
+              id="description"
+              {...register('description')}
+              rows={2}
+              placeholder="Optional notes"
+              className={`${fieldClass} resize-none`}
+            />
+          </div>
+
+          {(showAppleMobileFields || showAppleLaptopFields) && (
+            <p className="text-xs text-primary bg-primary/5 rounded-lg px-3 py-2 border border-primary/10">
+              Apple device details will be saved as structured metadata and will appear in search, inventory badges, and receipts.
+            </p>
+          )}
+        </section>
+
+        {/* Pricing */}
+        <section className="space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4">
+          <h3 className={sectionTitleClass}>Pricing</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass} htmlFor="price">Selling Price (₦) *</label>
+              <input id="price" type="number" inputMode="decimal" {...register('price')} placeholder="0" className={fieldClass} />
+              {errors.price && <p className={errorClass}>{errors.price.message}</p>}
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="cost_price">Cost Price (₦)</label>
+              <input id="cost_price" type="number" inputMode="decimal" {...register('cost_price')} placeholder="0" className={fieldClass} />
+            </div>
+          </div>
+        </section>
+
+        {/* Stock — only for non-serialized */}
+        {!isSerialized && (
+          <section className="space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4">
+            <h3 className={sectionTitleClass}>Stock</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass} htmlFor="quantity">Quantity *</label>
+                <input id="quantity" type="number" inputMode="numeric" {...register('quantity')} className={fieldClass} />
+                {errors.quantity && <p className={errorClass}>{errors.quantity.message}</p>}
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="low_stock_threshold">Low Stock Alert</label>
+                <input id="low_stock_threshold" type="number" inputMode="numeric" {...register('low_stock_threshold')} className={fieldClass} />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Identifiers */}
+        <section className="space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4">
+          <h3 className={sectionTitleClass}>{isSerialized ? 'Identifiers *' : 'Identifiers'}</h3>
+
+          {isSerialized && (
+            <ScanField
+              id="serial_number"
+              label="Serial Number"
+              placeholder="S/N"
+              {...register('serial_number')}
+              onScan={() => setScanTarget('serial_number')}
+            />
+          )}
+
+          {isSerialized && (
+            <div>
+              <label className={labelClass} htmlFor="condition">Condition</label>
+              <div className="relative">
+                <select id="condition" {...register('condition')} className={`${fieldClass} appearance-none pr-8`}>
+                  <option value="">Select condition</option>
+                  {CONDITION_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              </div>
+            </div>
+          )}
+
+          {isSerialized && showImei && (
+            <>
+              <ScanField
+                id="imei"
+                label="IMEI 1"
+                placeholder="15-digit IMEI"
+                {...register('imei')}
+                onScan={() => setScanTarget('imei')}
+              />
+              <ScanField
+                id="imei2"
+                label="IMEI 2 (dual SIM)"
+                placeholder="15-digit IMEI"
+                {...register('imei2')}
+                onScan={() => setScanTarget('imei2')}
+              />
+            </>
+          )}
+
+          <ScanField
+            id="barcode"
+            label="Barcode / QR"
+            placeholder="Scan or enter manually"
+            {...register('barcode')}
+            onScan={() => setScanTarget('barcode')}
+          />
+        </section>
+
+        {showAppleMobileFields && (
+          <section className="space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4">
+            <h3 className={sectionTitleClass}>Apple Device Details</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField id="battery_health" label="Battery Health" register={register('battery_health')} suffix="%" />
+              <NumberField id="battery_cycle_count" label="Battery Cycle Count" register={register('battery_cycle_count')} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="icloud_lock_status">iCloud Lock Status</label>
+              <SelectField id="icloud_lock_status" register={register('icloud_lock_status')} options={ICLOUD_OPTIONS} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass} htmlFor="carrier_lock">Carrier Lock</label>
+                <SelectField id="carrier_lock" register={register('carrier_lock')} options={CARRIER_OPTIONS} />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="biometric_status">Face ID / Touch ID</label>
+                <SelectField id="biometric_status" register={register('biometric_status')} options={BIOMETRIC_OPTIONS} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass} htmlFor="storage">Storage</label>
+                <select id="storage" {...register('storage')} className={`${fieldClass} appearance-none`}>
+                  <option value="">Select storage</option>
+                  {MOBILE_STORAGE_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="color">Color</label>
+                <input id="color" {...register('color')} className={fieldClass} placeholder="Black Titanium" />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {showAppleLaptopFields && (
+          <section className="space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4">
+            <h3 className={sectionTitleClass}>MacBook Details</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField id="battery_cycle_count" label="Battery Cycle Count" register={register('battery_cycle_count')} />
+              <NumberField id="battery_health" label="Battery Health" register={register('battery_health')} suffix="%" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass} htmlFor="storage">Storage</label>
+                <select id="storage" {...register('storage')} className={`${fieldClass} appearance-none`}>
+                  <option value="">Select storage</option>
+                  {LAPTOP_STORAGE_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="ram">RAM</label>
+                <select id="ram" {...register('ram')} className={`${fieldClass} appearance-none`}>
+                  <option value="">Select RAM</option>
+                  {RAM_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass} htmlFor="chip">Chip</label>
+                <input id="chip" {...register('chip')} className={fieldClass} placeholder="M3 Max" />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="screen_size">Screen Size</label>
+                <select id="screen_size" {...register('screen_size')} className={`${fieldClass} appearance-none`}>
+                  <option value="">Select size</option>
+                  {SCREEN_SIZE_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass} htmlFor="keyboard_status">Keyboard Status</label>
+                <SelectField id="keyboard_status" register={register('keyboard_status')} options={KEYBOARD_OPTIONS} />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="screen_condition">Screen Condition</label>
+                <SelectField id="screen_condition" register={register('screen_condition')} options={SCREEN_CONDITION_OPTIONS} />
+              </div>
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="color">Color</label>
+              <input id="color" {...register('color')} className={fieldClass} placeholder="Space Black" />
+            </div>
+          </section>
+        )}
+
+        {/* Submit buttons */}
+        <div className="fixed z-30 max-lg:bottom-[0] lg:bottom-0 left-0 right-0 px-3 md:px-5 pb-[max(0.35rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[#f0f0f3] via-[#f0f0f3]/96 to-transparent pt-3 dark:from-zinc-950 dark:via-zinc-950/96 pb-4">
+          <div className={`max-w-lg mx-auto lg:max-w-3xl xl:max-w-4xl w-full grid gap-2 ${isSerialized && onAddAnother ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-primary text-white rounded-xl py-3.5 font-heading font-semibold text-sm hover:bg-primary-dark transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+              {submitLabel}
+            </button>
+
+            {isSerialized && onAddAnother && (
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleAddAnother}
+                className="bg-teal text-white rounded-xl py-3.5 font-heading font-semibold text-sm hover:bg-teal-dark transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                Add Another
+              </button>
+            )}
+          </div>
+        </div>
+      </form>
+
+      {scanTarget && (
+        <Suspense fallback={null}>
+          <BarcodeScanner
+            onScan={handleScan}
+            onClose={() => setScanTarget(null)}
+          />
+        </Suspense>
+      )}
+    </>
+  );
+}
+
+// ─── Scan field component ─────────────────────────────────────────────────────
+
+interface ScanFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  id: string;
+  label: string;
+  onScan: () => void;
+}
+
+const ScanField = ({ id, label, onScan, ...props }: ScanFieldProps) => (
+  <div>
+    <label className={formLabelClass} htmlFor={id}>
+      {label}
+    </label>
+    <div className="flex gap-2">
+      <input id={id} className={`${formFieldClass} flex-1`} {...props} />
+      <button
+        type="button"
+        onClick={onScan}
+        className="shrink-0 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-muted transition-colors hover:bg-zinc-50 hover:text-primary dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700/80 dark:hover:text-primary-light"
+        aria-label={`Scan ${label}`}
+      >
+        <ScanLine size={18} />
+      </button>
+    </div>
+  </div>
+);
+
+function NumberField({
+  id,
+  label,
+  register,
+  suffix,
+}: {
+  id: string;
+  label: string;
+  register: ReturnType<typeof useForm<FormData>>['register'] extends (...args: infer _A) => infer _R ? _R : never;
+  suffix?: string;
+}) {
+  return (
+    <div>
+      <label className={formLabelClass} htmlFor={id}>{label}</label>
+      <div className="relative">
+        <input id={id} type="number" inputMode="numeric" {...register} className={`${formFieldClass} pr-8`} />
+        {suffix && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 dark:text-zinc-400">
+            {suffix}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SelectField({
+  id,
+  register,
+  options,
+}: {
+  id: string;
+  register: ReturnType<typeof useForm<FormData>>['register'] extends (...args: infer _A) => infer _R ? _R : never;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="relative">
+      <select
+        id={id}
+        {...register}
+        className={`${formFieldClass} appearance-none pr-8`}
+      >
+        <option value="">Select option</option>
+        {options.map(option => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+      <ChevronDown
+        size={16}
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500"
+      />
+    </div>
+  );
+}
