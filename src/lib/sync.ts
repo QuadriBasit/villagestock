@@ -12,7 +12,7 @@ import type {
   SwapRecord,
   SyncQueueItem,
 } from '@/types';
-import type { Database } from '@/types/supabase';
+import type { Database, Json } from '@/types/supabase';
 
 type RemoteInventoryRow = Database['public']['Tables']['inventory_items']['Row'];
 type RemoteBusinessProfileRow = Database['public']['Tables']['business_profiles']['Row'];
@@ -25,6 +25,76 @@ type RemoteRepairRow = Database['public']['Tables']['repair_records']['Row'];
 function parseCreditPayments(json: unknown): CreditRecord['payments'] {
   if (!Array.isArray(json)) return [];
   return json as CreditRecord['payments'];
+}
+
+/** Strip Dexie-only fields and map keys so PostgREST accepts the body (unknown columns → 400). */
+function inventoryItemToRemoteRow(item: InventoryItem): Database['public']['Tables']['inventory_items']['Insert'] {
+  return {
+    id: item.id,
+    user_id: item.user_id,
+    name: item.name,
+    category: item.category,
+    brand: item.brand,
+    price: item.price,
+    cost_price: item.cost_price ?? null,
+    mode: item.mode,
+    status: item.status ?? null,
+    quantity: item.quantity,
+    low_stock_threshold: item.low_stock_threshold,
+    serial_number: item.serial_number ?? null,
+    imei: item.imei ?? null,
+    imei2: item.imei2 ?? null,
+    condition: item.condition ?? null,
+    device_details:
+      item.deviceDetails && typeof item.deviceDetails === 'object'
+        ? (item.deviceDetails as unknown as Json)
+        : null,
+    barcode: item.barcode ?? null,
+    description: item.description ?? null,
+    image_url: item.image_url ?? null,
+    deleted: item.deleted ?? false,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  };
+}
+
+function salesRecordToRemoteRow(record: SalesRecord): Database['public']['Tables']['sales_records']['Insert'] {
+  return {
+    id: record.id,
+    user_id: record.user_id,
+    item_id: record.item_id?.trim() ? record.item_id : null,
+    sale_type: record.sale_type,
+    item_name: record.item_name,
+    item_category: record.item_category,
+    item_brand: record.item_brand,
+    item_mode: record.item_mode,
+    serial_number: record.serial_number ?? null,
+    imei: record.imei ?? null,
+    device_details:
+      record.device_details && typeof record.device_details === 'object'
+        ? (record.device_details as unknown as Json)
+        : null,
+    sale_price: record.sale_price,
+    cost_price: record.cost_price,
+    profit: record.profit,
+    quantity_sold: record.quantity_sold,
+    payment_method: record.payment_method ?? null,
+    payment_status: record.payment_status,
+    amount_paid: record.amount_paid ?? null,
+    balance_owed: record.balance_owed ?? null,
+    due_date: record.due_date ?? null,
+    customer_name: record.customer_name ?? null,
+    customer_phone: record.customer_phone ?? null,
+    sold_at: record.sold_at,
+    receipt_number: record.receipt_number,
+    swap_record_id: record.swap_record_id ?? null,
+    trade_in_item_name: record.trade_in_item_name ?? null,
+    trade_in_item_brand: record.trade_in_item_brand ?? null,
+    trade_in_value: record.trade_in_value ?? null,
+    balance_paid: record.balance_paid ?? null,
+    returned: record.returned ?? false,
+    return_id: record.return_id ?? null,
+  };
 }
 
 // ─── Queue a write for later sync ────────────────────────────────────────────
@@ -81,9 +151,8 @@ export async function flushSyncQueue(): Promise<void> {
 async function syncInventoryItem(item: SyncQueueItem) {
   const payload = item.payload as Partial<InventoryItem>;
   if (item.operation === 'insert' || item.operation === 'update') {
-    const { error } = await supabase
-      .from('inventory_items')
-      .upsert(payload as never);
+    const row = inventoryItemToRemoteRow(payload as InventoryItem);
+    const { error } = await supabase.from('inventory_items').upsert(row as never);
     if (error) throw error;
   } else if (item.operation === 'delete') {
     const { error } = await supabase
@@ -104,17 +173,15 @@ async function syncStockMovement(item: SyncQueueItem) {
 }
 
 async function syncSaleRecord(item: SyncQueueItem) {
+  const record = item.payload as unknown as SalesRecord;
   if (item.operation === 'insert') {
-    const { error } = await supabase
-      .from('sales_records')
-      .insert(item.payload as never);
+    const row = salesRecordToRemoteRow(record);
+    const { error } = await supabase.from('sales_records').insert(row as never);
     if (error) throw error;
   } else if (item.operation === 'update') {
-    const payload = item.payload as { id: string };
-    const { error } = await supabase
-      .from('sales_records')
-      .update(item.payload as never)
-      .eq('id', payload.id);
+    const row = salesRecordToRemoteRow(record);
+    const { id, ...updates } = row;
+    const { error } = await supabase.from('sales_records').update(updates as never).eq('id', id as string);
     if (error) throw error;
   }
 }
