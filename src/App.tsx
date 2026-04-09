@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
-import { flushSyncQueue, pullRemoteBusinessProfile, pullRemoteInventory } from '@/lib/sync';
+import { flushSyncQueue, pullAllRemoteShopData } from '@/lib/sync';
 import AppLayout from '@/components/layout/AppLayout';
 import AuthPage from '@/pages/AuthPage';
 import OnboardingPage from '@/pages/OnboardingPage';
@@ -99,9 +99,12 @@ export default function App() {
     if (!user) return;
 
     const sync = async () => {
-      await flushSyncQueue();
-      await pullRemoteBusinessProfile(user.id);
-      await pullRemoteInventory(user.id);
+      try {
+        await flushSyncQueue();
+      } catch (err) {
+        console.error('[sync] flush failed', err);
+      }
+      await pullAllRemoteShopData(user.id);
     };
 
     sync();

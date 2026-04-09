@@ -2,11 +2,30 @@ import { supabase, isOnline } from './supabase';
 import { db } from './db';
 import { v4 as uuidv4 } from 'uuid';
 import { getCategoryMode } from '@/types';
-import type { BusinessProfile, InventoryItem, SyncQueueItem } from '@/types';
+import type {
+  BusinessProfile,
+  CreditRecord,
+  InventoryItem,
+  RepairRecord,
+  ReturnRecord,
+  SalesRecord,
+  SwapRecord,
+  SyncQueueItem,
+} from '@/types';
 import type { Database } from '@/types/supabase';
 
 type RemoteInventoryRow = Database['public']['Tables']['inventory_items']['Row'];
 type RemoteBusinessProfileRow = Database['public']['Tables']['business_profiles']['Row'];
+type RemoteSalesRow = Database['public']['Tables']['sales_records']['Row'];
+type RemoteReturnRow = Database['public']['Tables']['return_records']['Row'];
+type RemoteSwapRow = Database['public']['Tables']['swap_records']['Row'];
+type RemoteCreditRow = Database['public']['Tables']['credit_records']['Row'];
+type RemoteRepairRow = Database['public']['Tables']['repair_records']['Row'];
+
+function parseCreditPayments(json: unknown): CreditRecord['payments'] {
+  if (!Array.isArray(json)) return [];
+  return json as CreditRecord['payments'];
+}
 
 // ─── Queue a write for later sync ────────────────────────────────────────────
 
@@ -259,5 +278,208 @@ export async function pullRemoteBusinessProfile(userId: string): Promise<void> {
 
   if (remoteUpdated >= localUpdated) {
     await db.business_profiles.put(remoteRowToBusinessProfile(row));
+  }
+}
+
+export async function pullRemoteSalesRecords(userId: string): Promise<void> {
+  if (!isOnline()) return;
+
+  const { data, error } = await supabase
+    .from('sales_records')
+    .select('*')
+    .eq('user_id', userId)
+    .order('sold_at', { ascending: false });
+
+  if (error) throw error;
+  if (!data?.length) return;
+
+  const rows = data as unknown as RemoteSalesRow[];
+  const mapped: SalesRecord[] = rows.map(row => ({
+    id: row.id,
+    user_id: row.user_id,
+    item_id: row.item_id ?? '',
+    sale_type: row.sale_type,
+    item_name: row.item_name,
+    item_category: row.item_category as SalesRecord['item_category'],
+    item_brand: row.item_brand,
+    item_mode: row.item_mode,
+    serial_number: row.serial_number ?? undefined,
+    imei: row.imei ?? undefined,
+    device_details: (typeof row.device_details === 'object' && row.device_details && !Array.isArray(row.device_details)
+      ? row.device_details
+      : undefined) as SalesRecord['device_details'],
+    sale_price: row.sale_price,
+    cost_price: row.cost_price ?? 0,
+    profit: row.profit ?? 0,
+    payment_method: row.payment_method ?? undefined,
+    payment_status: row.payment_status,
+    amount_paid: row.amount_paid ?? undefined,
+    balance_owed: row.balance_owed ?? undefined,
+    due_date: row.due_date ?? undefined,
+    customer_name: row.customer_name ?? undefined,
+    customer_phone: row.customer_phone ?? undefined,
+    quantity_sold: row.quantity_sold ?? 1,
+    sold_at: row.sold_at,
+    receipt_number: row.receipt_number,
+    swap_record_id: row.swap_record_id ?? undefined,
+    trade_in_item_name: row.trade_in_item_name ?? undefined,
+    trade_in_item_brand: row.trade_in_item_brand ?? undefined,
+    trade_in_value: row.trade_in_value ?? undefined,
+    balance_paid: row.balance_paid ?? undefined,
+    returned: row.returned,
+    return_id: row.return_id ?? undefined,
+    sync_status: 'synced',
+  }));
+
+  await db.sales_records.bulkPut(mapped);
+}
+
+export async function pullRemoteReturnRecords(userId: string): Promise<void> {
+  if (!isOnline()) return;
+
+  const { data, error } = await supabase
+    .from('return_records')
+    .select('*')
+    .eq('user_id', userId)
+    .order('returned_at', { ascending: false });
+
+  if (error) throw error;
+  if (!data?.length) return;
+
+  const rows = data as unknown as RemoteReturnRow[];
+  const mapped: ReturnRecord[] = rows.map(row => ({
+    id: row.id,
+    sale_id: row.sale_id,
+    item_id: row.item_id,
+    user_id: row.user_id,
+    reason: row.reason,
+    return_type: row.return_type,
+    notes: row.notes ?? undefined,
+    returned_at: row.returned_at,
+    refund_amount: row.refund_amount,
+    exchange_item_id: row.exchange_item_id ?? undefined,
+    exchange_item_name: row.exchange_item_name ?? undefined,
+    exchange_sale_id: row.exchange_sale_id ?? undefined,
+    sync_status: 'synced',
+  }));
+
+  await db.return_records.bulkPut(mapped);
+}
+
+export async function pullRemoteSwapRecords(userId: string): Promise<void> {
+  if (!isOnline()) return;
+
+  const { data, error } = await supabase
+    .from('swap_records')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  if (!data?.length) return;
+
+  const rows = data as unknown as RemoteSwapRow[];
+  const mapped: SwapRecord[] = rows.map(row => ({
+    id: row.id,
+    outgoing_item_id: row.outgoing_item_id,
+    incoming_item_id: row.incoming_item_id,
+    user_id: row.user_id,
+    sale_id: row.sale_id,
+    sale_price: row.sale_price,
+    trade_in_value: row.trade_in_value,
+    balance_paid: row.balance_paid,
+    payment_method: row.payment_method ?? undefined,
+    customer_name: row.customer_name ?? undefined,
+    customer_phone: row.customer_phone ?? undefined,
+    date: row.date,
+    sync_status: 'synced',
+  }));
+
+  await db.swap_records.bulkPut(mapped);
+}
+
+export async function pullRemoteCreditRecords(userId: string): Promise<void> {
+  if (!isOnline()) return;
+
+  const { data, error } = await supabase
+    .from('credit_records')
+    .select('*')
+    .eq('user_id', userId)
+    .order('due_date', { ascending: false });
+
+  if (error) throw error;
+  if (!data?.length) return;
+
+  const rows = data as unknown as RemoteCreditRow[];
+  const mapped: CreditRecord[] = rows.map(row => ({
+    id: row.id,
+    sale_id: row.sale_id,
+    user_id: row.user_id,
+    customer_name: row.customer_name,
+    customer_phone: row.customer_phone,
+    item_name: row.item_name,
+    total_amount: row.total_amount,
+    amount_paid: row.amount_paid,
+    balance_owed: row.balance_owed,
+    due_date: row.due_date,
+    status: row.status,
+    payments: parseCreditPayments(row.payments),
+    notes: row.notes ?? undefined,
+    sync_status: 'synced',
+  }));
+
+  await db.credit_records.bulkPut(mapped);
+}
+
+export async function pullRemoteRepairRecords(userId: string): Promise<void> {
+  if (!isOnline()) return;
+
+  const { data, error } = await supabase
+    .from('repair_records')
+    .select('*')
+    .eq('user_id', userId)
+    .order('date_sent', { ascending: false });
+
+  if (error) throw error;
+  if (!data?.length) return;
+
+  const rows = data as unknown as RemoteRepairRow[];
+  const mapped: RepairRecord[] = rows.map(row => ({
+    id: row.id,
+    item_id: row.item_id,
+    user_id: row.user_id,
+    engineer_name: row.engineer_name,
+    engineer_phone: row.engineer_phone ?? undefined,
+    issue_description: row.issue_description,
+    repair_cost: row.repair_cost ?? undefined,
+    date_sent: row.date_sent,
+    expected_return_date: row.expected_return_date ?? undefined,
+    date_returned: row.date_returned ?? undefined,
+    repair_status: row.repair_status,
+    notes: row.notes ?? undefined,
+    sync_status: 'synced',
+  }));
+
+  await db.repair_records.bulkPut(mapped);
+}
+
+/** Run after `flushSyncQueue`: download server rows into IndexedDB for this device. */
+export async function pullAllRemoteShopData(userId: string): Promise<void> {
+  const pulls: [string, () => Promise<void>][] = [
+    ['business_profiles', () => pullRemoteBusinessProfile(userId)],
+    ['inventory_items', () => pullRemoteInventory(userId)],
+    ['sales_records', () => pullRemoteSalesRecords(userId)],
+    ['return_records', () => pullRemoteReturnRecords(userId)],
+    ['swap_records', () => pullRemoteSwapRecords(userId)],
+    ['credit_records', () => pullRemoteCreditRecords(userId)],
+    ['repair_records', () => pullRemoteRepairRecords(userId)],
+  ];
+
+  for (const [label, fn] of pulls) {
+    try {
+      await fn();
+    } catch (err) {
+      console.error(`[sync] pull ${label} failed`, err);
+    }
   }
 }
