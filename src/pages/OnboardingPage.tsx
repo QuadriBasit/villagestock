@@ -91,12 +91,14 @@ export default function OnboardingPage() {
   const onStep2 = async (data: Step2Data) => {
     setSubmitError('');
     let phone = user.phone ?? profile?.phone ?? '';
-    if (!phone) {
-      phone = normalizeNgPhone(legacyPhone);
-      if (!isLikelyNgMobile(phone)) {
-        setSubmitError('Enter a valid Nigerian mobile number for your shop contact.');
+    const rawPhone = legacyPhone.trim();
+    if (rawPhone) {
+      const normalized = normalizeNgPhone(rawPhone);
+      if (!isLikelyNgMobile(normalized)) {
+        setSubmitError('Enter a valid Nigerian mobile number, or leave phone blank.');
         return;
       }
+      phone = normalized;
     }
     try {
       const { error: authErr } = await supabase.auth.updateUser({
@@ -157,7 +159,7 @@ export default function OnboardingPage() {
           </h1>
           {step === 2 && (
             <p className="text-xs text-muted text-center mt-2 max-w-sm mx-auto">
-              You will sign in with this email and password next time — no SMS unless you choose &quot;New shop / SMS&quot;.
+              You will sign in with this email and password next time. Add a shop phone if you want it on receipts — optional.
             </p>
           )}
         </div>
@@ -167,7 +169,7 @@ export default function OnboardingPage() {
             <div>
               <label className="block text-sm font-medium text-dark mb-1" htmlFor="phone-ro">
                 <Phone size={13} className="inline mr-1 text-muted" />
-                {needsManualPhone ? 'Shop contact phone *' : 'Phone (verified)'}
+                {needsManualPhone ? 'Shop phone (optional)' : 'Phone (from account)'}
               </label>
               {needsManualPhone ? (
                 <input
@@ -175,7 +177,7 @@ export default function OnboardingPage() {
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
-                  placeholder="0803 123 4567"
+                  placeholder="0803 123 4567 — optional"
                   value={legacyPhone}
                   onChange={e => setLegacyPhone(e.target.value)}
                   className={fieldClass}
