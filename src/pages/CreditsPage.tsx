@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import { CreditCard, Loader2, X } from 'lucide-react';
 import { useCredits } from '@/hooks/useCredits';
 import { useCreditActions } from '@/hooks/useCreditActions';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Input } from '@/components/ui/Input';
 import type { CreditRecord, PaymentMethod } from '@/types';
 import {
@@ -14,6 +15,7 @@ import {
   modalSheetHeader,
   modalSheetPanelMd,
 } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 
 export default function CreditsPage() {
   const { credits, isLoading } = useCredits();
@@ -56,14 +58,19 @@ export default function CreditsPage() {
   );
 }
 
+const creditsMoneyFieldClass = cn(
+  'flex h-10 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-[#0f172a] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-zinc-600/80 dark:bg-zinc-900/60 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-primary/50 dark:focus:ring-primary/25'
+);
+
 function CreditDetailsModal({ record, onClose }: { record: CreditRecord; onClose: () => void }) {
   const { recordPayment } = useCreditActions();
-  const [amount, setAmount] = useState(String(record.balance_owed));
+  const [amount, setAmount] = useState(record.balance_owed);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [isSaving, setIsSaving] = useState(false);
 
   return (
+    <ModalSheetPortal>
     <div className={modalSheetBackdrop} onClick={onClose}>
       <div className={modalSheetPanelMd} onClick={e => e.stopPropagation()}>
         <div className={modalSheetHandle}>
@@ -100,7 +107,11 @@ function CreditDetailsModal({ record, onClose }: { record: CreditRecord; onClose
             <CardContent className="space-y-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200">Amount</label>
-                <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} />
+                <CurrencyInput
+                  value={amount}
+                  onValueChange={v => setAmount(v ?? 0)}
+                  className={creditsMoneyFieldClass}
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -123,11 +134,11 @@ function CreditDetailsModal({ record, onClose }: { record: CreditRecord; onClose
               <Button
                 onClick={async () => {
                   setIsSaving(true);
-                  await recordPayment(record.id, Number(amount), new Date(date).toISOString(), method);
+                  await recordPayment(record.id, amount, new Date(date).toISOString(), method);
                   setIsSaving(false);
                   onClose();
                 }}
-                disabled={isSaving || Number(amount) <= 0}
+                disabled={isSaving || amount <= 0}
                 className="w-full"
               >
                 {isSaving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <><CreditCard size={16} /> Record Payment</>}
@@ -137,6 +148,7 @@ function CreditDetailsModal({ record, onClose }: { record: CreditRecord; onClose
         </div>
       </div>
     </div>
+    </ModalSheetPortal>
   );
 }
 

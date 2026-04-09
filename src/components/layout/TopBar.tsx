@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, ChevronLeft, Moon, Search, Settings, Sun, Wifi, WifiOff } from 'lucide-react';
+import { Bell, ChevronsLeft, ChevronsRight, Moon, Search, Settings, Sun, Wifi, WifiOff } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
+import { useBusinessProfile } from '@/hooks/useBusinessProfile';
+import { getAccountInitial } from '@/lib/userDisplay';
+import { useSidebarLayout } from './SidebarLayoutContext';
 import { useSyncStatus } from '@/hooks/useSyncStatus';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { useInventoryStore } from '@/store/inventory';
@@ -23,6 +26,8 @@ export default function TopBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { profile: businessProfile } = useBusinessProfile();
+  const { collapsed: sidebarCollapsed, toggleCollapsed } = useSidebarLayout();
   const { isOnline, pendingCount } = useSyncStatus();
   const { resolved, toggle } = useTheme();
   const filtersSearch = useInventoryStore((s) => s.filters.search);
@@ -37,11 +42,14 @@ export default function TopBar() {
       : /^\/reports\/stock-sessions\/.+/.test(location.pathname)
         ? 'Stock session'
         : (PAGE_TITLES[location.pathname] ?? 'VillageStock');
-  const canGoBack = location.pathname !== '/dashboard';
-
-  const avatarLetter = (
-    user?.email?.[0] ?? user?.phone?.replace(/\D/g, '').slice(-1) ?? 'U'
-  ).toUpperCase();
+  const avatarLetter = getAccountInitial({
+    ownerName: businessProfile?.owner_name,
+    email: user?.email,
+    phone: user?.phone,
+  });
+  const accountTitle = [businessProfile?.owner_name?.trim(), user?.email ?? user?.phone]
+    .filter(Boolean)
+    .join(' · ') || 'Account';
 
   useEffect(() => {
     if (location.pathname === '/inventory') setSearchQuery(filtersSearch);
@@ -59,21 +67,20 @@ export default function TopBar() {
       className="relative flex h-[3.65rem] items-center overflow-hidden border-b border-zinc-200/80 bg-white/90 px-3 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#111827]/90 md:h-[3.85rem] md:px-5 lg:px-6"
     >
       <div className="relative flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
-        {canGoBack ? (
-          <button
-            onClick={() => navigate(-1)}
-            className="shrink-0 rounded-xl p-2 text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/10"
-            aria-label="Go back"
-          >
-            <ChevronLeft size={22} />
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 lg:hidden">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-primary to-[#5849c4] shadow-sm shadow-[#6c5ce7]/20">
-              <span className="text-[10px] font-extrabold tracking-tight text-white">VS</span>
-            </div>
+        <div className="flex items-center gap-2 lg:hidden">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-primary to-[#5849c4] shadow-sm shadow-[#6c5ce7]/20">
+            <span className="text-[10px] font-extrabold tracking-tight text-white">VS</span>
           </div>
-        )}
+        </div>
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          className="hidden shrink-0 rounded-xl p-2 text-zinc-600 transition-colors hover:bg-zinc-100 lg:inline-flex dark:text-zinc-300 dark:hover:bg-white/10"
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {sidebarCollapsed ? <ChevronsRight size={20} strokeWidth={2} /> : <ChevronsLeft size={20} strokeWidth={2} />}
+        </button>
         <h1 className="truncate text-[1.05rem] font-semibold leading-none tracking-tight text-[#0f172a] dark:text-white md:text-lg">
           {title}
         </h1>
@@ -145,7 +152,7 @@ export default function TopBar() {
 
         <div
           className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/12 text-sm font-semibold text-primary dark:bg-primary/20 dark:text-violet-200"
-          title={user?.email ?? user?.phone ?? 'Account'}
+          title={accountTitle}
         >
           {avatarLetter}
         </div>

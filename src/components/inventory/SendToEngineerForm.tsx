@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, Wrench, X } from 'lucide-react';
@@ -14,6 +14,8 @@ import {
   modalSheetHeader,
   modalSheetPanelMd,
 } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 
 const schema = z.object({
   engineer_name: z.string().min(1, 'Engineer name is required'),
@@ -46,6 +48,7 @@ export default function SendToEngineerForm({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
@@ -83,6 +86,7 @@ export default function SendToEngineerForm({
   };
 
   return (
+    <ModalSheetPortal>
     <div className={modalSheetBackdrop} onClick={onClose}>
       <div className={modalSheetPanelMd} onClick={e => e.stopPropagation()}>
         <div className={modalSheetHandle}>
@@ -141,7 +145,21 @@ export default function SendToEngineerForm({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelClass} htmlFor="repair_cost">Agreed Repair Cost</label>
-                <input id="repair_cost" type="number" inputMode="decimal" {...register('repair_cost')} className={fieldClass} />
+                <Controller
+                  name="repair_cost"
+                  control={control}
+                  render={({ field }) => (
+                    <CurrencyInput
+                      id="repair_cost"
+                      ref={field.ref}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      allowEmpty
+                      className={fieldClass}
+                    />
+                  )}
+                />
               </div>
               <div>
                 <label className={labelClass} htmlFor="date_sent">Date Sent *</label>
@@ -171,5 +189,6 @@ export default function SendToEngineerForm({
         </form>
       </div>
     </div>
+    </ModalSheetPortal>
   );
 }

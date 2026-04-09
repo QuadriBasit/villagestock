@@ -11,14 +11,26 @@ import {
   Cell,
 } from 'recharts';
 import { useAdminDashboardSnapshot } from '@/hooks/useAdminDashboardSnapshot';
+import { useTheme } from '@/components/theme/ThemeProvider';
 import { formatCurrency } from '@/lib/utils';
 
 export default function AdminOverviewPage() {
   const { data, isLoading, isFetching, error, refetch } = useAdminDashboardSnapshot(true);
+  const { resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const axisTick = { fontSize: 11, fill: isDark ? '#a1a1aa' : '#94a3b8' };
+  const tooltipContentStyle = {
+    backgroundColor: isDark ? '#27272a' : '#FFFFFF',
+    border: `1px solid ${isDark ? '#52525b' : '#e5e7eb'}`,
+    borderRadius: 12,
+    fontSize: 13,
+    boxShadow: isDark ? '0 12px 40px rgba(0,0,0,0.55)' : '0 8px 30px -12px rgba(15,23,42,0.15)',
+  };
+  const tooltipTextStyle = { color: isDark ? '#fafafa' : '#0f172a', fontWeight: 500 as const };
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-24 text-slate-500">
+      <div className="flex justify-center py-24 text-slate-500 dark:text-zinc-400">
         <RefreshCw className="animate-spin" size={28} />
       </div>
     );
@@ -26,7 +38,7 @@ export default function AdminOverviewPage() {
 
   if (error || !data) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+      <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
         {error instanceof Error ? error.message : 'Could not load dashboard.'} Ensure the database migration is applied and your
         user is in <code className="font-mono">admin_users</code>.
       </div>
@@ -50,26 +62,26 @@ export default function AdminOverviewPage() {
   const statCard = (label: string, value: string | number, sub?: string) => (
     <div
       key={label}
-      className="rounded-3xl border border-slate-900/[0.06] bg-white p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.04]"
+      className="rounded-3xl border border-slate-900/[0.06] bg-white p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.04] dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:ring-white/[0.06] dark:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.4)]"
     >
-      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{label}</p>
-      <p className="text-2xl font-heading font-bold text-slate-900 mt-2 tabular-nums">{value}</p>
-      {sub && <p className="text-xs text-slate-500 mt-1.5">{sub}</p>}
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400">{label}</p>
+      <p className="mt-2 font-heading text-2xl font-bold tabular-nums text-slate-900 dark:text-zinc-50">{value}</p>
+      {sub && <p className="mt-1.5 text-xs text-slate-500 dark:text-zinc-400">{sub}</p>}
     </div>
   );
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="max-w-6xl space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-heading font-bold text-slate-900 tracking-tight">Analytics</h1>
-          <p className="text-sm text-slate-500 mt-1">Businesses, trials, and signups across VillageStock.</p>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-slate-900 md:text-3xl dark:text-zinc-50">Analytics</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">Businesses, trials, and signups across VillageStock.</p>
         </div>
         <button
           type="button"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 transition-colors"
+          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
           <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
           Refresh
@@ -91,9 +103,9 @@ export default function AdminOverviewPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4 md:gap-6">
-        <div className="rounded-3xl border border-slate-900/[0.06] bg-white p-5 md:p-6 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.04]">
-          <h2 className="font-heading font-semibold text-slate-900 mb-1 text-sm">Signups (last 30 days)</h2>
-          <p className="text-xs text-slate-500 mb-4">Daily new shop registrations</p>
+        <div className="rounded-3xl border border-slate-900/[0.06] bg-white p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.04] md:p-6 dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:ring-white/[0.06] dark:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.4)]">
+          <h2 className="mb-1 font-heading text-sm font-semibold text-slate-900 dark:text-zinc-50">Signups (last 30 days)</h2>
+          <p className="mb-4 text-xs text-slate-500 dark:text-zinc-400">Daily new shop registrations</p>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={lineData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
@@ -103,14 +115,12 @@ export default function AdminOverviewPage() {
                     <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 8px 30px -12px rgba(15,23,42,0.15)',
-                  }}
+                  contentStyle={tooltipContentStyle}
+                  labelStyle={tooltipTextStyle}
+                  itemStyle={{ color: isDark ? '#fafafa' : '#0f172a' }}
                 />
                 <Area
                   type="monotone"
@@ -125,20 +135,18 @@ export default function AdminOverviewPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-900/[0.06] bg-white p-5 md:p-6 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.04]">
-          <h2 className="font-heading font-semibold text-slate-900 mb-1 text-sm">Plan distribution</h2>
-          <p className="text-xs text-slate-500 mb-4">Shops by plan type</p>
+        <div className="rounded-3xl border border-slate-900/[0.06] bg-white p-5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.04] md:p-6 dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:ring-white/[0.06] dark:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.4)]">
+          <h2 className="mb-1 font-heading text-sm font-semibold text-slate-900 dark:text-zinc-50">Plan distribution</h2>
+          <p className="mb-4 text-xs text-slate-500 dark:text-zinc-400">Shops by plan type</p>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={planBar} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 8px 30px -12px rgba(15,23,42,0.15)',
-                  }}
+                  contentStyle={tooltipContentStyle}
+                  labelStyle={tooltipTextStyle}
+                  itemStyle={{ color: isDark ? '#fafafa' : '#0f172a' }}
                 />
                 <Bar dataKey="count" radius={[10, 10, 4, 4]} name="Shops">
                   {planBar.map((_, index) => (

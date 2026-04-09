@@ -1,8 +1,8 @@
 import { useState, lazy, Suspense } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, Loader2, ShoppingCart, ChevronDown, Receipt as ReceiptIcon } from 'lucide-react';
+import { X, Loader2, ShoppingCart, Receipt as ReceiptIcon } from 'lucide-react';
 import { useSalesActions } from '@/hooks/useSalesActions';
 import { useTradingGateState } from '@/hooks/useStockSessions';
 import { useCreditActions } from '@/hooks/useCreditActions';
@@ -14,6 +14,9 @@ import {
   modalSheetHeader,
   modalSheetPanelMd,
 } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { formatCurrency } from '@/lib/utils';
 import type { InventoryItem, PaymentMethod, PaymentStatus, SalesRecord } from '@/types';
 
@@ -49,6 +52,30 @@ function toLocalDatetimeValue(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/** Parse `sold_at` (`YYYY-MM-DDTHH:mm`) for split date / time inputs. */
+function parseSoldAtLocal(iso: string | undefined): { date: string; time: string } {
+  const base = (iso?.trim() || toLocalDatetimeValue(new Date())).slice(0, 16);
+  const t = base.indexOf('T');
+  if (t === -1) {
+    const d = base.slice(0, 10) || new Date().toISOString().slice(0, 10);
+    return { date: d, time: '12:00' };
+  }
+  const date = base.slice(0, t);
+  const timeRaw = base.slice(t + 1);
+  const time = timeRaw.length >= 5 ? timeRaw.slice(0, 5) : '12:00';
+  return { date, time };
+}
+
+const itemMetaPill =
+  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium';
+const itemPillNeutral = `${itemMetaPill} border-zinc-200/90 bg-zinc-100/90 text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-300`;
+const itemPillTeal = `${itemMetaPill} border-teal/30 bg-teal/10 text-teal dark:border-teal/35 dark:bg-teal/15 dark:text-teal`;
+const itemPillMono = `${itemMetaPill} border-zinc-200/90 bg-zinc-100/90 font-mono text-[10px] tracking-tight text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-400`;
+
+/** Match `SelectTrigger` height/shape for native date/time pickers. */
+const dateTimeInputClass =
+  'h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm shadow-zinc-900/[0.04] transition [color-scheme:light] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25 dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-100 dark:[color-scheme:dark] dark:focus:ring-primary/30';
+
 export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
   const { recordSale } = useSalesActions();
   const { createCreditRecord } = useCreditActions();
@@ -61,8 +88,11 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema) as never,
@@ -84,6 +114,8 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
   const hasProfit = item.cost_price != null && item.cost_price > 0;
   const totalAmount = salePrice * qtySold;
   const balanceOwed = Math.max(0, totalAmount - amountPaid);
+  const soldAtRaw = watch('sold_at');
+  const { date: saleDateStr, time: saleTimeStr } = parseSoldAtLocal(soldAtRaw);
 
   const onSubmit = async (data: FormData) => {
     setSubmitError(null);
@@ -146,6 +178,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
     'w-full cursor-not-allowed rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2.5 text-sm text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400';
 
   return (
+    <ModalSheetPortal>
     <div className={modalSheetBackdrop} onClick={onClose}>
       <div className={modalSheetPanelMd} onClick={e => e.stopPropagation()}>
         <div className={modalSheetHandle}>
@@ -178,40 +211,32 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
             </p>
           )}
           {/* Item snapshot */}
-          <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-900/5 dark:bg-zinc-800/50 dark:ring-white/10">
-            <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Item</h3>
-
-            <div className={readonlyClass}>{item.name}</div>
-
-            <div className="flex gap-2 flex-wrap text-xs text-muted">
-              <span className="bg-surface border border-border rounded-full px-2 py-0.5 capitalize">{item.category}</span>
-              <span className="bg-surface border border-border rounded-full px-2 py-0.5">{item.brand}</span>
+          <section className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/35">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              Item
+            </h3>
+            <p className="mt-2 text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+              {item.name}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className={`${itemPillNeutral} capitalize`}>{item.category}</span>
+              <span className={itemPillNeutral}>{item.brand}</span>
               {isSerialized ? (
-                <span className="bg-teal/10 text-teal border border-teal/20 rounded-full px-2 py-0.5">
-                  Serialized unit
-                </span>
+                <span className={itemPillTeal}>Serialized unit</span>
               ) : (
-                <span className="bg-surface border border-border rounded-full px-2 py-0.5">
-                  {item.quantity} in stock
+                <span className={itemPillNeutral}>{item.quantity} in stock</span>
+              )}
+              {isSerialized && item.imei && (
+                <span className={itemPillMono} title="IMEI">
+                  IMEI {item.imei}
+                </span>
+              )}
+              {isSerialized && item.serial_number && (
+                <span className={itemPillMono} title="Serial number">
+                  S/N {item.serial_number}
                 </span>
               )}
             </div>
-
-            {/* Serialized identifiers */}
-            {isSerialized && (item.serial_number || item.imei) && (
-              <div className="flex flex-wrap gap-2">
-                {item.serial_number && (
-                  <span className="text-[10px] font-mono text-muted bg-surface border border-border px-2 py-0.5 rounded">
-                    S/N: {item.serial_number}
-                  </span>
-                )}
-                {item.imei && (
-                  <span className="text-[10px] font-mono text-muted bg-surface border border-border px-2 py-0.5 rounded">
-                    IMEI: {item.imei}
-                  </span>
-                )}
-              </div>
-            )}
           </section>
 
           {/* Sale details */}
@@ -225,12 +250,20 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
                   Listed: {formatCurrency(item.price)}
                 </span>
               </label>
-              <input
-                id="sale_price"
-                type="number"
-                inputMode="decimal"
-                {...register('sale_price')}
-                className={fieldClass}
+              <Controller
+                name="sale_price"
+                control={control}
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="sale_price"
+                    ref={field.ref}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    onBlur={field.onBlur}
+                    className={fieldClass}
+                    aria-invalid={!!errors.sale_price}
+                  />
+                )}
               />
               {errors.sale_price && (
                 <p className="text-red-500 text-xs mt-1">{errors.sale_price.message}</p>
@@ -264,29 +297,46 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
 
             <div>
               <label className={labelClass} htmlFor="payment_status">Payment Status *</label>
-              <div className="relative">
-                <select id="payment_status" {...register('payment_status')} className={`${fieldClass} appearance-none pr-8`}>
-                  <option value="paid">Paid</option>
-                  <option value="credit">Credit</option>
-                </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-              </div>
+              <Controller
+                name="payment_status"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="payment_status" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="credit">Credit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             <div>
               <label className={labelClass} htmlFor="payment_method">Payment Method *</label>
-              <div className="relative">
-                <select
-                  id="payment_method"
-                  {...register('payment_method')}
-                  className={`${fieldClass} appearance-none pr-8`}
-                >
-                  {(Object.entries(PAYMENT_LABELS) as [PaymentMethod, string][]).map(([val, label]) => (
-                    <option key={val} value={val}>{label}</option>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-              </div>
+              <Controller
+                name="payment_method"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? 'cash'}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger id="payment_method" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {(Object.entries(PAYMENT_LABELS) as [PaymentMethod, string][]).map(([val, lbl]) => (
+                        <SelectItem key={val} value={val}>
+                          {lbl}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             {paymentStatus === 'credit' && (
@@ -294,7 +344,20 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass} htmlFor="amount_paid">Amount Paid So Far</label>
-                    <input id="amount_paid" type="number" inputMode="decimal" {...register('amount_paid')} className={fieldClass} />
+                    <Controller
+                      name="amount_paid"
+                      control={control}
+                      render={({ field }) => (
+                        <CurrencyInput
+                          id="amount_paid"
+                          ref={field.ref}
+                          value={field.value ?? 0}
+                          onValueChange={field.onChange}
+                          onBlur={field.onBlur}
+                          className={fieldClass}
+                        />
+                      )}
+                    />
                   </div>
                   <div>
                     <label className={labelClass}>Balance Owed</label>
@@ -309,13 +372,59 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
             )}
 
             <div>
-              <label className={labelClass} htmlFor="sold_at">Date &amp; Time *</label>
-              <input
-                id="sold_at"
-                type="datetime-local"
-                {...register('sold_at')}
-                className={fieldClass}
-              />
+              <span className={labelClass}>Date &amp; time of sale *</span>
+              <p className="mb-3 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
+                Uses your device&apos;s local timezone. You can set date and time separately.
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label
+                    className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                    htmlFor="sold_at_date"
+                  >
+                    Date
+                  </label>
+                  <input
+                    id="sold_at_date"
+                    type="date"
+                    value={saleDateStr}
+                    onChange={e => {
+                      const { time } = parseSoldAtLocal(getValues('sold_at'));
+                      setValue('sold_at', `${e.target.value}T${time}`, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                    }}
+                    className={dateTimeInputClass}
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <label
+                    className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                    htmlFor="sold_at_time"
+                  >
+                    Time
+                  </label>
+                  <input
+                    id="sold_at_time"
+                    type="time"
+                    value={saleTimeStr}
+                    onChange={e => {
+                      const { date } = parseSoldAtLocal(getValues('sold_at'));
+                      setValue('sold_at', `${date}T${e.target.value}`, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                    }}
+                    className={dateTimeInputClass}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              {errors.sold_at && (
+                <p className="mt-1 text-xs text-red-500">{errors.sold_at.message}</p>
+              )}
             </div>
           </section>
 
@@ -383,5 +492,6 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
         </Suspense>
       )}
     </div>
+    </ModalSheetPortal>
   );
 }

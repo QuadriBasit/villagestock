@@ -11,6 +11,7 @@ import {
   modalSheetHeader,
   modalSheetPanelSm,
 } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { cn } from '@/lib/utils';
 import { useShopProfile } from '@/hooks/useShopProfile';
 import type { SalesRecord } from '@/types';
@@ -91,6 +92,7 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
   };
 
   return (
+    <ModalSheetPortal>
     <div className={cn(modalSheetBackdrop, 'bg-black/60 dark:bg-black/70')} onClick={onClose}>
       <div className={modalSheetPanelSm} onClick={e => e.stopPropagation()}>
         <div className={modalSheetHandle}>
@@ -136,5 +138,6 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
         </div>
       </div>
     </div>
+    </ModalSheetPortal>
   );
 }

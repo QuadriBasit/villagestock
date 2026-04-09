@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { X, Loader2, RotateCcw, ChevronDown, Search } from 'lucide-react';
@@ -15,6 +15,8 @@ import {
   modalSheetHeader,
   modalSheetPanelMd,
 } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { formatCurrency } from '@/lib/utils';
 import type { SalesRecord, ReturnReason, ReturnType, InventoryItem } from '@/types';
 
@@ -69,6 +71,7 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     setValue,
@@ -130,6 +133,7 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
     'rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-900/5 dark:bg-zinc-800/50 dark:ring-white/10';
 
   return (
+    <ModalSheetPortal>
     <div className={modalSheetBackdrop} onClick={onClose}>
       <div className={modalSheetPanelMd} onClick={e => e.stopPropagation()}>
         <div className={modalSheetHandle}>
@@ -211,12 +215,20 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
             {returnType === 'refund' && (
               <div>
                 <label className={labelClass} htmlFor="refund_amount">Refund Amount (₦) *</label>
-                <input
-                  id="refund_amount"
-                  type="number"
-                  inputMode="decimal"
-                  {...register('refund_amount')}
-                  className={fieldClass}
+                <Controller
+                  name="refund_amount"
+                  control={control}
+                  render={({ field }) => (
+                    <CurrencyInput
+                      id="refund_amount"
+                      ref={field.ref}
+                      value={field.value ?? 0}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      className={fieldClass}
+                      aria-invalid={!!errors.refund_amount}
+                    />
+                  )}
                 />
                 {errors.refund_amount && (
                   <p className="text-red-500 text-xs mt-1">{errors.refund_amount.message}</p>
@@ -320,5 +332,6 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
         </div>
       </div>
     </div>
+    </ModalSheetPortal>
   );
 }

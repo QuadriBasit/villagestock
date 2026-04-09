@@ -130,6 +130,11 @@ export default function SettingsPage() {
     { id: 'system', label: 'System', icon: <Laptop size={16} /> },
   ];
 
+  const ownerName = businessProfile?.owner_name?.trim();
+  const accountPrimary = ownerName || user?.phone || user?.email || '—';
+  const accountShowEmail = Boolean(user?.email && accountPrimary !== user.email);
+  const accountShowPhone = Boolean(user?.phone && accountPrimary !== user.phone);
+
   return (
     <div className="app-page space-y-4 py-4 md:space-y-4 md:py-6">
       <section className={`${panelClass} space-y-3`}>
@@ -313,9 +318,18 @@ export default function SettingsPage() {
         <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Account</h3>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{user?.phone ?? user?.email ?? '—'}</p>
-            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Account</p>
-            {user?.email ? <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{user.email}</p> : null}
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{accountPrimary}</p>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{ownerName ? 'Owner' : 'Account'}</p>
+            {accountShowEmail ? (
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{user?.email}</p>
+            ) : null}
+            {accountShowPhone ? (
+              <p
+                className={`text-xs text-zinc-500 dark:text-zinc-400 ${accountShowEmail ? 'mt-0.5' : 'mt-1'}`}
+              >
+                {user?.phone}
+              </p>
+            ) : null}
           </div>
         </div>
         <button

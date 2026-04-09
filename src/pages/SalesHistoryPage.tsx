@@ -54,7 +54,7 @@ export default function SalesHistoryPage() {
         <div className="w-16 h-16 rounded-full bg-teal/10 flex items-center justify-center mb-3">
           <ShoppingCart size={28} className="text-teal" />
         </div>
-        <h2 className="font-heading font-semibold text-dark text-lg">No sales yet</h2>
+        <h2 className="font-heading font-semibold text-dark dark:text-zinc-100 text-lg">No sales yet</h2>
         <p className="text-muted text-sm mt-1">Sales you record will appear here</p>
       </div>
     );
@@ -90,15 +90,17 @@ export default function SalesHistoryPage() {
           <div key={date}>
             {/* Day header */}
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-heading font-semibold text-dark text-sm">
+              <h3 className="font-heading font-semibold text-dark dark:text-zinc-100 text-sm">
                 {friendlyDate(date)}
                 <span className="ml-2 text-muted font-normal text-xs">
                   {records.length} sale{records.length !== 1 ? 's' : ''}
                 </span>
               </h3>
               <div className="text-right">
-                <div className="text-sm font-semibold text-dark">{formatCurrency(dayRevenue)}</div>
-                <div className={`text-xs font-medium ${dayProfit >= 0 ? 'text-teal' : 'text-red-500'}`}>
+                <div className="text-sm font-semibold text-dark dark:text-zinc-100">{formatCurrency(dayRevenue)}</div>
+                <div
+                  className={`text-xs font-medium ${dayProfit >= 0 ? 'text-teal dark:text-teal' : 'text-red-500 dark:text-red-400'}`}
+                >
                   {dayProfit >= 0 ? '+' : ''}{formatCurrency(dayProfit)} profit
                 </div>
               </div>
@@ -148,36 +150,38 @@ function SaleCard({ record, onViewReceipt, onReturn }: { record: SalesRecord; on
   const hasCostData = record.cost_price > 0;
 
   return (
-    <div className="bg-white rounded-xl px-4 py-3 shadow-sm">
+    <div className="rounded-xl border border-slate-900/[0.05] bg-white px-4 py-3 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.1)] ring-1 ring-slate-900/[0.04] dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:ring-white/[0.06] dark:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.4)]">
       <div className="flex items-start gap-3">
         {/* Icon */}
-        <div className="w-9 h-9 rounded-lg bg-teal/10 flex items-center justify-center shrink-0 mt-0.5">
-          <ShoppingCart size={16} className="text-teal" />
+        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-teal/10 bg-teal/10 dark:border-teal/20 dark:bg-teal/15">
+          <ShoppingCart size={16} className="text-teal dark:text-teal" />
         </div>
 
         {/* Details */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="font-medium text-dark text-sm truncate">{record.item_name}</div>
+              <div className="truncate text-sm font-medium text-dark dark:text-zinc-100">{record.item_name}</div>
               <div className="text-xs text-muted capitalize">
                 {record.item_brand} · {record.item_category}
               </div>
               {record.sale_type === 'swap' && (
-                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary dark:bg-primary/20 dark:text-primary">
                   <ArrowRightLeft size={10} /> Swap
                 </div>
               )}
               {record.payment_status === 'credit' && (
-                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-200/80 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-800/60">
                   Credit
                 </div>
               )}
             </div>
-            <div className="text-right shrink-0">
-              <div className="text-sm font-bold text-dark">{formatCurrency(record.sale_price)}</div>
+            <div className="shrink-0 text-right">
+              <div className="text-sm font-bold text-dark dark:text-zinc-100">{formatCurrency(record.sale_price)}</div>
               {hasCostData && (
-                <div className={`text-xs font-medium ${record.profit >= 0 ? 'text-teal' : 'text-red-500'}`}>
+                <div
+                  className={`text-xs font-medium ${record.profit >= 0 ? 'text-teal dark:text-teal' : 'text-red-500 dark:text-red-400'}`}
+                >
                   {record.profit >= 0 ? '+' : ''}{formatCurrency(record.profit)}
                 </div>
               )}
@@ -188,23 +192,23 @@ function SaleCard({ record, onViewReceipt, onReturn }: { record: SalesRecord; on
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {/* Payment method */}
             {record.payment_method && (
-              <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-surface border border-border text-muted">
+              <span className="flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-medium text-muted dark:border-zinc-600 dark:bg-zinc-800/70 dark:text-zinc-400">
                 {PAYMENT_ICONS[record.payment_method]}
                 {PAYMENT_LABELS[record.payment_method]}
               </span>
             )}
 
             {/* Time */}
-            <span className="text-[10px] text-muted">{time}</span>
+            <span className="text-[10px] text-muted dark:text-zinc-500">{time}</span>
 
             {/* Serial / IMEI */}
             {record.serial_number && (
-              <span className="text-[10px] text-muted font-mono bg-surface border border-border px-1.5 py-0.5 rounded">
+              <span className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-muted dark:border-zinc-600 dark:bg-zinc-800/70 dark:text-zinc-400">
                 S/N: {record.serial_number}
               </span>
             )}
             {record.imei && (
-              <span className="text-[10px] text-muted font-mono bg-surface border border-border px-1.5 py-0.5 rounded">
+              <span className="rounded border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] text-muted dark:border-zinc-600 dark:bg-zinc-800/70 dark:text-zinc-400">
                 IMEI: {record.imei}
               </span>
             )}
@@ -224,8 +228,8 @@ function SaleCard({ record, onViewReceipt, onReturn }: { record: SalesRecord; on
           </div>
 
           {/* Receipt link + return */}
-          <div className="mt-2 pt-2 border-t border-border flex items-center justify-between gap-2">
-            <span className="text-[10px] text-muted font-mono shrink-0">{record.receipt_number}</span>
+          <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2 dark:border-zinc-700/80">
+            <span className="shrink-0 font-mono text-[10px] text-muted dark:text-zinc-500">{record.receipt_number}</span>
             <div className="flex items-center gap-3">
               {record.returned ? (
                 <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
@@ -233,15 +237,17 @@ function SaleCard({ record, onViewReceipt, onReturn }: { record: SalesRecord; on
                 </span>
               ) : (
                 <button
+                  type="button"
                   onClick={onReturn}
-                  className="flex items-center gap-1 text-xs text-accent font-medium hover:underline"
+                  className="flex items-center gap-1 text-xs font-medium text-accent hover:underline dark:text-accent"
                 >
                   <RotateCcw size={12} /> Return
                 </button>
               )}
               <button
+                type="button"
                 onClick={onViewReceipt}
-                className="flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+                className="flex items-center gap-1 text-xs font-medium text-primary hover:underline dark:text-primary"
               >
                 <ReceiptIcon size={12} /> Receipt
               </button>

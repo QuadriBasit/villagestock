@@ -3,10 +3,11 @@
  */
 
 export const modalSheetBackdrop =
-  'fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6 bg-black/50 dark:bg-black/60 backdrop-blur-sm';
+  'fixed inset-0 z-50 flex items-end justify-center overflow-y-auto sm:items-center sm:overflow-y-auto sm:p-6 bg-black/50 dark:bg-black/60 backdrop-blur-sm';
 
+/** `min-h-0` lets the panel shrink inside the flex backdrop so `max-h` + body scroll work (avoids top/bottom clipping on desktop). */
 const panelBase =
-  'flex w-full flex-col overflow-hidden border border-zinc-200/90 bg-white shadow-2xl ring-1 ring-black/[0.04] dark:border-zinc-700 dark:bg-zinc-900 dark:ring-white/[0.06] max-h-[92vh] sm:max-h-[min(92vh,920px)] rounded-t-[1.25rem] sm:rounded-2xl';
+  'flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] flex-col overflow-hidden border border-zinc-200/90 bg-white shadow-2xl ring-1 ring-black/[0.04] dark:border-zinc-700 dark:bg-zinc-900 dark:ring-white/[0.06] rounded-t-[1.25rem] sm:max-h-[min(85dvh,calc(100dvh-3rem),920px)] sm:rounded-2xl sm:shrink-0';
 
 /** Receipt / narrow */
 export const modalSheetPanelSm = `${panelBase} max-w-sm sm:max-w-md`;

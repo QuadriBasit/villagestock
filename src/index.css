@@ -272,6 +272,11 @@ h1, h2, h3, h4, h5, h6 {
   @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400;
 }
 
+/* Secondary body copy: theme token stays mid-gray for light; in dark, bump contrast on blue-gray backgrounds. */
+.dark .text-muted {
+  color: rgb(161 161 170);
+}
+
 /* react-day-picker — match app primary + dark surfaces */
 .reports-calendar.rdp-root {
   --rdp-accent-color: #6c5ce7;

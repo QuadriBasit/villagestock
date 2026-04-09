@@ -17,6 +17,7 @@ import {
   modalSheetHandle,
   modalSheetPanelMd,
 } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { useAuthStore } from '@/store/auth';
 import type { InventoryItem, MissingResolution } from '@/types';
 import { Button } from '@/components/ui/Button';
@@ -266,6 +267,7 @@ function ResolveMissingModal({
   };
 
   return (
+    <ModalSheetPortal>
     <div className={modalSheetBackdrop} onClick={onClose}>
       <div className={modalSheetPanelMd} onClick={(e) => e.stopPropagation()}>
         <div className={modalSheetHandle}>
@@ -344,5 +346,6 @@ function ResolveMissingModal({
         </div>
       </div>
     </div>
+    </ModalSheetPortal>
   );
 }

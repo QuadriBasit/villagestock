@@ -1,11 +1,21 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, ScanLine, ChevronDown, Plus, CheckCircle2 } from 'lucide-react';
+import { Loader2, ScanLine, Plus, CheckCircle2 } from 'lucide-react';
 import { getCategoryMode, isAppleLaptopDevice, isAppleMobileDevice } from '@/types';
-import { BRAND_SUGGESTIONS, suggestedNamesForCategory } from '@/lib/devicePresets';
+import { BRAND_SUGGESTIONS, suggestedNamesForCategoryAndBrand } from '@/lib/devicePresets';
 import { ComboboxField } from '@/components/ui/ComboboxField';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
+import { Label } from '@/components/ui/Label';
+import { Textarea } from '@/components/ui/Textarea';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import type { InventoryItemInput, Category, DeviceCondition, AppleICloudStatus, AppleCarrierLock, AppleBiometricStatus, MacKeyboardStatus, MacScreenCondition } from '@/types';
 
 const BarcodeScanner = lazy(() => import('./BarcodeScanner'));
@@ -110,7 +120,11 @@ type ScanTarget = 'serial_number' | 'imei' | 'imei2' | 'barcode';
 
 const formFieldClass =
   'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-100';
+
 const formLabelClass = 'mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200';
+
+/** Radix Select cannot use `value=""`; map empty / unset to this sentinel in the UI only. */
+const SELECT_NONE = '__none__';
 const sectionTitleClass =
   'font-heading text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100';
 
@@ -165,7 +179,10 @@ export default function ItemForm({
 
   const category = watch('category') as Category;
   const brand = watch('brand') ?? '';
-  const nameSuggestions = suggestedNamesForCategory(category);
+  const nameSuggestions = useMemo(
+    () => suggestedNamesForCategoryAndBrand(category, brand),
+    [category, brand]
+  );
   const mode = getCategoryMode(category);
   const isSerialized = mode === 'serialized';
   const showImei = category === 'phones' || category === 'tablets';
@@ -268,6 +285,53 @@ export default function ItemForm({
         <section className="space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4">
           <h3 className={sectionTitleClass}>Basic Info</h3>
 
+          <p className="text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
+            Choose <strong className="text-zinc-700 dark:text-zinc-300">category</strong> and{' '}
+            <strong className="text-zinc-700 dark:text-zinc-300">brand</strong> first — item name suggestions filter by brand so
+            lists stay relevant (you can still type anything).
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className={labelClass} htmlFor="category">
+                Category *
+              </Label>
+              <Controller
+                name="category"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="category" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map(c => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <Controller
+              name="brand"
+              control={control}
+              render={({ field }) => (
+                <ComboboxField
+                  {...field}
+                  id="brand"
+                  label="Brand *"
+                  options={BRAND_SUGGESTIONS}
+                  placeholder="Search brands or type…"
+                  error={errors.brand?.message}
+                  emptyHint="Pick from the list or type any brand — names below update to match."
+                />
+              )}
+            />
+          </div>
+
           {nameSuggestions.length > 0 ? (
             <Controller
               name="name"
@@ -278,17 +342,17 @@ export default function ItemForm({
                   id="name"
                   label="Item Name *"
                   options={nameSuggestions}
-                  placeholder="Pick a model or type your own"
+                  placeholder={brand.trim() ? 'Pick a model or type your own' : 'Pick brand for filtered models, or type any name'}
                   error={errors.name?.message}
-                  emptyHint="Suggestions appear for phones & tablets — you can always type a custom name."
+                  emptyHint="Suggestions update when you change brand. Custom names always allowed."
                 />
               )}
             />
           ) : (
             <div>
-              <label className={labelClass} htmlFor="name">
+              <Label className={labelClass} htmlFor="name">
                 Item Name *
-              </label>
+              </Label>
               <input
                 id="name"
                 {...register('name')}
@@ -299,35 +363,6 @@ export default function ItemForm({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Controller
-              name="brand"
-              control={control}
-              render={({ field }) => (
-                <ComboboxField
-                  {...field}
-                  id="brand"
-                  label="Brand *"
-                  options={BRAND_SUGGESTIONS}
-                  placeholder="Apple, Samsung, or type…"
-                  error={errors.brand?.message}
-                  emptyHint="Pick from common brands or type any brand."
-                />
-              )}
-            />
-            <div>
-              <label className={labelClass} htmlFor="category">Category *</label>
-              <div className="relative">
-                <select id="category" {...register('category')} className={`${fieldClass} appearance-none pr-8`}>
-                  {CATEGORIES.map(c => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-              </div>
-            </div>
-          </div>
-
           {/* Mode hint */}
           <p className="text-xs text-muted bg-surface rounded-lg px-3 py-2 border border-border">
             {isSerialized
@@ -336,8 +371,8 @@ export default function ItemForm({
           </p>
 
           <div>
-            <label className={labelClass} htmlFor="description">Description</label>
-            <textarea
+            <Label className={labelClass} htmlFor="description">Description</Label>
+            <Textarea
               id="description"
               {...register('description')}
               rows={2}
@@ -358,13 +393,45 @@ export default function ItemForm({
           <h3 className={sectionTitleClass}>Pricing</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass} htmlFor="price">Selling Price (₦) *</label>
-              <input id="price" type="number" inputMode="decimal" {...register('price')} placeholder="0" className={fieldClass} />
+              <Label className={labelClass} htmlFor="price">Selling Price (₦) *</Label>
+              <Controller
+                name="price"
+                control={control}
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="price"
+                    ref={field.ref}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    onBlur={field.onBlur}
+                    className={fieldClass}
+                    placeholder="₦0"
+                    aria-invalid={!!errors.price}
+                  />
+                )}
+              />
               {errors.price && <p className={errorClass}>{errors.price.message}</p>}
             </div>
             <div>
-              <label className={labelClass} htmlFor="cost_price">Cost Price (₦)</label>
-              <input id="cost_price" type="number" inputMode="decimal" {...register('cost_price')} placeholder="0" className={fieldClass} />
+              <Label className={labelClass} htmlFor="cost_price">Cost Price (₦)</Label>
+              <Controller
+                name="cost_price"
+                control={control}
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="cost_price"
+                    ref={field.ref}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    onBlur={field.onBlur}
+                    allowEmpty
+                    className={fieldClass}
+                    placeholder="Optional"
+                    aria-invalid={!!errors.cost_price}
+                  />
+                )}
+              />
+              {errors.cost_price && <p className={errorClass}>{errors.cost_price.message}</p>}
             </div>
           </div>
         </section>
@@ -375,12 +442,12 @@ export default function ItemForm({
             <h3 className={sectionTitleClass}>Stock</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass} htmlFor="quantity">Quantity *</label>
+                <Label className={labelClass} htmlFor="quantity">Quantity *</Label>
                 <input id="quantity" type="number" inputMode="numeric" {...register('quantity')} className={fieldClass} />
                 {errors.quantity && <p className={errorClass}>{errors.quantity.message}</p>}
               </div>
               <div>
-                <label className={labelClass} htmlFor="low_stock_threshold">Low Stock Alert</label>
+                <Label className={labelClass} htmlFor="low_stock_threshold">Low Stock Alert</Label>
                 <input id="low_stock_threshold" type="number" inputMode="numeric" {...register('low_stock_threshold')} className={fieldClass} />
               </div>
             </div>
@@ -402,18 +469,21 @@ export default function ItemForm({
           )}
 
           {isSerialized && (
-            <div>
-              <label className={labelClass} htmlFor="condition">Condition</label>
-              <div className="relative">
-                <select id="condition" {...register('condition')} className={`${fieldClass} appearance-none pr-8`}>
-                  <option value="">Select condition</option>
-                  {CONDITION_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-              </div>
-            </div>
+            <Controller
+              name="condition"
+              control={control}
+              render={({ field }) => (
+                <OptionalStringSelect
+                  id="condition"
+                  label="Condition"
+                  labelClassName={labelClass}
+                  placeholder="Select condition"
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={CONDITION_OPTIONS}
+                />
+              )}
+            />
           )}
 
           {isSerialized && showImei && (
@@ -451,30 +521,71 @@ export default function ItemForm({
               <NumberField id="battery_health" label="Battery Health" register={register('battery_health')} suffix="%" />
               <NumberField id="battery_cycle_count" label="Battery Cycle Count" register={register('battery_cycle_count')} />
             </div>
-            <div>
-              <label className={labelClass} htmlFor="icloud_lock_status">iCloud Lock Status</label>
-              <SelectField id="icloud_lock_status" register={register('icloud_lock_status')} options={ICLOUD_OPTIONS} />
+            <Controller
+              name="icloud_lock_status"
+              control={control}
+              render={({ field }) => (
+                <OptionalStringSelect
+                  id="icloud_lock_status"
+                  label="iCloud Lock Status"
+                  labelClassName={labelClass}
+                  placeholder="Select option"
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={ICLOUD_OPTIONS}
+                />
+              )}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Controller
+                name="carrier_lock"
+                control={control}
+                render={({ field }) => (
+                  <OptionalStringSelect
+                    id="carrier_lock"
+                    label="Carrier Lock"
+                    labelClassName={labelClass}
+                    placeholder="Select option"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={CARRIER_OPTIONS}
+                  />
+                )}
+              />
+              <Controller
+                name="biometric_status"
+                control={control}
+                render={({ field }) => (
+                  <OptionalStringSelect
+                    id="biometric_status"
+                    label="Face ID / Touch ID"
+                    labelClassName={labelClass}
+                    placeholder="Select option"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={BIOMETRIC_OPTIONS}
+                  />
+                )}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
+              <Controller
+                name="storage"
+                control={control}
+                render={({ field }) => (
+                  <OptionalStringSelect
+                    id="storage"
+                    label="Storage"
+                    labelClassName={labelClass}
+                    placeholder="Select storage"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={MOBILE_STORAGE_OPTIONS.map(o => ({ value: o, label: o }))}
+                  />
+                )}
+              />
               <div>
-                <label className={labelClass} htmlFor="carrier_lock">Carrier Lock</label>
-                <SelectField id="carrier_lock" register={register('carrier_lock')} options={CARRIER_OPTIONS} />
-              </div>
-              <div>
-                <label className={labelClass} htmlFor="biometric_status">Face ID / Touch ID</label>
-                <SelectField id="biometric_status" register={register('biometric_status')} options={BIOMETRIC_OPTIONS} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass} htmlFor="storage">Storage</label>
-                <select id="storage" {...register('storage')} className={`${fieldClass} appearance-none`}>
-                  <option value="">Select storage</option>
-                  {MOBILE_STORAGE_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass} htmlFor="color">Color</label>
+                <Label className={labelClass} htmlFor="color">Color</Label>
                 <input id="color" {...register('color')} className={fieldClass} placeholder="Black Titanium" />
               </div>
             </div>
@@ -489,46 +600,92 @@ export default function ItemForm({
               <NumberField id="battery_health" label="Battery Health" register={register('battery_health')} suffix="%" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass} htmlFor="storage">Storage</label>
-                <select id="storage" {...register('storage')} className={`${fieldClass} appearance-none`}>
-                  <option value="">Select storage</option>
-                  {LAPTOP_STORAGE_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass} htmlFor="ram">RAM</label>
-                <select id="ram" {...register('ram')} className={`${fieldClass} appearance-none`}>
-                  <option value="">Select RAM</option>
-                  {RAM_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
+              <Controller
+                name="storage"
+                control={control}
+                render={({ field }) => (
+                  <OptionalStringSelect
+                    id="storage"
+                    label="Storage"
+                    labelClassName={labelClass}
+                    placeholder="Select storage"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={LAPTOP_STORAGE_OPTIONS.map(o => ({ value: o, label: o }))}
+                  />
+                )}
+              />
+              <Controller
+                name="ram"
+                control={control}
+                render={({ field }) => (
+                  <OptionalStringSelect
+                    id="ram"
+                    label="RAM"
+                    labelClassName={labelClass}
+                    placeholder="Select RAM"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={RAM_OPTIONS.map(o => ({ value: o, label: o }))}
+                  />
+                )}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass} htmlFor="chip">Chip</label>
+                <Label className={labelClass} htmlFor="chip">Chip</Label>
                 <input id="chip" {...register('chip')} className={fieldClass} placeholder="M3 Max" />
               </div>
-              <div>
-                <label className={labelClass} htmlFor="screen_size">Screen Size</label>
-                <select id="screen_size" {...register('screen_size')} className={`${fieldClass} appearance-none`}>
-                  <option value="">Select size</option>
-                  {SCREEN_SIZE_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </div>
+              <Controller
+                name="screen_size"
+                control={control}
+                render={({ field }) => (
+                  <OptionalStringSelect
+                    id="screen_size"
+                    label="Screen Size"
+                    labelClassName={labelClass}
+                    placeholder="Select size"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={SCREEN_SIZE_OPTIONS.map(o => ({ value: o, label: o }))}
+                  />
+                )}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass} htmlFor="keyboard_status">Keyboard Status</label>
-                <SelectField id="keyboard_status" register={register('keyboard_status')} options={KEYBOARD_OPTIONS} />
-              </div>
-              <div>
-                <label className={labelClass} htmlFor="screen_condition">Screen Condition</label>
-                <SelectField id="screen_condition" register={register('screen_condition')} options={SCREEN_CONDITION_OPTIONS} />
-              </div>
+              <Controller
+                name="keyboard_status"
+                control={control}
+                render={({ field }) => (
+                  <OptionalStringSelect
+                    id="keyboard_status"
+                    label="Keyboard Status"
+                    labelClassName={labelClass}
+                    placeholder="Select option"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={KEYBOARD_OPTIONS}
+                  />
+                )}
+              />
+              <Controller
+                name="screen_condition"
+                control={control}
+                render={({ field }) => (
+                  <OptionalStringSelect
+                    id="screen_condition"
+                    label="Screen Condition"
+                    labelClassName={labelClass}
+                    placeholder="Select option"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={SCREEN_CONDITION_OPTIONS}
+                  />
+                )}
+              />
             </div>
             <div>
-              <label className={labelClass} htmlFor="color">Color</label>
+              <Label className={labelClass} htmlFor="color">Color</Label>
               <input id="color" {...register('color')} className={fieldClass} placeholder="Space Black" />
             </div>
           </section>
@@ -583,9 +740,9 @@ interface ScanFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 const ScanField = ({ id, label, onScan, ...props }: ScanFieldProps) => (
   <div>
-    <label className={formLabelClass} htmlFor={id}>
+    <Label className={formLabelClass} htmlFor={id}>
       {label}
-    </label>
+    </Label>
     <div className="flex gap-2">
       <input id={id} className={`${formFieldClass} flex-1`} {...props} />
       <button
@@ -613,7 +770,7 @@ function NumberField({
 }) {
   return (
     <div>
-      <label className={formLabelClass} htmlFor={id}>{label}</label>
+      <Label className={formLabelClass} htmlFor={id}>{label}</Label>
       <div className="relative">
         <input id={id} type="number" inputMode="numeric" {...register} className={`${formFieldClass} pr-8`} />
         {suffix && (
@@ -626,31 +783,45 @@ function NumberField({
   );
 }
 
-function SelectField({
+function OptionalStringSelect({
   id,
-  register,
+  label,
+  labelClassName,
+  placeholder,
+  value,
+  onChange,
   options,
 }: {
   id: string;
-  register: ReturnType<typeof useForm<FormData>>['register'] extends (...args: infer _A) => infer _R ? _R : never;
+  label: string;
+  labelClassName: string;
+  placeholder: string;
+  value: string | undefined;
+  onChange: (v: string) => void;
   options: { value: string; label: string }[];
 }) {
+  const selectValue = value && value !== '' ? value : SELECT_NONE;
   return (
-    <div className="relative">
-      <select
-        id={id}
-        {...register}
-        className={`${formFieldClass} appearance-none pr-8`}
+    <div>
+      <Label className={labelClassName} htmlFor={id}>
+        {label}
+      </Label>
+      <Select
+        value={selectValue}
+        onValueChange={v => onChange(v === SELECT_NONE ? '' : v)}
       >
-        <option value="">Select option</option>
-        {options.map(option => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </select>
-      <ChevronDown
-        size={16}
-        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500"
-      />
+        <SelectTrigger id={id} className="w-full">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={SELECT_NONE}>{placeholder}</SelectItem>
+          {options.map(option => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

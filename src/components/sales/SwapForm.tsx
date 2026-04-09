@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowRightLeft, ChevronDown, Loader2, Receipt as ReceiptIcon, X } from 'lucide-react';
@@ -14,6 +14,8 @@ import {
   modalSheetHeader,
   modalSheetPanelLg,
 } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { formatCurrency } from '@/lib/utils';
 import type { DeviceCondition, InventoryItem, PaymentMethod, PaymentStatus, SalesRecord } from '@/types';
 
@@ -74,6 +76,7 @@ export default function SwapForm({
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
@@ -155,6 +158,7 @@ export default function SwapForm({
     'rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-900/5 dark:bg-zinc-800/50 dark:ring-white/10';
 
   return (
+    <ModalSheetPortal>
     <div className={modalSheetBackdrop} onClick={onClose}>
       <div className={modalSheetPanelLg} onClick={(event) => event.stopPropagation()}>
         <div className={modalSheetHandle}>
@@ -229,7 +233,21 @@ export default function SwapForm({
               </div>
               <div>
                 <label className={labelClass} htmlFor="trade_in_value">Trade-In Value (₦) *</label>
-                <input id="trade_in_value" type="number" inputMode="decimal" {...register('trade_in_value')} className={fieldClass} />
+                <Controller
+                  name="trade_in_value"
+                  control={control}
+                  render={({ field }) => (
+                    <CurrencyInput
+                      id="trade_in_value"
+                      ref={field.ref}
+                      value={field.value ?? 0}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      className={fieldClass}
+                      aria-invalid={!!errors.trade_in_value}
+                    />
+                  )}
+                />
                 {errors.trade_in_value && <p className="text-red-500 text-xs mt-1">{errors.trade_in_value.message}</p>}
               </div>
             </div>
@@ -250,7 +268,21 @@ export default function SwapForm({
             </div>
             <div>
               <label className={labelClass} htmlFor="sale_price">Sale Price (₦) *</label>
-              <input id="sale_price" type="number" inputMode="decimal" {...register('sale_price')} className={fieldClass} />
+              <Controller
+                name="sale_price"
+                control={control}
+                render={({ field }) => (
+                  <CurrencyInput
+                    id="sale_price"
+                    ref={field.ref}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    onBlur={field.onBlur}
+                    className={fieldClass}
+                    aria-invalid={!!errors.sale_price}
+                  />
+                )}
+              />
               {errors.sale_price && <p className="text-red-500 text-xs mt-1">{errors.sale_price.message}</p>}
             </div>
           </section>
@@ -301,7 +333,20 @@ export default function SwapForm({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass} htmlFor="amount_paid">Amount Paid So Far</label>
-                    <input id="amount_paid" type="number" inputMode="decimal" {...register('amount_paid')} className={fieldClass} />
+                    <Controller
+                      name="amount_paid"
+                      control={control}
+                      render={({ field }) => (
+                        <CurrencyInput
+                          id="amount_paid"
+                          ref={field.ref}
+                          value={field.value ?? 0}
+                          onValueChange={field.onChange}
+                          onBlur={field.onBlur}
+                          className={fieldClass}
+                        />
+                      )}
+                    />
                   </div>
                   <div>
                     <label className={labelClass}>Balance Owed</label>
@@ -378,5 +423,6 @@ export default function SwapForm({
         </Suspense>
       )}
     </div>
+    </ModalSheetPortal>
   );
 }

@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import DesktopSidebar from './DesktopSidebar';
 import TopBar from './TopBar';
+import { SidebarLayoutProvider, useSidebarLayout } from './SidebarLayoutContext';
 import TrialBanner from '@/components/billing/TrialBanner';
 import TrialExpiredOverlay from '@/components/billing/TrialExpiredOverlay';
 import { useTrialAccess } from '@/hooks/useTrialAccess';
@@ -13,16 +14,27 @@ function isItemFormRoute(pathname: string): boolean {
 }
 
 export default function AppLayout() {
+  return (
+    <SidebarLayoutProvider>
+      <AppLayoutInner />
+    </SidebarLayoutProvider>
+  );
+}
+
+function AppLayoutInner() {
   const location = useLocation();
+  const { collapsed } = useSidebarLayout();
   const { businessProfile, banner, showExpiredOverlay, accountSuspended } = useTrialAccess();
   const mainTopClass = banner.visible ? 'pt-[7.25rem]' : 'pt-16';
   const mainBottomLg = isItemFormRoute(location.pathname) ? 'lg:pb-0' : 'lg:pb-8';
+  const sidebarPad = collapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-64';
+  const headerFixedLeft = collapsed ? 'lg:left-[4.5rem]' : 'lg:left-64';
 
   return (
     <div className="min-h-svh">
       <DesktopSidebar />
-      <div className="lg:pl-64 flex flex-col min-h-svh">
-        <div className="fixed top-0 left-0 right-0 z-40 flex flex-col lg:left-64">
+      <div className={`${sidebarPad} flex flex-col min-h-svh transition-[padding] duration-200 ease-out`}>
+        <div className={`fixed top-0 left-0 right-0 z-40 flex flex-col ${headerFixedLeft} transition-[left] duration-200 ease-out`}>
           <TopBar />
           <TrialBanner profile={businessProfile} />
         </div>

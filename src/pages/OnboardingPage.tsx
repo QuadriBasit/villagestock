@@ -159,7 +159,9 @@ export default function OnboardingPage() {
           </h1>
           {step === 2 && (
             <p className="text-xs text-muted text-center mt-2 max-w-sm mx-auto">
-              You will sign in with this email and password next time. Add a shop phone if you want it on receipts — optional.
+              This step saves your shop details and attaches this email/password to your <strong>login</strong> (Supabase
+              Auth). That login is what sign-in and password reset use — not the shop table by itself. Optional shop phone
+              below is for receipts.
             </p>
           )}
         </div>

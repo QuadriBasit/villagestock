@@ -103,7 +103,8 @@ export default function AuthPage() {
       const { error: err } = await supabase.auth.signInWithPassword({ email, password: passwordLogin });
       if (err) throw err;
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Sign in failed');
+      const msg = err instanceof Error ? err.message : 'Sign in failed';
+      setError(formatSignInErrorHint(msg));
     } finally {
       setBusy(false);
     }
@@ -255,7 +256,10 @@ export default function AuthPage() {
                 <Mail size={18} className="text-primary" />
                 Sign in
               </h2>
-              <p className="text-xs text-muted mb-4">Use the email and password for your shop account.</p>
+              <p className="text-xs text-muted mb-4">
+                Use the email and password you used at <strong>Create account</strong>. Password reset only works after an
+                account exists for that email (it is separate from shop data in the database).
+              </p>
 
               <div className="space-y-3">
                 <div>
@@ -338,7 +342,8 @@ export default function AuthPage() {
                 Create your account
               </h2>
               <p className="text-xs text-muted mb-4">
-                We will send a confirmation link to your email. After you verify, sign in here and complete shop setup.
+                This creates your <strong>login</strong> in Supabase Auth (needed for sign-in and password reset). After you
+                confirm the email, sign in here and complete shop setup.
               </p>
 
               {signupMessage === 'sent' ? (
@@ -448,22 +453,55 @@ export default function AuthPage() {
                 <Lock size={18} className="text-primary" />
                 Reset password
               </h2>
-              <p className="text-xs text-muted mb-4">
-                We will email you a link to set a new password. Use the same email as your shop account.
+              <p className="text-xs text-muted mb-3">
+                We email a link only if there is already a <strong>login account</strong> for that address (Supabase
+                Authentication). Shop profiles in your app database do not count — you must have used{' '}
+                <strong>Create account</strong> (or had an admin create the user) first.
               </p>
               {resetSent ? (
                 <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-900">
-                  <p className="font-medium">If that account exists, we sent a link</p>
+                  <p className="font-medium">If that login exists, we sent a link</p>
                   <p className="mt-1 text-green-800">
                     Check <strong>{resetEmail.trim().toLowerCase()}</strong> (and spam). The link expires after a short time.
                   </p>
                   <p className="mt-2 text-xs text-green-800/90">
-                    Still nothing? In Supabase: Authentication → URL Configuration, add this site&apos;s URL to Redirect URLs,
-                    and set up SMTP so auth emails are delivered.
+                    <strong>No email after a few minutes?</strong> Usually there is no Auth user for that address yet. Use{' '}
+                    <strong>Create account</strong> with the same email instead of reset.
                   </p>
+                  <p className="mt-2 text-xs text-green-800/90">
+                    Project checks: Supabase → Authentication → URL Configuration (redirects) and SMTP so mail can send.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSignupEmail(resetEmail.trim().toLowerCase());
+                      setPanel('signup');
+                      setResetSent(false);
+                      setSignupMessage('idle');
+                      setError('');
+                    }}
+                    className="mt-3 w-full rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-medium text-green-900 hover:bg-green-100/80 transition"
+                  >
+                    Create account with this email
+                  </button>
                 </div>
               ) : (
                 <>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-950 mb-3">
+                    New to VillageStock?{' '}
+                    <button
+                      type="button"
+                      className="font-semibold text-primary underline-offset-2 hover:underline"
+                      onClick={() => {
+                        setSignupEmail(resetEmail.trim().toLowerCase());
+                        setPanel('signup');
+                        setError('');
+                      }}
+                    >
+                      Create account
+                    </button>{' '}
+                    first — then you can use forgot password later if needed.
+                  </div>
                   <input
                     type="email"
                     autoComplete="email"
@@ -496,4 +534,17 @@ export default function AuthPage() {
 
 function isValidEmailLoose(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+
+/** Adds operator-friendly hint when credentials fail (often no Auth user yet). */
+function formatSignInErrorHint(message: string): string {
+  const lower = message.toLowerCase();
+  if (
+    lower.includes('invalid login credentials') ||
+    lower.includes('invalid credentials') ||
+    lower.includes('email not confirmed')
+  ) {
+    return `${message} If you never used Create account with this email, sign up first — shop profile data alone does not create a login.`;
+  }
+  return message;
 }

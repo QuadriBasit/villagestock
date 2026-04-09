@@ -1,5 +1,6 @@
 import { Trash2, X } from 'lucide-react';
 import { modalSheetBackdrop } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -23,6 +24,7 @@ export default function ConfirmDialog({
   if (!open) return null;
 
   return (
+    <ModalSheetPortal>
     <div className={modalSheetBackdrop} onClick={onCancel}>
       <div
         className="w-full max-w-sm overflow-hidden rounded-t-[1.25rem] border border-zinc-200/90 bg-white shadow-2xl ring-1 ring-black/[0.04] dark:border-zinc-700 dark:bg-zinc-900 dark:ring-white/[0.06] sm:rounded-2xl"
@@ -66,5 +68,6 @@ export default function ConfirmDialog({
         </div>
       </div>
     </div>
+    </ModalSheetPortal>
   );
 }

@@ -26,13 +26,31 @@ const CATEGORIES: { value: Category | 'all'; label: string }[] = [
 ];
 
 const STATUS_CONFIG: Record<SerializedItemStatus, { label: string; className: string }> = {
-  in_stock:  { label: 'In Stock',  className: 'bg-green-100 text-green-700' },
-  sold:      { label: 'Sold',      className: 'bg-gray-100 text-gray-500' },
-  reserved:  { label: 'Reserved',  className: 'bg-blue-100 text-blue-700' },
-  returned:  { label: 'Returned',  className: 'bg-purple-100 text-purple-700' },
-  defective: { label: 'Defective', className: 'bg-red-100 text-red-600' },
-  with_engineer: { label: 'With Engineer', className: 'bg-amber-100 text-amber-700' },
-  missing: { label: 'Missing', className: 'bg-red-600 text-white' },
+  in_stock: {
+    label: 'In Stock',
+    className: 'bg-green-100 text-green-700 dark:bg-green-900/45 dark:text-green-300',
+  },
+  sold: {
+    label: 'Sold',
+    className: 'bg-gray-100 text-gray-500 dark:bg-zinc-700/80 dark:text-zinc-400',
+  },
+  reserved: {
+    label: 'Reserved',
+    className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/45 dark:text-blue-300',
+  },
+  returned: {
+    label: 'Returned',
+    className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/45 dark:text-purple-300',
+  },
+  defective: {
+    label: 'Defective',
+    className: 'bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400',
+  },
+  with_engineer: {
+    label: 'With Engineer',
+    className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  },
+  missing: { label: 'Missing', className: 'bg-red-600 text-white dark:bg-red-700 dark:text-white' },
 };
 
 export default function InventoryPage() {
@@ -79,13 +97,13 @@ export default function InventoryPage() {
       )}
       {/* Search bar */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" size={18} />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted dark:text-zinc-500" size={18} />
         <input
           type="search"
           placeholder="Search by name, brand, serial, IMEI, IBM…"
           value={filters.search}
           onChange={e => setFilters({ search: e.target.value })}
-          className="w-full pl-10 pr-4 py-3 border border-slate-200/90 rounded-full text-sm bg-white shadow-[0_8px_24px_-12px_rgba(15,23,42,0.1)] focus:outline-none focus:ring-2 focus:ring-primary/35 focus:border-primary/50 transition"
+          className="w-full pl-10 pr-4 py-3 border border-slate-200/90 rounded-full text-sm bg-white text-[#0f172a] shadow-[0_8px_24px_-12px_rgba(15,23,42,0.1)] placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-primary/35 focus:border-primary/50 transition dark:border-zinc-600 dark:bg-zinc-900/85 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)]"
           autoComplete="off"
         />
       </div>
@@ -99,7 +117,7 @@ export default function InventoryPage() {
             className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
               filters.category === cat.value
                 ? 'bg-primary text-white border-primary'
-                : 'bg-white text-muted border-border hover:border-primary hover:text-primary'
+                : 'bg-white text-muted border-border hover:border-primary hover:text-primary dark:bg-zinc-800/95 dark:text-zinc-300 dark:border-zinc-600 dark:hover:border-primary dark:hover:text-primary'
             }`}
           >
             {cat.label}
@@ -110,7 +128,7 @@ export default function InventoryPage() {
           className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
             filters.lowStockOnly
               ? 'bg-accent text-white border-accent'
-              : 'bg-white text-muted border-border hover:border-accent hover:text-accent'
+              : 'bg-white text-muted border-border hover:border-accent hover:text-accent dark:bg-zinc-800/95 dark:text-zinc-300 dark:border-zinc-600 dark:hover:border-accent dark:hover:text-accent'
           }`}
         >
           <SlidersHorizontal size={12} />
@@ -120,8 +138,8 @@ export default function InventoryPage() {
           onClick={() => setFilters({ showSold: !filters.showSold })}
           className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
             filters.showSold
-              ? 'bg-gray-600 text-white border-gray-600'
-              : 'bg-white text-muted border-border hover:border-gray-400 hover:text-dark'
+              ? 'bg-gray-600 text-white border-gray-600 dark:bg-zinc-600 dark:border-zinc-500'
+              : 'bg-white text-muted border-border hover:border-gray-400 hover:text-dark dark:bg-zinc-800/95 dark:text-zinc-300 dark:border-zinc-600 dark:hover:border-zinc-500 dark:hover:text-zinc-100'
           }`}
         >
           <Eye size={12} />
@@ -131,7 +149,7 @@ export default function InventoryPage() {
 
       {/* Sort row */}
       {!isLoading && items.length > 0 && (
-        <div className="flex items-center justify-between text-xs text-muted">
+        <div className="flex items-center justify-between text-xs text-muted dark:text-zinc-400">
           <span>{items.length} item{items.length !== 1 ? 's' : ''}</span>
           <div className="flex items-center gap-2">
             <span>Sort:</span>
@@ -144,7 +162,7 @@ export default function InventoryPage() {
                 ];
                 setFilters({ sortBy, sortDir });
               }}
-              className="border border-border rounded-lg px-2 py-1 text-xs bg-white focus:outline-none"
+              className="border border-border rounded-lg px-2 py-1 text-xs bg-white text-[#0f172a] focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200"
             >
               <option value="updated_at-desc">Newest</option>
               <option value="updated_at-asc">Oldest</option>
@@ -265,15 +283,15 @@ function ItemCard({
   const showAppleBadges = isAppleDevice(item.brand, item.category);
 
   return (
-    <div className="bg-white rounded-3xl px-4 py-3.5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.1)] ring-1 ring-slate-900/[0.04] border border-slate-900/[0.05] flex items-center gap-3">
-      <div className="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100">
-        <Package size={18} className="text-muted" />
+    <div className="bg-white rounded-3xl px-4 py-3.5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.1)] ring-1 ring-slate-900/[0.04] border border-slate-900/[0.05] flex items-center gap-3 dark:bg-zinc-900/90 dark:border-zinc-700/80 dark:ring-white/[0.06] dark:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.4)]">
+      <div className="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 dark:bg-zinc-800 dark:border-zinc-700">
+        <Package size={18} className="text-muted dark:text-zinc-400" />
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0 cursor-pointer" onClick={onEdit}>
-        <div className="font-medium text-dark text-sm truncate">{item.name}</div>
-        <div className="text-xs text-muted capitalize">{item.brand} · {item.category}</div>
+        <div className="font-medium text-dark text-sm truncate dark:text-zinc-100">{item.name}</div>
+        <div className="text-xs text-muted capitalize dark:text-zinc-400">{item.brand} · {item.category}</div>
         {status === 'with_engineer' && engineerName && (
           <div className="text-[10px] text-muted mt-0.5">Engineer: {engineerName}</div>
         )}
@@ -299,21 +317,29 @@ function ItemCard({
             </span>
           ) : (
             <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-              isOut ? 'bg-red-100 text-red-600' : isLow ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-700'
+              isOut
+                ? 'bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400'
+                : isLow
+                  ? 'bg-orange-100 text-orange-600 dark:bg-orange-950/45 dark:text-orange-300'
+                  : 'bg-green-100 text-green-700 dark:bg-green-900/45 dark:text-green-300'
             }`}>
               {isOut ? 'Out of stock' : `${item.quantity} in stock`}
             </span>
           )}
 
           {item.sync_status === 'pending' && (
-            <span className="text-[10px] text-muted bg-gray-100 px-1.5 py-0.5 rounded-full">
+            <span className="text-[10px] text-muted bg-gray-100 px-1.5 py-0.5 rounded-full dark:bg-zinc-800 dark:text-zinc-400">
               Syncing…
             </span>
           )}
 
           {showAppleBadges && batteryHealth !== undefined && (
             <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-              batteryHealth > 80 ? 'bg-green-100 text-green-700' : batteryHealth >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'
+              batteryHealth > 80
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/45 dark:text-green-300'
+                : batteryHealth >= 60
+                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
+                  : 'bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400'
             }`}>
               Battery {batteryHealth}%
             </span>
@@ -332,7 +358,7 @@ function ItemCard({
         <button
           onClick={onSell}
           disabled={!canSell}
-          className="p-2 rounded-lg hover:bg-teal/10 text-muted hover:text-teal transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="p-2 rounded-lg hover:bg-teal/10 text-muted hover:text-teal transition-colors disabled:opacity-30 disabled:cursor-not-allowed dark:hover:bg-teal-900/30 dark:text-zinc-400"
           aria-label="Sell"
           title={
             tradeLocked
@@ -350,7 +376,7 @@ function ItemCard({
           <button
             onClick={onSwap}
             disabled={!canSwap}
-            className="p-2 rounded-lg hover:bg-primary/10 text-muted hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-2 rounded-lg hover:bg-primary/10 text-muted hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed dark:hover:bg-primary/20 dark:text-zinc-400"
             aria-label="Swap"
             title={tradeLocked ? tradeLockedMessage : canSwap ? 'Record a device swap' : `Status: ${statusCfg.label}`}
           >
@@ -361,7 +387,7 @@ function ItemCard({
           <button
             onClick={onEngineer}
             disabled={!canEngineer}
-            className="p-2 rounded-lg hover:bg-amber-100 text-muted hover:text-amber-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-2 rounded-lg hover:bg-amber-100 text-muted hover:text-amber-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed dark:hover:bg-amber-900/35 dark:text-zinc-400 dark:hover:text-amber-400"
             aria-label="Send to engineer"
             title={
               tradeLocked
@@ -376,14 +402,14 @@ function ItemCard({
         )}
         <button
           onClick={onEdit}
-          className="p-2 rounded-lg hover:bg-surface text-muted hover:text-primary transition-colors"
+          className="p-2 rounded-lg hover:bg-surface text-muted hover:text-primary transition-colors dark:hover:bg-zinc-800 dark:text-zinc-400"
           aria-label="Edit"
         >
           <Pencil size={16} />
         </button>
         <button
           onClick={onDelete}
-          className="p-2 rounded-lg hover:bg-red-50 text-muted hover:text-red-500 transition-colors"
+          className="p-2 rounded-lg hover:bg-red-50 text-muted hover:text-red-500 transition-colors dark:hover:bg-red-950/40 dark:text-zinc-400"
           aria-label="Delete"
         >
           <Trash2 size={16} />
@@ -406,22 +432,23 @@ function icloudStatusLabel(status: AppleICloudStatus) {
 }
 
 function icloudStatusClass(status: AppleICloudStatus) {
-  if (status === 'clean') return 'bg-green-100 text-green-700';
-  if (status === 'icloud_locked') return 'bg-red-100 text-red-600';
-  if (status === 'ibm' || status === 'idm' || status === 'icm') return 'bg-orange-100 text-orange-700';
-  return 'bg-gray-100 text-gray-700';
+  if (status === 'clean') return 'bg-green-100 text-green-700 dark:bg-green-900/45 dark:text-green-300';
+  if (status === 'icloud_locked') return 'bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400';
+  if (status === 'ibm' || status === 'idm' || status === 'icm')
+    return 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300';
+  return 'bg-gray-100 text-gray-700 dark:bg-zinc-800 dark:text-zinc-300';
 }
 
 function EmptyState({ isFiltered, onAdd }: { isFiltered: boolean; onAdd: () => void }) {
   return (
     <div className="flex flex-col items-center py-16 text-center px-4">
-      <div className="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-border flex items-center justify-center mb-4 shadow-sm">
-        <Package size={36} className="text-muted" />
+      <div className="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-border flex items-center justify-center mb-4 shadow-sm dark:bg-zinc-900/70 dark:border-zinc-600">
+        <Package size={36} className="text-muted dark:text-zinc-500" />
       </div>
-      <h3 className="font-heading font-semibold text-dark text-base">
+      <h3 className="font-heading font-semibold text-dark text-base dark:text-zinc-100">
         {isFiltered ? 'No items match' : 'Your inventory is empty'}
       </h3>
-      <p className="text-muted text-sm mt-1 max-w-xs leading-relaxed">
+      <p className="text-muted text-sm mt-1 max-w-xs leading-relaxed dark:text-zinc-400">
         {isFiltered
           ? 'Try a different search or clear your filters'
           : 'Start tracking your stock by adding your first item'}
