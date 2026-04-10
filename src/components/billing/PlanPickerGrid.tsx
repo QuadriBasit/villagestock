@@ -14,8 +14,8 @@ export default function PlanPickerGrid({ variant = 'default' }: Props) {
       {PAID_PLANS.map(plan => (
         <div
           key={plan.id}
-          className={`rounded-2xl border bg-white ${pad} flex flex-col ${
-            plan.highlight ? 'border-primary shadow-md ring-2 ring-primary/20' : 'border-border shadow-sm'
+          className={`ui-card rounded-2xl ${pad} flex flex-col ${
+            plan.highlight ? 'border-primary shadow-md ring-2 ring-primary/20' : ''
           }`}
         >
           <div className="flex items-start justify-between gap-2">

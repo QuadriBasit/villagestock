@@ -403,6 +403,20 @@ export interface RepairsSummary {
 
 // ─── Sync ─────────────────────────────────────────────────────────────────────
 
+export type ShopRole = 'owner' | 'manager' | 'staff';
+
+export interface AuditEvent {
+  id: string;
+  business_id: string;
+  actor_user_id: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  sync_status?: SyncStatus;
+}
+
 export interface SyncQueueItem {
   id: string;
   table:

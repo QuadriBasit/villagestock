@@ -1,12 +1,13 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Package, ShoppingCart, Plus, HandCoins } from 'lucide-react';
 import { useTrialAccess } from '@/hooks/useTrialAccess';
+import { useShopAccess } from '@/context/ShopAccessContext';
 
 const LEFT_NAV = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
   { to: '/inventory', icon: Package, label: 'Stock' },
 ];
-const RIGHT_NAV = [
+const RIGHT_NAV_BASE = [
   { to: '/sales', icon: ShoppingCart, label: 'Sales' },
   { to: '/credits', icon: HandCoins, label: 'Credits' },
 ];
@@ -14,6 +15,8 @@ const RIGHT_NAV = [
 export default function BottomNav() {
   const navigate = useNavigate();
   const { mutationsBlocked } = useTrialAccess();
+  const { canAccessFinancialNav } = useShopAccess();
+  const RIGHT_NAV = canAccessFinancialNav ? RIGHT_NAV_BASE : RIGHT_NAV_BASE.filter(i => i.to !== '/credits');
 
   return (
     <nav

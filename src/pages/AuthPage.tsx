@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { Package, Loader2, Mail, Lock } from 'lucide-react';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import { authCallbackUrl } from '@/lib/authSiteUrl';
 
 type Panel = 'signin' | 'signup' | 'forgot';
 
 export default function AuthPage() {
   const { user, isLoading: authLoading } = useAuthStore();
-  const q = useBusinessProfileQuery(user?.id);
+  const { status: shopStatus, shopOwnerId } = useShopAccess();
+  const q = useBusinessProfileQuery(shopStatus === 'ready' ? shopOwnerId ?? undefined : undefined);
 
   const [panel, setPanel] = useState<Panel>('signin');
   const [emailLogin, setEmailLogin] = useState('');
@@ -24,16 +26,30 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
+  /** Invite links use `type=invite` in the hash; recovery uses `type=recovery`. Read in layout effect before root auth `getSession` consumes the hash. */
+  const [passwordSetupKind, setPasswordSetupKind] = useState<'invite' | 'reset' | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [newPassword2, setNewPassword2] = useState('');
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) {
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = window.location.hash.replace(/^#/, '');
+    if (!raw) return;
+    const type = new URLSearchParams(raw).get('type');
+    if (type === 'invite') {
       setRecoveryMode(true);
+      setPasswordSetupKind('invite');
+    } else if (type === 'recovery') {
+      setRecoveryMode(true);
+      setPasswordSetupKind('reset');
     }
+  }, []);
+
+  useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setRecoveryMode(true);
+        setPasswordSetupKind('reset');
       }
     });
     return () => sub.subscription.unsubscribe();
@@ -55,6 +71,7 @@ export default function AuthPage() {
       if (err) throw err;
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
       setRecoveryMode(false);
+      setPasswordSetupKind(null);
       setNewPassword('');
       setNewPassword2('');
       setPanel('signin');
@@ -74,6 +91,13 @@ export default function AuthPage() {
   }
 
   if (user && !recoveryMode) {
+    if (shopStatus === 'loading' || shopStatus === 'idle') {
+      return (
+        <div className="flex h-screen items-center justify-center bg-surface text-primary">
+          <Loader2 className="animate-spin" size={28} />
+        </div>
+      );
+    }
     if (q.status === 'pending') {
       return (
         <div className="flex h-screen items-center justify-center bg-surface text-primary">
@@ -168,7 +192,7 @@ export default function AuthPage() {
   };
 
   const inputClass =
-    'w-full border border-border rounded-lg bg-white px-3 py-2.5 text-sm text-dark placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition';
+    'w-full border border-border rounded-lg bg-white px-3 py-2.5 text-sm text-dark placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition dark:bg-zinc-900/90 dark:border-zinc-600 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-primary dark:focus:ring-primary/35';
 
   return (
     <div className="min-h-svh flex flex-col items-center justify-center bg-surface px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-6 md:py-12 relative overflow-hidden">
@@ -181,15 +205,15 @@ export default function AuthPage() {
           <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-lg shadow-primary/20 ring-4 ring-primary/10">
             <Package size={32} className="text-white" />
           </div>
-          <h1 className="text-2xl md:text-3xl font-heading font-bold text-dark tracking-tight">VillageStock</h1>
+          <h1 className="text-2xl md:text-3xl font-heading font-bold text-dark tracking-tight dark:text-zinc-100">VillageStock</h1>
           <p className="text-muted text-sm mt-2 max-w-xs leading-relaxed">Electronics inventory for Computer Village — fast on mobile, ready offline.</p>
         </div>
 
-        <div className="w-full max-w-sm bg-white/95 text-dark backdrop-blur-sm rounded-2xl shadow-xl shadow-slate-900/5 border border-border/70 p-6 md:p-8">
+        <div className="w-full max-w-sm bg-white/95 text-dark backdrop-blur-sm rounded-2xl shadow-xl shadow-slate-900/5 border border-border/70 p-6 md:p-8 dark:bg-zinc-900/95 dark:text-zinc-100 dark:border-zinc-700/80 dark:shadow-black/25 dark:[&_h2]:text-zinc-100 dark:[&_label]:text-zinc-200 dark:[&_strong]:text-zinc-200">
           {recoveryMode && !user && (
             <div className="flex flex-col items-center py-8 text-muted text-sm">
               <Loader2 className="animate-spin mb-3 text-primary" size={28} />
-              Opening reset link…
+              {passwordSetupKind === 'invite' ? 'Opening invitation link…' : 'Opening reset link…'}
             </div>
           )}
 
@@ -197,9 +221,13 @@ export default function AuthPage() {
             <>
               <h2 className="font-heading font-semibold text-lg text-dark mb-1 flex items-center gap-2">
                 <Lock size={18} className="text-primary" />
-                Choose a new password
+                {passwordSetupKind === 'invite' ? 'Choose your password' : 'Choose a new password'}
               </h2>
-              <p className="text-xs text-muted mb-4">Your reset link was valid — set a password you will use with your email.</p>
+              <p className="text-xs text-muted mb-4">
+                {passwordSetupKind === 'invite'
+                  ? 'Your invite link is valid — set a password you will use to sign in next time (this account has no password until you do).'
+                  : 'Your reset link was valid — set a password you will use with your email.'}
+              </p>
               <div className="space-y-3">
                 <input
                   type="password"
@@ -219,7 +247,9 @@ export default function AuthPage() {
                 />
               </div>
               {error && (
-                <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600">{error}</div>
+                <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
+                  {error}
+                </div>
               )}
               <button
                 type="button"
@@ -235,8 +265,11 @@ export default function AuthPage() {
 
           {!recoveryMode && !user && panel === 'signin' && (
             <>
-              <div className="flex rounded-lg bg-surface p-0.5 mb-5">
-                <button type="button" className="flex-1 rounded-md py-2 text-sm font-medium bg-white shadow-sm text-dark">
+              <div className="flex rounded-lg bg-surface p-0.5 mb-5 dark:bg-zinc-800/80">
+                <button
+                  type="button"
+                  className="flex-1 rounded-md py-2 text-sm font-medium bg-white text-dark shadow-sm dark:bg-zinc-700 dark:text-zinc-100 dark:shadow-none dark:ring-1 dark:ring-zinc-600"
+                >
                   Sign in
                 </button>
                 <button
@@ -246,7 +279,7 @@ export default function AuthPage() {
                     setError('');
                     setSignupMessage('idle');
                   }}
-                  className="flex-1 rounded-md py-2 text-sm font-medium text-muted hover:text-dark transition"
+                  className="flex-1 rounded-md py-2 text-sm font-medium text-muted transition hover:text-dark dark:text-zinc-400 dark:hover:text-zinc-200"
                 >
                   Create account
                 </button>
@@ -304,7 +337,9 @@ export default function AuthPage() {
               </div>
 
               {error && (
-                <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600">{error}</div>
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
+                  {error}
+                </div>
               )}
 
               <button
@@ -321,18 +356,21 @@ export default function AuthPage() {
 
           {!recoveryMode && !user && panel === 'signup' && (
             <>
-              <div className="flex rounded-lg bg-surface p-0.5 mb-5">
+              <div className="flex rounded-lg bg-surface p-0.5 mb-5 dark:bg-zinc-800/80">
                 <button
                   type="button"
                   onClick={() => {
                     setPanel('signin');
                     setError('');
                   }}
-                  className="flex-1 rounded-md py-2 text-sm font-medium text-muted hover:text-dark transition"
+                  className="flex-1 rounded-md py-2 text-sm font-medium text-muted transition hover:text-dark dark:text-zinc-400 dark:hover:text-zinc-200"
                 >
                   Sign in
                 </button>
-                <button type="button" className="flex-1 rounded-md py-2 text-sm font-medium bg-white shadow-sm text-dark">
+                <button
+                  type="button"
+                  className="flex-1 rounded-md py-2 text-sm font-medium bg-white text-dark shadow-sm dark:bg-zinc-700 dark:text-zinc-100 dark:shadow-none dark:ring-1 dark:ring-zinc-600"
+                >
                   Create account
                 </button>
               </div>
@@ -348,13 +386,13 @@ export default function AuthPage() {
 
               {signupMessage === 'sent' ? (
                 <div className="space-y-3">
-                  <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-900">
+                  <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-900 dark:border-emerald-800/55 dark:bg-emerald-950/45 dark:text-emerald-100">
                     <p className="font-medium">Check your email</p>
-                    <p className="mt-1 text-green-800">
+                    <p className="mt-1 text-green-800 dark:text-emerald-200/95">
                       Open the confirmation link we sent to <strong>{signupEmail.trim().toLowerCase()}</strong>, then return
                       here and sign in.
                     </p>
-                    <p className="mt-2 text-xs text-green-800/90">
+                    <p className="mt-2 text-xs text-green-800/90 dark:text-emerald-300/85">
                       No email? Check spam, and confirm Supabase can send mail (Auth → SMTP). Links must match your site URL
                       in Supabase → URL Configuration.
                     </p>
@@ -420,7 +458,9 @@ export default function AuthPage() {
                     </div>
                   </div>
                   {error && (
-                    <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600">{error}</div>
+                    <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
+                  {error}
+                </div>
                   )}
                   <button
                     type="button"
@@ -459,16 +499,16 @@ export default function AuthPage() {
                 <strong>Create account</strong> (or had an admin create the user) first.
               </p>
               {resetSent ? (
-                <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-900">
+                <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-900 dark:border-emerald-800/55 dark:bg-emerald-950/45 dark:text-emerald-100">
                   <p className="font-medium">If that login exists, we sent a link</p>
-                  <p className="mt-1 text-green-800">
+                  <p className="mt-1 text-green-800 dark:text-emerald-200/95">
                     Check <strong>{resetEmail.trim().toLowerCase()}</strong> (and spam). The link expires after a short time.
                   </p>
-                  <p className="mt-2 text-xs text-green-800/90">
+                  <p className="mt-2 text-xs text-green-800/90 dark:text-emerald-300/85">
                     <strong>No email after a few minutes?</strong> Usually there is no Auth user for that address yet. Use{' '}
                     <strong>Create account</strong> with the same email instead of reset.
                   </p>
-                  <p className="mt-2 text-xs text-green-800/90">
+                  <p className="mt-2 text-xs text-green-800/90 dark:text-emerald-300/85">
                     Project checks: Supabase → Authentication → URL Configuration (redirects) and SMTP so mail can send.
                   </p>
                   <button
@@ -480,14 +520,14 @@ export default function AuthPage() {
                       setSignupMessage('idle');
                       setError('');
                     }}
-                    className="mt-3 w-full rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-medium text-green-900 hover:bg-green-100/80 transition"
+                    className="mt-3 w-full rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-medium text-green-900 transition hover:bg-green-100/80 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-100 dark:hover:bg-emerald-900/65"
                   >
                     Create account with this email
                   </button>
                 </div>
               ) : (
                 <>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-950 mb-3">
+                  <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-950 dark:border-amber-700/50 dark:bg-amber-950/50 dark:text-amber-100">
                     New to VillageStock?{' '}
                     <button
                       type="button"
@@ -511,7 +551,9 @@ export default function AuthPage() {
                     placeholder="you@example.com"
                   />
                   {error && (
-                    <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600">{error}</div>
+                    <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
+                  {error}
+                </div>
                   )}
                   <button
                     type="button"

@@ -1,8 +1,9 @@
 import { supabase, isOnline } from './supabase';
-import { db } from './db';
+import { db, clearAllLocalShopData } from './db';
 import { v4 as uuidv4 } from 'uuid';
 import { getCategoryMode } from '@/types';
 import type {
+  AuditEvent,
   BusinessProfile,
   CreditRecord,
   InventoryItem,
@@ -21,6 +22,7 @@ type RemoteReturnRow = Database['public']['Tables']['return_records']['Row'];
 type RemoteSwapRow = Database['public']['Tables']['swap_records']['Row'];
 type RemoteCreditRow = Database['public']['Tables']['credit_records']['Row'];
 type RemoteRepairRow = Database['public']['Tables']['repair_records']['Row'];
+type RemoteAuditRow = Database['public']['Tables']['audit_events']['Row'];
 
 function parseCreditPayments(json: unknown): CreditRecord['payments'] {
   if (!Array.isArray(json)) return [];
@@ -97,7 +99,43 @@ function salesRecordToRemoteRow(record: SalesRecord): Database['public']['Tables
   };
 }
 
+function syncErrorMessage(err: unknown): string {
+  if (err == null) return '';
+  if (typeof err === 'string') return err;
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
+    return (err as { message: string }).message;
+  }
+  return '';
+}
+
+function syncErrorCode(err: unknown): string | undefined {
+  if (!err || typeof err !== 'object') return undefined;
+  const o = err as { code?: unknown; cause?: unknown };
+  if (typeof o.code === 'string') return o.code;
+  if (o.cause) return syncErrorCode(o.cause);
+  return undefined;
+}
+
+/** Postgres 42501 / RLS — retrying the same payload will not help until DB policies or membership change. */
+function isRlsViolation(err: unknown): boolean {
+  if (syncErrorCode(err) === '42501') return true;
+  return /row-level security policy/i.test(syncErrorMessage(err));
+}
+
+const MAX_SYNC_QUEUE_RETRIES = 12;
+
 // ─── Queue a write for later sync ────────────────────────────────────────────
+
+/** Call before `signOut`: upload pending changes, then wipe IndexedDB so the next login starts clean. */
+export async function prepareLocalDataForSignOut(): Promise<void> {
+  try {
+    await flushSyncQueue();
+  } catch (e) {
+    console.error('[sync] flush before sign out failed', e);
+  }
+  await clearAllLocalShopData();
+}
 
 export async function queueSync(
   table: SyncQueueItem['table'],
@@ -116,9 +154,9 @@ export async function queueSync(
 
 // ─── Flush pending queue to Supabase ─────────────────────────────────────────
 
-export async function flushSyncQueue(): Promise<void> {
-  if (!isOnline()) return;
+let flushTail: Promise<void> = Promise.resolve();
 
+async function runFlushSyncQueueOnce(): Promise<void> {
   const pending = await db.sync_queue.orderBy('created_at').toArray();
 
   for (const item of pending) {
@@ -142,10 +180,43 @@ export async function flushSyncQueue(): Promise<void> {
       }
       await db.sync_queue.delete(item.id);
     } catch (err) {
+      if (isRlsViolation(err)) {
+        console.error(
+          '[sync] Server rejected this change (RLS). Removed from sync queue — retries would spam the console. ' +
+            'Ensure Supabase has shop member policies (e.g. migration 20260408130000_shop_members_audit.sql). ' +
+            'Local IndexedDB is unchanged; you may need to fix the project RLS and re-upload or reconcile data.',
+          { table: item.table, operation: item.operation, queueId: item.id },
+          err
+        );
+        await db.sync_queue.delete(item.id);
+        continue;
+      }
+
+      const nextRetries = item.retries + 1;
       console.error('[sync] Failed to sync item', item.id, err);
-      await db.sync_queue.update(item.id, { retries: item.retries + 1 });
+      if (nextRetries >= MAX_SYNC_QUEUE_RETRIES) {
+        console.error(
+          '[sync] Dropping queue item after max retries; local data still exists offline',
+          item.table,
+          item.operation,
+          item.id
+        );
+        await db.sync_queue.delete(item.id);
+      } else {
+        await db.sync_queue.update(item.id, { retries: nextRetries });
+      }
     }
   }
+}
+
+/** Serializes concurrent flushes so overlapping uploads don’t race the same queue. */
+export async function flushSyncQueue(): Promise<void> {
+  if (!isOnline()) return;
+  const step = flushTail.then(() => runFlushSyncQueueOnce());
+  flushTail = step.catch(err => {
+    console.error('[sync] flush chain error', err);
+  });
+  await step;
 }
 
 async function syncInventoryItem(item: SyncQueueItem) {
@@ -339,12 +410,15 @@ export async function pullRemoteBusinessProfile(userId: string): Promise<void> {
   if (!data) return;
 
   const row = data as RemoteBusinessProfileRow;
+  const parsed = remoteRowToBusinessProfile(row);
   const local = await db.business_profiles.get(userId);
   const remoteUpdated = new Date(row.updated_at).getTime();
   const localUpdated = local ? new Date(local.updated_at).getTime() : 0;
 
   if (remoteUpdated >= localUpdated) {
-    await db.business_profiles.put(remoteRowToBusinessProfile(row));
+    // Avoid redundant Dexie writes — each `put` re-fires liveQuery and can leave OnboardingGate stuck on "pending".
+    if (local && local.updated_at === parsed.updated_at) return;
+    await db.business_profiles.put(parsed);
   }
 }
 
@@ -530,23 +604,232 @@ export async function pullRemoteRepairRecords(userId: string): Promise<void> {
   await db.repair_records.bulkPut(mapped);
 }
 
-/** Run after `flushSyncQueue`: download server rows into IndexedDB for this device. */
-export async function pullAllRemoteShopData(userId: string): Promise<void> {
-  const pulls: [string, () => Promise<void>][] = [
-    ['business_profiles', () => pullRemoteBusinessProfile(userId)],
-    ['inventory_items', () => pullRemoteInventory(userId)],
-    ['sales_records', () => pullRemoteSalesRecords(userId)],
-    ['return_records', () => pullRemoteReturnRecords(userId)],
-    ['swap_records', () => pullRemoteSwapRecords(userId)],
-    ['credit_records', () => pullRemoteCreditRecords(userId)],
-    ['repair_records', () => pullRemoteRepairRecords(userId)],
-  ];
+/** Shop owner id === business_profiles.id === audit_events.business_id */
+export async function pullRemoteAuditEvents(businessId: string): Promise<void> {
+  if (!isOnline()) return;
 
-  for (const [label, fn] of pulls) {
+  const { data, error } = await supabase
+    .from('audit_events')
+    .select('*')
+    .eq('business_id', businessId)
+    .order('created_at', { ascending: false })
+    .limit(750);
+
+  if (error) throw error;
+  if (!data?.length) return;
+
+  const rows = data as unknown as RemoteAuditRow[];
+  const mapped: AuditEvent[] = rows.map(row => ({
+    id: row.id,
+    business_id: row.business_id,
+    actor_user_id: row.actor_user_id,
+    action: row.action,
+    entity_type: row.entity_type,
+    entity_id: row.entity_id,
+    metadata:
+      typeof row.metadata === 'object' && row.metadata !== null && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : {},
+    created_at: row.created_at,
+    sync_status: 'synced',
+  }));
+
+  await db.audit_events.bulkPut(mapped);
+}
+
+/** One in-flight full pull per shop — overlapping callers await the same work (avoids realtime + mount doubling traffic). */
+const pullAllInFlight = new Map<string, Promise<void>>();
+
+/** Wall-clock of last *completed* full pull (mount, online, or realtime) — used to cap realtime-driven pulls. */
+const lastFullPullCompletedAt = new Map<string, number>();
+/** Same for audit-only realtime pulls (full pull also refreshes audit_events). */
+const lastAuditPullCompletedAt = new Map<string, number>();
+
+/**
+ * Initial `runInitialPull` must run once per (actor, shop) login — survives StrictMode/remount.
+ * Cleared when auth user clears (`ShopAccessProvider` load with !userId).
+ */
+const shopBootstrapConsumedKeys = new Set<string>();
+
+export function tryConsumeShopBootstrap(actorUserId: string, shopOwnerId: string): boolean {
+  const k = `${actorUserId}::${shopOwnerId}`;
+  if (shopBootstrapConsumedKeys.has(k)) return false;
+  shopBootstrapConsumedKeys.add(k);
+  return true;
+}
+
+export function resetShopBootstrapDedupe(): void {
+  shopBootstrapConsumedKeys.clear();
+}
+
+async function runFullPullWork(userId: string): Promise<void> {
+  const existing = pullAllInFlight.get(userId);
+  if (existing) return existing;
+
+  const run = (async () => {
     try {
-      await fn();
-    } catch (err) {
-      console.error(`[sync] pull ${label} failed`, err);
+      const pulls: [string, () => Promise<void>][] = [
+        ['business_profiles', () => pullRemoteBusinessProfile(userId)],
+        ['inventory_items', () => pullRemoteInventory(userId)],
+        ['sales_records', () => pullRemoteSalesRecords(userId)],
+        ['return_records', () => pullRemoteReturnRecords(userId)],
+        ['swap_records', () => pullRemoteSwapRecords(userId)],
+        ['credit_records', () => pullRemoteCreditRecords(userId)],
+        ['repair_records', () => pullRemoteRepairRecords(userId)],
+        ['audit_events', () => pullRemoteAuditEvents(userId)],
+      ];
+
+      await Promise.all(
+        pulls.map(async ([label, fn]) => {
+          try {
+            await fn();
+          } catch (err) {
+            console.error(`[sync] pull ${label} failed`, err);
+          }
+        })
+      );
+    } finally {
+      const now = Date.now();
+      lastFullPullCompletedAt.set(userId, now);
+      lastAuditPullCompletedAt.set(userId, now);
     }
+  })();
+
+  pullAllInFlight.set(userId, run);
+  try {
+    await run;
+  } finally {
+    if (pullAllInFlight.get(userId) === run) pullAllInFlight.delete(userId);
   }
+}
+
+/**
+ * Download server rows into IndexedDB (8 parallel SELECTs). Call after `flushSyncQueue`.
+ * Mount / `online` use this directly so users get data immediately after load or reconnect.
+ */
+export async function pullAllRemoteShopData(userId: string): Promise<void> {
+  return runFullPullWork(userId);
+}
+
+/**
+ * Full pull only if the last one finished longer than `minAgeMs` ago.
+ * Use for `window.online` so reconnect doesn’t replay eight SELECTs right after the initial load.
+ */
+export async function pullAllRemoteShopDataIfStale(userId: string, minAgeMs: number): Promise<void> {
+  const last = lastFullPullCompletedAt.get(userId) ?? 0;
+  if (Date.now() - last < minAgeMs) return;
+  return runFullPullWork(userId);
+}
+
+const REALTIME_TABLES_WITH_USER_ID = [
+  'inventory_items',
+  'sales_records',
+  'return_records',
+  'swap_records',
+  'credit_records',
+  'repair_records',
+] as const;
+
+/** After Postgres noise goes quiet, wait this long before starting a full pull. */
+const REALTIME_FULL_PULL_DEBOUNCE_MS = 20_000;
+/** At most one full shop sync this often when triggered only by Realtime (each sync ≈ 8 DB round-trips). */
+const REALTIME_FULL_PULL_MIN_GAP_MS = 90_000;
+const REALTIME_AUDIT_DEBOUNCE_MS = 5_000;
+const REALTIME_AUDIT_MIN_GAP_MS = 45_000;
+
+/**
+ * Subscribe to row changes for this shop. Realtime uses heavy debouncing + minimum gaps so
+ * replication chatter cannot generate tens of thousands of REST calls (see Supabase usage charts).
+ * Mount / `online` still call `pullAllRemoteShopData` immediately.
+ *
+ * Realtime is **opt-in** (`VITE_ENABLE_SHOP_REALTIME=true`) so a stock deploy never opens a shop
+ * WebSocket unless you’ve enabled replication in Supabase. Otherwise the JS client retries failed
+ * Realtime forever → console spam, battery drain, and useless load.
+ *
+ * Data still syncs: login / refresh full pull, writes via the queue, and `window` `online`.
+ */
+export function subscribeShopRemoteChanges(userId: string): () => void {
+  if (import.meta.env.VITE_ENABLE_SHOP_REALTIME !== 'true') {
+    return () => undefined;
+  }
+
+  if (!isOnline() || !userId) return () => undefined;
+
+  let fullTimer: ReturnType<typeof setTimeout> | null = null;
+  let auditTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const scheduleFullPullFromRealtime = () => {
+    if (auditTimer) {
+      clearTimeout(auditTimer);
+      auditTimer = null;
+    }
+    if (fullTimer) clearTimeout(fullTimer);
+    fullTimer = setTimeout(() => {
+      fullTimer = null;
+      void (async () => {
+        try {
+          const last = lastFullPullCompletedAt.get(userId) ?? 0;
+          const extra = Math.max(0, REALTIME_FULL_PULL_MIN_GAP_MS - (Date.now() - last));
+          if (extra > 0) await new Promise(r => setTimeout(r, extra));
+          await runFullPullWork(userId);
+        } catch (e) {
+          console.error('[sync] realtime pull failed', e);
+        }
+      })();
+    }, REALTIME_FULL_PULL_DEBOUNCE_MS);
+  };
+
+  const scheduleAuditPullFromRealtime = () => {
+    if (auditTimer) clearTimeout(auditTimer);
+    auditTimer = setTimeout(() => {
+      auditTimer = null;
+      void (async () => {
+        try {
+          const last = lastAuditPullCompletedAt.get(userId) ?? 0;
+          const extra = Math.max(0, REALTIME_AUDIT_MIN_GAP_MS - (Date.now() - last));
+          if (extra > 0) await new Promise(r => setTimeout(r, extra));
+          await pullRemoteAuditEvents(userId);
+          lastAuditPullCompletedAt.set(userId, Date.now());
+        } catch (e) {
+          console.error('[sync] realtime audit pull failed', e);
+        }
+      })();
+    }, REALTIME_AUDIT_DEBOUNCE_MS);
+  };
+
+  const channel = supabase.channel(`shop-data:${userId}`);
+
+  for (const table of REALTIME_TABLES_WITH_USER_ID) {
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table, filter: `user_id=eq.${userId}` },
+      scheduleFullPullFromRealtime
+    );
+  }
+
+  channel.on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'business_profiles', filter: `id=eq.${userId}` },
+    scheduleFullPullFromRealtime
+  );
+
+  channel.on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'audit_events', filter: `business_id=eq.${userId}` },
+    scheduleAuditPullFromRealtime
+  );
+
+  channel.subscribe(status => {
+    if (status === 'CHANNEL_ERROR') {
+      console.warn(
+        '[sync] Realtime unavailable or misconfigured. For instant multi-device updates, enable replication for public tables in Supabase (Dashboard → Database → Publications / Replication).'
+      );
+    }
+  });
+
+  return () => {
+    if (fullTimer) clearTimeout(fullTimer);
+    if (auditTimer) clearTimeout(auditTimer);
+    void supabase.removeChannel(channel);
+  };
 }

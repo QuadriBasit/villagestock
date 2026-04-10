@@ -73,7 +73,7 @@ export default function StockSessionDetailPage() {
             <Row k="Opening count" v={sum.opening_count} />
             <Row k="Sold" v={sum.sold_count} />
             <Row k="Credit sales" v={sum.credit_sales_count} />
-            <Row k="Sent to engineer" v={sum.sent_engineer_count} />
+            <Row k="Out for repair" v={sum.sent_engineer_count} />
             <Row k="Returns received" v={sum.returns_received_count} />
             <Row k="New stock" v={sum.new_stock_count} />
             <Row k="Expected remaining" v={sum.expected_remaining} bold />

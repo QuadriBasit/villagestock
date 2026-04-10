@@ -1,22 +1,25 @@
 import { useCallback } from 'react';
 import { db } from '@/lib/db';
-import { queueSync } from '@/lib/sync';
+import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { useAuthStore } from '@/store/auth';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import type { BusinessProfile } from '@/types';
 import { TRIAL_PLACEHOLDER } from '@/lib/trial';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 
 export function useBusinessProfile() {
   const user = useAuthStore(s => s.user);
-  const q = useBusinessProfileQuery(user?.id);
+  const { shopOwnerId } = useShopAccess();
+  const businessId = shopOwnerId ?? user?.id;
+  const q = useBusinessProfileQuery(businessId);
 
   const saveDraft = useCallback(
     async (partial: Partial<Omit<BusinessProfile, 'id' | 'updated_at' | 'sync_status'>>) => {
-      if (!user) throw new Error('Not authenticated');
+      if (!user || !businessId) throw new Error('Not authenticated');
       const now = new Date().toISOString();
-      const existing = await db.business_profiles.get(user.id);
+      const existing = await db.business_profiles.get(businessId);
       const next: BusinessProfile = {
-        id: user.id,
+        id: businessId,
         shop_name: partial.shop_name ?? existing?.shop_name ?? '',
         owner_name: partial.owner_name ?? existing?.owner_name ?? '',
         phone: partial.phone ?? existing?.phone ?? user.phone ?? '',
@@ -35,8 +38,9 @@ export function useBusinessProfile() {
       };
       await db.business_profiles.put(next);
       await queueSync('business_profiles', existing ? 'update' : 'insert', next as unknown as Record<string, unknown>);
+      await flushSyncQueue();
     },
-    [user]
+    [user, businessId]
   );
 
   const startTrialAndCompleteOnboarding = useCallback(async () => {

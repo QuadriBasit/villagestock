@@ -30,7 +30,11 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            // Only cache read-only REST traffic; never intercept auth, functions, or non-GET.
+            urlPattern: ({ url, request }) =>
+              request.method === 'GET' &&
+              /\.supabase\.co$/i.test(url.hostname) &&
+              url.pathname.startsWith('/rest/v1/'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-cache',

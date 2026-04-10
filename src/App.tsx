@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
-import { flushSyncQueue, pullAllRemoteShopData } from '@/lib/sync';
+import { clearAllLocalShopData } from '@/lib/db';
 import AppLayout from '@/components/layout/AppLayout';
 import AuthPage from '@/pages/AuthPage';
 import OnboardingPage from '@/pages/OnboardingPage';
@@ -24,7 +24,9 @@ import CloseStockPage from '@/pages/CloseStockPage';
 import StockSessionsPage from '@/pages/StockSessionsPage';
 import StockSessionDetailPage from '@/pages/StockSessionDetailPage';
 import CreditsPage from '@/pages/CreditsPage';
-import EngineersPage from '@/pages/EngineersPage';
+import RepairPage from '@/pages/RepairPage';
+import AuditLogPage from '@/pages/AuditLogPage';
+import { useShopAccess } from '@/context/ShopAccessContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuthStore();
@@ -35,8 +37,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
-  const q = useBusinessProfileQuery(user?.id);
+  const { status: shopStatus, shopOwnerId } = useShopAccess();
+  const q = useBusinessProfileQuery(shopStatus === 'ready' ? shopOwnerId ?? undefined : undefined);
   const { data: isAdmin, isLoading: adminLoading } = useIsAdminUser(user?.id);
+  if (user && (shopStatus === 'loading' || shopStatus === 'idle')) {
+    return <div className="flex h-screen items-center justify-center text-primary">Loading…</div>;
+  }
   if (q.status === 'pending' || (user && adminLoading)) {
     return <div className="flex h-screen items-center justify-center text-primary">Loading...</div>;
   }
@@ -46,6 +52,13 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   if (!q.profile?.onboarding_complete) {
     return <Navigate to="/onboarding" replace />;
   }
+  return <>{children}</>;
+}
+
+function StaffRedirect({ children }: { children: React.ReactNode }) {
+  const { role, status } = useShopAccess();
+  if (status !== 'ready') return null;
+  if (role === 'staff') return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -78,6 +91,17 @@ function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { setSession, setLoading, user } = useAuthStore();
+  const previousUserIdRef = useRef<string | undefined>(undefined);
+
+  // If the signed-in account changes without a full reload, drop stale IndexedDB (other shop's rows).
+  useEffect(() => {
+    const id = user?.id;
+    const prev = previousUserIdRef.current;
+    if (prev !== undefined && id !== undefined && prev !== id) {
+      void clearAllLocalShopData();
+    }
+    previousUserIdRef.current = id;
+  }, [user?.id]);
 
   // Bootstrap Supabase auth listener
   useEffect(() => {
@@ -93,25 +117,6 @@ export default function App() {
 
     return () => listener.subscription.unsubscribe();
   }, [setSession, setLoading]);
-
-  // Sync on mount and on reconnect
-  useEffect(() => {
-    if (!user) return;
-
-    const sync = async () => {
-      try {
-        await flushSyncQueue();
-      } catch (err) {
-        console.error('[sync] flush failed', err);
-      }
-      await pullAllRemoteShopData(user.id);
-    };
-
-    sync();
-
-    window.addEventListener('online', sync);
-    return () => window.removeEventListener('online', sync);
-  }, [user]);
 
   return (
     <Routes>
@@ -153,13 +158,64 @@ export default function App() {
         <Route path="inventory/:id/edit" element={<EditItemPage />} />
         <Route path="alerts" element={<AlertsPage />} />
         <Route path="sales" element={<SalesHistoryPage />} />
-        <Route path="credits" element={<CreditsPage />} />
-        <Route path="engineers" element={<EngineersPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="reports/stock-sessions" element={<StockSessionsPage />} />
-        <Route path="reports/stock-sessions/:sessionId" element={<StockSessionDetailPage />} />
-        <Route path="stock/close/:sessionId" element={<CloseStockPage />} />
-        <Route path="settings" element={<SettingsPage />} />
+        <Route
+          path="audit-log"
+          element={
+            <StaffRedirect>
+              <AuditLogPage />
+            </StaffRedirect>
+          }
+        />
+        <Route
+          path="credits"
+          element={
+            <StaffRedirect>
+              <CreditsPage />
+            </StaffRedirect>
+          }
+        />
+        <Route path="repair" element={<RepairPage />} />
+        <Route path="engineers" element={<Navigate to="/repair" replace />} />
+        <Route
+          path="reports"
+          element={
+            <StaffRedirect>
+              <ReportsPage />
+            </StaffRedirect>
+          }
+        />
+        <Route
+          path="reports/stock-sessions"
+          element={
+            <StaffRedirect>
+              <StockSessionsPage />
+            </StaffRedirect>
+          }
+        />
+        <Route
+          path="reports/stock-sessions/:sessionId"
+          element={
+            <StaffRedirect>
+              <StockSessionDetailPage />
+            </StaffRedirect>
+          }
+        />
+        <Route
+          path="stock/close/:sessionId"
+          element={
+            <StaffRedirect>
+              <CloseStockPage />
+            </StaffRedirect>
+          }
+        />
+        <Route
+          path="settings"
+          element={
+            <StaffRedirect>
+              <SettingsPage />
+            </StaffRedirect>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

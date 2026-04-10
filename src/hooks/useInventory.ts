@@ -1,20 +1,20 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import { useAuthStore } from '@/store/auth';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import { useInventoryStore } from '@/store/inventory';
 import { getDeviceDetailsSearchText } from '@/types';
 import type { InventoryItem, StockSummary } from '@/types';
 
 export function useInventory() {
-  const { user } = useAuthStore();
+  const { shopOwnerId } = useShopAccess();
   const { filters } = useInventoryStore();
 
   const items = useLiveQuery(async () => {
-    if (!user) return [];
+    if (!shopOwnerId) return [];
 
     let arr = await db.inventory_items
       .where('user_id')
-      .equals(user.id)
+      .equals(shopOwnerId)
       .filter(item => !item.deleted)
       .toArray();
 
@@ -62,7 +62,7 @@ export function useInventory() {
     });
 
     return arr;
-  }, [user?.id, filters]);
+  }, [shopOwnerId, filters]);
 
   return { items: items ?? [], isLoading: items === undefined };
 }
@@ -76,13 +76,13 @@ export function useInventoryItem(id: string) {
 }
 
 export function useStockSummary() {
-  const { user } = useAuthStore();
+  const { shopOwnerId } = useShopAccess();
 
   const summary = useLiveQuery(async () => {
-    if (!user) return null;
+    if (!shopOwnerId) return null;
     const items = await db.inventory_items
       .where('user_id')
-      .equals(user.id)
+      .equals(shopOwnerId)
       .filter(i => !i.deleted)
       .toArray();
 
@@ -128,7 +128,7 @@ export function useStockSummary() {
     low_stock_count += lastUnitCount;
 
     return { total_items, total_value, low_stock_count, out_of_stock_count, by_category } satisfies StockSummary;
-  }, [user?.id]);
+  }, [shopOwnerId]);
 
   return { summary: summary ?? null, isLoading: summary === undefined };
 }

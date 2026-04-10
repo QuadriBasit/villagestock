@@ -47,7 +47,7 @@ const STATUS_CONFIG: Record<SerializedItemStatus, { label: string; className: st
     className: 'bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400',
   },
   with_engineer: {
-    label: 'With Engineer',
+    label: 'Out for repair',
     className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
   },
   missing: { label: 'Missing', className: 'bg-red-600 text-white dark:bg-red-700 dark:text-white' },
@@ -293,7 +293,7 @@ function ItemCard({
         <div className="font-medium text-dark text-sm truncate dark:text-zinc-100">{item.name}</div>
         <div className="text-xs text-muted capitalize dark:text-zinc-400">{item.brand} · {item.category}</div>
         {status === 'with_engineer' && engineerName && (
-          <div className="text-[10px] text-muted mt-0.5">Engineer: {engineerName}</div>
+          <div className="text-[10px] text-muted mt-0.5">Repair: {engineerName}</div>
         )}
 
         {/* Identifier row for serialized */}
@@ -388,12 +388,12 @@ function ItemCard({
             onClick={onEngineer}
             disabled={!canEngineer}
             className="p-2 rounded-lg hover:bg-amber-100 text-muted hover:text-amber-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed dark:hover:bg-amber-900/35 dark:text-zinc-400 dark:hover:text-amber-400"
-            aria-label="Send to engineer"
+            aria-label="Send for repair"
             title={
               tradeLocked
                 ? tradeLockedMessage
                 : canEngineer
-                  ? 'Send to engineer'
+                  ? 'Send for repair'
                   : `Status: ${statusCfg.label}`
             }
           >

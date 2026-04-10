@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { endOfDay, endOfWeek, format, startOfDay, startOfWeek, subDays } from 'date-fns';
 import { db } from '@/lib/db';
-import { useAuthStore } from '@/store/auth';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import type { Category, PaymentMethod, ReturnRecord, SalesRecord, SwapRecord } from '@/types';
 
 export type ReportPreset = 'today' | 'week' | 'custom';
@@ -111,14 +111,14 @@ export function buildCustomRange(start: string, end: string): ReportRange {
 }
 
 export function useReportMetrics(range: ReportRange) {
-  const { user } = useAuthStore();
+  const { shopOwnerId } = useShopAccess();
 
   const metrics = useLiveQuery(async (): Promise<ReportMetrics> => {
-    if (!user) return emptyReport(range);
+    if (!shopOwnerId) return emptyReport(range);
 
     const sales = await db.sales_records
       .where('user_id')
-      .equals(user.id)
+      .equals(shopOwnerId)
       .filter((sale) => {
         const soldAt = new Date(sale.sold_at);
         return soldAt >= range.start && soldAt <= range.end;
@@ -127,7 +127,7 @@ export function useReportMetrics(range: ReportRange) {
 
     const returns = await db.return_records
       .where('user_id')
-      .equals(user.id)
+      .equals(shopOwnerId)
       .filter((record) => {
         const returnedAt = new Date(record.returned_at);
         return returnedAt >= range.start && returnedAt <= range.end;
@@ -136,7 +136,7 @@ export function useReportMetrics(range: ReportRange) {
 
     const swaps = await db.swap_records
       .where('user_id')
-      .equals(user.id)
+      .equals(shopOwnerId)
       .filter((swap) => {
         const date = new Date(swap.date);
         return date >= range.start && date <= range.end;
@@ -144,7 +144,7 @@ export function useReportMetrics(range: ReportRange) {
       .toArray();
 
     return buildMetrics(range, sales, returns, swaps);
-  }, [user?.id, range.start.getTime(), range.end.getTime(), range.label]);
+  }, [shopOwnerId, range.start.getTime(), range.end.getTime(), range.label]);
 
   return { metrics: metrics ?? emptyReport(range), isLoading: metrics === undefined };
 }

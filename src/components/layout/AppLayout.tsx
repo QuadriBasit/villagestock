@@ -35,8 +35,13 @@ function AppLayoutInner() {
       <DesktopSidebar />
       <div className={`${sidebarPad} flex flex-col min-h-svh transition-[padding] duration-200 ease-out`}>
         <div className={`fixed top-0 left-0 right-0 z-40 flex flex-col ${headerFixedLeft} transition-[left] duration-200 ease-out`}>
-          <TopBar />
-          <TrialBanner profile={businessProfile} />
+          {/* TopBar must stack above TrialBanner so the account menu is not covered when it drops below the header row */}
+          <div className="relative z-50 isolate">
+            <TopBar />
+          </div>
+          <div className="relative z-10">
+            <TrialBanner profile={businessProfile} />
+          </div>
         </div>
         <main
           className={`flex-1 overflow-y-auto max-lg:pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] ${mainBottomLg} ${mainTopClass}`}

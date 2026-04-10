@@ -1,6 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, ChevronsLeft, ChevronsRight, Moon, Search, Settings, Sun, Wifi, WifiOff } from 'lucide-react';
+import { Bell, ChevronsLeft, ChevronsRight, LogOut, Moon, Search, Settings, Sun, Wifi, WifiOff } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { getAccountInitial } from '@/lib/userDisplay';
@@ -8,6 +8,8 @@ import { useSidebarLayout } from './SidebarLayoutContext';
 import { useSyncStatus } from '@/hooks/useSyncStatus';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { useInventoryStore } from '@/store/inventory';
+import { useShopAccess } from '@/context/ShopAccessContext';
+import { signOutApp } from '@/lib/signOutApp';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -16,16 +18,18 @@ const PAGE_TITLES: Record<string, string> = {
   '/alerts': 'Low Stock Alerts',
   '/sales': 'Sales History',
   '/credits': 'Credits',
-  '/engineers': 'Engineers',
+  '/repair': 'Repair',
   '/reports': 'Reports',
   '/reports/stock-sessions': 'Stock sessions',
   '/settings': 'Settings',
+  '/audit-log': 'Audit log',
 };
 
 export default function TopBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { canManageBusinessSettings, status: shopAccessStatus } = useShopAccess();
   const { profile: businessProfile } = useBusinessProfile();
   const { collapsed: sidebarCollapsed, toggleCollapsed } = useSidebarLayout();
   const { isOnline, pendingCount } = useSyncStatus();
@@ -33,6 +37,19 @@ export default function TopBar() {
   const filtersSearch = useInventoryStore((s) => s.filters.search);
   const setInventoryFilters = useInventoryStore((s) => s.setFilters);
   const [searchQuery, setSearchQuery] = useState('');
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setAccountOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [accountOpen]);
 
   const isEditPage = location.pathname.includes('/edit');
   const title = isEditPage
@@ -64,9 +81,9 @@ export default function TopBar() {
 
   return (
     <header
-      className="relative flex h-[3.65rem] items-center overflow-hidden border-b border-zinc-200/80 bg-white/90 px-3 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#111827]/90 md:h-[3.85rem] md:px-5 lg:px-6"
+      className="relative flex h-[3.65rem] items-center overflow-visible border-b border-zinc-200/80 bg-white/90 px-3 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#111827]/90 md:h-[3.85rem] md:px-5 lg:px-6"
     >
-      <div className="relative flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
+      <div className="relative flex min-w-0 flex-1 min-h-0 items-center gap-2.5 md:gap-3">
         <div className="flex items-center gap-2 lg:hidden">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-primary to-[#5849c4] shadow-sm shadow-[#6c5ce7]/20">
             <span className="text-[10px] font-extrabold tracking-tight text-white">VS</span>
@@ -134,15 +151,6 @@ export default function TopBar() {
         </button>
 
         <button
-          type="button"
-          onClick={() => navigate('/settings')}
-          className="rounded-xl p-2.5 text-zinc-600 transition-colors hover:bg-zinc-100 lg:hidden dark:text-zinc-300 dark:hover:bg-white/10"
-          aria-label="Settings"
-        >
-          <Settings size={20} />
-        </button>
-
-        <button
           onClick={() => navigate('/alerts')}
           className="relative rounded-xl p-2.5 text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/10"
           aria-label="Alerts"
@@ -150,11 +158,54 @@ export default function TopBar() {
           <Bell size={20} />
         </button>
 
-        <div
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/12 text-sm font-semibold text-primary dark:bg-primary/20 dark:text-violet-200"
-          title={accountTitle}
-        >
-          {avatarLetter}
+        <div className="relative" ref={accountMenuRef}>
+          <button
+            type="button"
+            onClick={() => setAccountOpen(o => !o)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/12 text-sm font-semibold text-primary transition-colors hover:bg-primary/18 dark:bg-primary/20 dark:text-violet-200 dark:hover:bg-primary/28"
+            title={accountTitle}
+            aria-expanded={accountOpen}
+            aria-haspopup="menu"
+            aria-label="Account menu"
+          >
+            {avatarLetter}
+          </button>
+          {accountOpen ? (
+            <div
+              role="menu"
+              className="absolute right-0 top-[calc(100%+0.35rem)] z-[200] min-w-[12.5rem] rounded-xl border border-zinc-200/90 bg-white py-1 shadow-xl dark:border-zinc-600 dark:bg-zinc-900 dark:shadow-black/40"
+            >
+              <p className="truncate px-3 py-2 text-[11px] text-zinc-500 dark:text-zinc-400" title={user?.email ?? ''}>
+                {user?.email ?? 'Signed in'}
+              </p>
+              {shopAccessStatus === 'ready' && canManageBusinessSettings ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
+                  onClick={() => {
+                    setAccountOpen(false);
+                    navigate('/settings');
+                  }}
+                >
+                  <Settings size={16} className="shrink-0 text-zinc-500" />
+                  Shop settings
+                </button>
+              ) : null}
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
+                onClick={() => {
+                  setAccountOpen(false);
+                  void signOutApp();
+                }}
+              >
+                <LogOut size={16} className="shrink-0 text-zinc-500" />
+                Sign out
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </header>

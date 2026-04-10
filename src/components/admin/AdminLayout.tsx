@@ -1,7 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Building2, LogOut, Shield } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/store/auth';
+import { signOutApp } from '@/lib/signOutApp';
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
@@ -10,11 +9,9 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 export default function AdminLayout() {
   const navigate = useNavigate();
-  const { signOut } = useAuthStore();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    signOut();
+    await signOutApp();
     navigate('/admin/login', { replace: true });
   };
 

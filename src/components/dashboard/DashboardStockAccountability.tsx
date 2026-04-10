@@ -18,7 +18,7 @@ import {
   modalSheetPanelMd,
 } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
-import { useAuthStore } from '@/store/auth';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import type { InventoryItem, MissingResolution } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -26,8 +26,8 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 export function DashboardStockAccountability() {
   const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
-  const profileQ = useBusinessProfileQuery(user?.id);
+  const { shopOwnerId } = useShopAccess();
+  const profileQ = useBusinessProfileQuery(shopOwnerId ?? undefined);
   const { session: todaySession, isLoading: todayLoading } = useTodayStockSessionState();
   const { session: priorOpen, isLoading: priorLoading } = usePriorOpenStockSessionState();
   const missingItems = useMissingSerializedItems();

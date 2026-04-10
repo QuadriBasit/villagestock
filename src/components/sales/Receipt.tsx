@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, type CSSProperties, type ReactNode } from 'react';
 import { isAppleDevice } from '@/types';
 import type { AppleICloudStatus, SalesRecord, ShopProfile } from '@/types';
 import { formatCurrency } from '@/lib/utils';
@@ -9,6 +9,16 @@ const PAYMENT_LABELS: Record<string, string> = {
   pos: 'POS / Card',
 };
 
+/** Hex/rgb only — html2canvas cannot parse Tailwind v4 `oklch()` from semantic utilities. */
+const RC = {
+  white: '#ffffff',
+  primary: '#6c5ce7',
+  dark: '#0f172a',
+  muted: '#6b7280',
+  border: '#e5e7eb',
+  white70: 'rgba(255, 255, 255, 0.8)',
+} as const;
+
 interface ReceiptProps {
   sale: SalesRecord;
   shop: ShopProfile;
@@ -18,41 +28,87 @@ interface ReceiptProps {
 const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ sale, shop }, ref) => {
   const saleDate = new Date(sale.sold_at);
   const dateStr = saleDate.toLocaleDateString('en-NG', {
-    weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   });
   const timeStr = saleDate.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
   const showAppleDetails = isAppleDevice(sale.item_brand, sale.item_category) && sale.device_details;
+
+  const sectionDivider: CSSProperties = {
+    borderBottom: `1px dashed ${RC.border}`,
+    paddingLeft: 24,
+    paddingRight: 24,
+  };
 
   return (
     <div
       ref={ref}
       id="vs-receipt"
-      style={{ fontFamily: "'Inter', sans-serif", backgroundColor: '#ffffff' }}
-      className="w-full max-w-[360px] mx-auto bg-white text-dark"
+      style={{
+        fontFamily: "'Inter', ui-sans-serif, sans-serif",
+        backgroundColor: RC.white,
+        color: RC.dark,
+        width: '100%',
+        maxWidth: 360,
+        marginLeft: 'auto',
+        marginRight: 'auto',
+      }}
     >
       {/* Header band */}
-      <div className="bg-primary px-6 py-5 text-white text-center">
+      <div
+        style={{
+          backgroundColor: RC.primary,
+          color: RC.white,
+          padding: '20px 24px',
+          textAlign: 'center',
+        }}
+      >
         {shop.logo_data_url && (
           <img
             src={shop.logo_data_url}
-            alt="Shop logo"
-            className="w-14 h-14 rounded-xl object-cover mx-auto mb-2 border-2 border-white/30"
+            alt=""
+            width={56}
+            height={56}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 12,
+              objectFit: 'cover',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              marginBottom: 8,
+              border: '2px solid rgba(255, 255, 255, 0.3)',
+              display: 'block',
+            }}
           />
         )}
-        <h1 className="font-heading font-bold text-lg leading-tight">
+        <h1 style={{ fontWeight: 700, fontSize: '1.125rem', lineHeight: 1.25, margin: 0 }}>
           {shop.shop_name || 'VillageStock Shop'}
         </h1>
         {shop.address && (
-          <p className="text-xs opacity-80 mt-0.5">{shop.address}</p>
+          <p style={{ fontSize: 12, color: RC.white70, marginTop: 4, marginBottom: 0 }}>{shop.address}</p>
         )}
         {shop.phone && (
-          <p className="text-xs opacity-80">{shop.phone}</p>
+          <p style={{ fontSize: 12, color: RC.white70, marginTop: 2, marginBottom: 0 }}>{shop.phone}</p>
         )}
       </div>
 
       {showAppleDetails && (
-        <div className="px-6 py-4 space-y-2 border-b border-dashed border-gray-200">
-          <p className="text-[10px] text-muted uppercase tracking-widest font-medium mb-2">Apple Details</p>
+        <div style={{ ...sectionDivider, paddingTop: 16, paddingBottom: 16 }}>
+          <p
+            style={{
+              fontSize: 10,
+              color: RC.muted,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              fontWeight: 500,
+              marginBottom: 8,
+            }}
+          >
+            Apple Details
+          </p>
           {'battery_health' in sale.device_details! && sale.device_details.battery_health != null && (
             <Row label="Battery Health" value={`${sale.device_details.battery_health}%`} />
           )}
@@ -93,20 +149,51 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ sale, shop }, ref) =
       )}
 
       {/* Receipt label + number */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-dashed border-gray-200">
+      <div
+        style={{
+          ...sectionDivider,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingTop: 12,
+          paddingBottom: 12,
+        }}
+      >
         <div>
-          <p className="text-[10px] text-muted uppercase tracking-widest font-medium">{sale.payment_status === 'credit' ? 'Credit Sale' : 'Sales Receipt'}</p>
-          <p className="font-heading font-bold text-dark text-sm mt-0.5">{sale.receipt_number}</p>
+          <p
+            style={{
+              fontSize: 10,
+              color: RC.muted,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              fontWeight: 500,
+              margin: 0,
+            }}
+          >
+            {sale.payment_status === 'credit' ? 'Credit Sale' : 'Sales Receipt'}
+          </p>
+          <p style={{ fontWeight: 700, fontSize: 14, marginTop: 4, marginBottom: 0, color: RC.dark }}>
+            {sale.receipt_number}
+          </p>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-muted">{dateStr}</p>
-          <p className="text-xs text-muted">{timeStr}</p>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: 12, color: RC.muted, margin: 0 }}>{dateStr}</p>
+          <p style={{ fontSize: 12, color: RC.muted, margin: 0 }}>{timeStr}</p>
         </div>
       </div>
 
       {/* Item details */}
-      <div className="px-6 py-4 space-y-2 border-b border-dashed border-gray-200">
-        <p className="text-[10px] text-muted uppercase tracking-widest font-medium mb-2">
+      <div style={{ ...sectionDivider, paddingTop: 16, paddingBottom: 16 }}>
+        <p
+          style={{
+            fontSize: 10,
+            color: RC.muted,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            fontWeight: 500,
+            marginBottom: 8,
+          }}
+        >
           {sale.sale_type === 'swap' ? 'Swap Details' : 'Item Sold'}
         </p>
 
@@ -117,17 +204,21 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ sale, shop }, ref) =
               value={`${`${sale.trade_in_item_brand ?? ''} ${sale.trade_in_item_name ?? ''}`.trim()}`}
               bold
             />
+            <Row label="Purchased" value={`${sale.item_brand} ${sale.item_name}`} />
             <Row
-              label="Purchased"
-              value={`${sale.item_brand} ${sale.item_name}`}
+              label="Amount Paid"
+              value={formatCurrency(sale.amount_paid ?? sale.balance_paid ?? sale.sale_price)}
+              bold
             />
-            <Row label="Amount Paid" value={formatCurrency(sale.amount_paid ?? sale.balance_paid ?? sale.sale_price)} bold />
           </>
         ) : (
           <>
             <Row label="Item" value={sale.item_name} bold />
             <Row label="Brand" value={sale.item_brand} />
-            <Row label="Category" value={<span className="capitalize">{sale.item_category}</span>} />
+            <Row
+              label="Category"
+              value={<span style={{ textTransform: 'capitalize' }}>{sale.item_category}</span>}
+            />
             {sale.serial_number && <Row label="Serial No." value={sale.serial_number} mono />}
             {sale.imei && <Row label="IMEI" value={sale.imei} mono />}
             {sale.quantity_sold > 1 && <Row label="Qty" value={String(sale.quantity_sold)} />}
@@ -136,16 +227,31 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ sale, shop }, ref) =
       </div>
 
       {/* Payment details */}
-      <div className="px-6 py-4 space-y-2 border-b border-dashed border-gray-200">
-        <p className="text-[10px] text-muted uppercase tracking-widest font-medium mb-2">Payment</p>
+      <div style={{ ...sectionDivider, paddingTop: 16, paddingBottom: 16 }}>
+        <p
+          style={{
+            fontSize: 10,
+            color: RC.muted,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            fontWeight: 500,
+            marginBottom: 8,
+          }}
+        >
+          Payment
+        </p>
 
         <Row label="Payment Status" value={sale.payment_status === 'credit' ? 'Credit' : 'Paid'} />
-        {sale.payment_method && <Row label="Payment" value={PAYMENT_LABELS[sale.payment_method] ?? sale.payment_method} />}
+        {sale.payment_method && (
+          <Row label="Payment" value={PAYMENT_LABELS[sale.payment_method] ?? sale.payment_method} />
+        )}
         {sale.payment_status === 'credit' && (
           <>
             <Row label="Amount Paid" value={formatCurrency(sale.amount_paid ?? 0)} />
             <Row label="Balance Owed" value={formatCurrency(sale.balance_owed ?? 0)} />
-            {sale.due_date && <Row label="Due Date" value={new Date(sale.due_date).toLocaleDateString('en-NG')} />}
+            {sale.due_date && (
+              <Row label="Due Date" value={new Date(sale.due_date).toLocaleDateString('en-NG')} />
+            )}
           </>
         )}
         {sale.customer_name && <Row label="Customer" value={sale.customer_name} />}
@@ -153,21 +259,36 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ sale, shop }, ref) =
       </div>
 
       {/* Amount */}
-      <div className="px-6 py-4 border-b border-dashed border-gray-200 space-y-2">
-        <p className="text-[10px] text-muted uppercase tracking-widest font-medium mb-2">Amount</p>
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-dark">{sale.payment_status === 'credit' ? 'Amount Paid' : 'Amount'}</span>
-          <span className="font-heading font-bold text-xl text-primary">
+      <div style={{ ...sectionDivider, paddingTop: 16, paddingBottom: 16 }}>
+        <p
+          style={{
+            fontSize: 10,
+            color: RC.muted,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            fontWeight: 500,
+            marginBottom: 8,
+          }}
+        >
+          Amount
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 14, color: RC.dark }}>
+            {sale.payment_status === 'credit' ? 'Amount Paid' : 'Amount'}
+          </span>
+          <span style={{ fontWeight: 700, fontSize: '1.25rem', color: RC.primary }}>
             {formatCurrency(sale.payment_status === 'credit' ? (sale.amount_paid ?? 0) : sale.sale_price)}
           </span>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-5 text-center space-y-1">
-        <p className="text-sm font-heading font-semibold text-dark">Thank you for your purchase!</p>
-        <p className="text-xs text-muted">Goods sold are not returnable.</p>
-        <p className="text-[10px] text-muted mt-3 opacity-50">Powered by VillageStock</p>
+      <div style={{ padding: '20px 24px', textAlign: 'center' }}>
+        <p style={{ fontSize: 14, fontWeight: 600, color: RC.dark, margin: 0 }}>Thank you for your purchase!</p>
+        <p style={{ fontSize: 12, color: RC.muted, marginTop: 4, marginBottom: 0 }}>Goods sold are not returnable.</p>
+        <p style={{ fontSize: 10, color: RC.muted, marginTop: 12, marginBottom: 0, opacity: 0.5 }}>
+          Powered by VillageStock
+        </p>
       </div>
     </div>
   );
@@ -176,7 +297,6 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ sale, shop }, ref) =
 Receipt.displayName = 'Receipt';
 export default Receipt;
 
-// ─── Utility row ─────────────────────────────────────────────────────────────
 function Row({
   label,
   value,
@@ -184,17 +304,29 @@ function Row({
   mono,
 }: {
   label: string;
-  value: React.ReactNode;
+  value: ReactNode;
   bold?: boolean;
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <span className="text-xs text-muted shrink-0">{label}</span>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 12,
+        marginBottom: 6,
+      }}
+    >
+      <span style={{ fontSize: 12, color: RC.muted, flexShrink: 0 }}>{label}</span>
       <span
-        className={`text-xs text-right ${bold ? 'font-semibold text-dark' : 'text-dark'} ${
-          mono ? 'font-mono' : ''
-        }`}
+        style={{
+          fontSize: 12,
+          textAlign: 'right',
+          color: RC.dark,
+          fontWeight: bold ? 600 : 400,
+          fontFamily: mono ? 'ui-monospace, monospace' : undefined,
+        }}
       >
         {value}
       </span>
@@ -211,12 +343,19 @@ function readableValue(value: string) {
 
 function icloudStatusLabel(status: AppleICloudStatus) {
   switch (status) {
-    case 'clean': return 'Clean';
-    case 'ibm': return 'IBM';
-    case 'idm': return 'IDM';
-    case 'icm': return 'ICM';
-    case 'icloud_locked': return 'iCloud Locked';
-    case 'find_my_on': return 'Find My On';
-    case 'find_my_off': return 'Find My Off';
+    case 'clean':
+      return 'Clean';
+    case 'ibm':
+      return 'IBM';
+    case 'idm':
+      return 'IDM';
+    case 'icm':
+      return 'ICM';
+    case 'icloud_locked':
+      return 'iCloud Locked';
+    case 'find_my_on':
+      return 'Find My On';
+    case 'find_my_off':
+      return 'Find My Off';
   }
 }

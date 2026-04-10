@@ -1,8 +1,10 @@
 import { useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { setSetting, db } from '@/lib/db';
-import { queueSync } from '@/lib/sync';
+import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { useAuthStore } from '@/store/auth';
+import { useShopAccess } from '@/context/ShopAccessContext';
+import { logShopAudit } from '@/lib/audit';
 import type { ShopProfile, BusinessProfile } from '@/types';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { TRIAL_PLACEHOLDER } from '@/lib/trial';
@@ -18,7 +20,9 @@ const DEFAULT_PROFILE: ShopProfile = {
 
 export function useShopProfile() {
   const user = useAuthStore(s => s.user);
-  const bpQuery = useBusinessProfileQuery(user?.id);
+  const { shopOwnerId, actorUserId } = useShopAccess();
+  const businessId = shopOwnerId ?? user?.id;
+  const bpQuery = useBusinessProfileQuery(businessId);
 
   const legacySetting = useLiveQuery(
     () => db.settings.get(SETTINGS_KEY),
@@ -42,11 +46,11 @@ export function useShopProfile() {
     async (updated: ShopProfile) => {
       await setSetting(SETTINGS_KEY, updated);
 
-      if (user) {
-        const existing = await db.business_profiles.get(user.id);
+      if (user && businessId) {
+        const existing = await db.business_profiles.get(businessId);
         const now = new Date().toISOString();
         const next: BusinessProfile = {
-          id: user.id,
+          id: businessId,
           shop_name: updated.shop_name,
           owner_name: existing?.owner_name ?? '',
           phone: updated.phone,
@@ -66,10 +70,25 @@ export function useShopProfile() {
         if (existing) {
           await db.business_profiles.put(next);
           await queueSync('business_profiles', 'update', next as unknown as Record<string, unknown>);
+          await flushSyncQueue();
+          if (actorUserId && shopOwnerId) {
+            void logShopAudit({
+              businessId: shopOwnerId,
+              actorUserId,
+              action: 'shop.profile_updated',
+              entityType: 'business_profile',
+              entityId: businessId,
+              metadata: {
+                shop_name: updated.shop_name,
+                address: updated.address,
+                phone: updated.phone,
+              },
+            });
+          }
         }
       }
     },
-    [user]
+    [user, businessId, actorUserId, shopOwnerId]
   );
 
   return { profile, isLoading, saveProfile };

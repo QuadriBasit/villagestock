@@ -125,6 +125,13 @@ body {
   animation: vs-bg-mesh 22s ease-in-out infinite;
 }
 
+/* Semantic tokens: `text-dark` / `bg-surface` / `border-border` stay readable on navy backgrounds */
+.dark {
+  --color-dark: #f4f4f5;
+  --color-surface: rgb(30 41 59 / 0.45);
+  --color-border: rgb(63 63 70 / 0.55);
+}
+
 .dark body {
   background-color: #0f172a;
   background-image:

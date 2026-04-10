@@ -1,5 +1,6 @@
 import {useNavigate} from 'react-router-dom';
 import {useAuthStore} from '@/store/auth';
+import {useShopAccess} from '@/context/ShopAccessContext';
 import {useBusinessProfile} from '@/hooks/useBusinessProfile';
 import {getGreetingFirstName} from '@/lib/userDisplay';
 import {useStockSummary} from '@/hooks/useInventory';
@@ -93,6 +94,7 @@ function MetricTile({
 
 export default function DashboardPage() {
   const {user} = useAuthStore();
+  const {canViewProfit, canAccessFinancialNav} = useShopAccess();
   const {profile: businessProfile} = useBusinessProfile();
   const {summary, isLoading} = useStockSummary();
   const {summary: todaySales} = useTodaySalesSummary();
@@ -287,7 +289,7 @@ export default function DashboardPage() {
           <span className='label-caps text-teal-dark'>Today&apos;s desk</span>
           <ShoppingCart size={18} className='text-teal-dark opacity-80' />
         </div>
-        <div className='grid grid-cols-3 gap-3 pl-4 text-center sm:text-left'>
+        <div className={`grid gap-3 pl-4 text-center sm:text-left ${canViewProfit ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <div>
             <p className='text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50'>
               {todaySales.count}
@@ -304,14 +306,16 @@ export default function DashboardPage() {
               Revenue
             </p>
           </div>
-          <div className='min-w-0'>
-            <p className='truncate text-xl font-bold tabular-nums text-teal-dark sm:text-2xl dark:text-teal-300'>
-              {formatCurrency(todaySales.profit)}
-            </p>
-            <p className='mt-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400'>
-              Profit
-            </p>
-          </div>
+          {canViewProfit && (
+            <div className='min-w-0'>
+              <p className='truncate text-xl font-bold tabular-nums text-teal-dark sm:text-2xl dark:text-teal-300'>
+                {formatCurrency(todaySales.profit)}
+              </p>
+              <p className='mt-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400'>
+                Profit
+              </p>
+            </div>
+          )}
         </div>
       </button>
 
@@ -375,10 +379,10 @@ export default function DashboardPage() {
         </button>
       )}
 
-      {(creditsSummary.outstanding_amount > 0 ||
+      {((canAccessFinancialNav && creditsSummary.outstanding_amount > 0) ||
         repairsSummary.active_count > 0) && (
         <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
-          {creditsSummary.outstanding_amount > 0 && (
+          {canAccessFinancialNav && creditsSummary.outstanding_amount > 0 && (
             <button
               type='button'
               onClick={() => navigate('/credits')}
@@ -404,12 +408,12 @@ export default function DashboardPage() {
           {repairsSummary.active_count > 0 && (
             <button
               type='button'
-              onClick={() => navigate('/engineers')}
+              onClick={() => navigate('/repair')}
               className='ui-card-interactive p-4 text-left md:p-5'>
               <div className='flex items-start justify-between gap-3'>
                 <div>
                   <p className='label-caps text-zinc-500 dark:text-zinc-400'>
-                    With engineers
+                    Out for repair
                   </p>
                   <p className='mt-1.5 text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50'>
                     {repairsSummary.active_count}

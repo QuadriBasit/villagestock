@@ -11,8 +11,10 @@ import {
   Wrench,
   ChevronsLeft,
   ChevronsRight,
+  ClipboardList,
 } from 'lucide-react';
 import { useTrialAccess } from '@/hooks/useTrialAccess';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import { useSidebarLayout } from './SidebarLayoutContext';
 
 const MAIN_NAV = [
@@ -26,7 +28,8 @@ const MAIN_NAV = [
 const SECONDARY_NAV = [
   { to: '/alerts', icon: Bell, label: 'Alerts' },
   { to: '/reports', icon: BarChart3, label: 'Reports' },
-  { to: '/engineers', icon: Wrench, label: 'Engineers' },
+  { to: '/audit-log', icon: ClipboardList, label: 'Audit log' },
+  { to: '/repair', icon: Wrench, label: 'Repair' },
 ];
 
 const linkBase =
@@ -36,6 +39,14 @@ export default function DesktopSidebar() {
   const navigate = useNavigate();
   const { mutationsBlocked } = useTrialAccess();
   const { collapsed, toggleCollapsed } = useSidebarLayout();
+  const { canAccessFinancialNav } = useShopAccess();
+
+  const mainNavItems = MAIN_NAV.filter(
+    item => canAccessFinancialNav || (item.to !== '/credits' && item.to !== '/settings')
+  );
+  const secondaryNavItems = SECONDARY_NAV.filter(
+    item => canAccessFinancialNav || (item.to !== '/reports' && item.to !== '/audit-log')
+  );
 
   return (
     <aside
@@ -75,7 +86,7 @@ export default function DesktopSidebar() {
       </div>
 
       <nav className="relative flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden p-2.5">
-        {MAIN_NAV.map(({ to, icon: Icon, label }) => (
+        {mainNavItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
@@ -113,7 +124,7 @@ export default function DesktopSidebar() {
         ) : (
           <div className="pb-1 pt-2" aria-hidden />
         )}
-        {SECONDARY_NAV.map(({ to, icon: Icon, label }) => (
+        {secondaryNavItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}

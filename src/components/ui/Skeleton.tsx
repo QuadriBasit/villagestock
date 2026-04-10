@@ -2,7 +2,12 @@ import { cn } from '@/lib/utils';
 
 export function Skeleton({ className }: { className?: string }) {
   return (
-    <div className={cn('animate-pulse bg-slate-200/80 rounded-2xl', className)} />
+    <div
+      className={cn(
+        'animate-pulse rounded-2xl bg-slate-200/80 dark:bg-zinc-600/45',
+        className,
+      )}
+    />
   );
 }
 
@@ -39,7 +44,7 @@ export function InventorySkeletonList() {
       {[...Array(6)].map((_, i) => (
         <div
           key={i}
-          className="bg-white rounded-3xl px-4 py-3.5 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.1)] ring-1 ring-slate-900/[0.04] flex items-center gap-3"
+          className="ui-card flex items-center gap-3 rounded-3xl px-4 py-3.5"
         >
           <Skeleton className="w-11 h-11 rounded-2xl shrink-0" />
           <div className="flex-1 space-y-2">
@@ -64,7 +69,7 @@ export function AlertsSkeletonList() {
       {[...Array(4)].map((_, i) => (
         <div
           key={i}
-          className="bg-white rounded-3xl px-4 py-3.5 shadow-sm flex items-center gap-3 border-l-4 border-slate-200 ring-1 ring-slate-900/[0.04]"
+          className="ui-card flex items-center gap-3 rounded-3xl border-l-4 border-l-zinc-300 px-4 py-3.5 dark:border-l-zinc-600"
         >
           <Skeleton className="w-10 h-10 rounded-2xl shrink-0" />
           <div className="flex-1 space-y-2">

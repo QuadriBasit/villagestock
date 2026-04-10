@@ -135,7 +135,7 @@ export default function CloseStockPage() {
             <SummaryRow label="Opening count" value={summary.opening_count} />
             <SummaryRow label="Sold" value={summary.sold_count} />
             <SummaryRow label="Credit sales" value={summary.credit_sales_count} />
-            <SummaryRow label="Sent to engineer" value={summary.sent_engineer_count} />
+            <SummaryRow label="Out for repair" value={summary.sent_engineer_count} />
             <SummaryRow label="Returns received" value={summary.returns_received_count} />
             <SummaryRow label="New stock added" value={summary.new_stock_count} />
             <div className="border-t border-zinc-200 pt-2 dark:border-zinc-700">

@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense, useMemo } from 'react';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -142,6 +143,7 @@ export default function ItemForm({
   submitLabel = 'Save Item',
   onAddAnother,
 }: ItemFormProps) {
+  const { canViewProfit } = useShopAccess();
   const [scanTarget, setScanTarget] = useState<ScanTarget | null>(null);
   const [savedCount, setSavedCount] = useState(0);
   const deviceDetails = defaultValues?.deviceDetails;
@@ -200,7 +202,7 @@ export default function ItemForm({
       category: data.category as Category,
       brand: data.brand,
       price: data.price,
-      cost_price: data.cost_price,
+      cost_price: canViewProfit ? data.cost_price : undefined,
       description: data.description,
       barcode: data.barcode,
       serial_number: isSerialized ? data.serial_number : undefined,
@@ -241,7 +243,7 @@ export default function ItemForm({
       brand: data.brand,
       category: data.category,
       price: data.price,
-      cost_price: data.cost_price,
+      cost_price: canViewProfit ? data.cost_price : undefined,
       description: data.description,
       battery_health: data.battery_health,
       battery_cycle_count: data.battery_cycle_count,
@@ -391,7 +393,7 @@ export default function ItemForm({
         {/* Pricing */}
         <section className="space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4">
           <h3 className={sectionTitleClass}>Pricing</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid gap-3 ${canViewProfit ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <div>
               <Label className={labelClass} htmlFor="price">Selling Price (₦) *</Label>
               <Controller
@@ -412,27 +414,29 @@ export default function ItemForm({
               />
               {errors.price && <p className={errorClass}>{errors.price.message}</p>}
             </div>
-            <div>
-              <Label className={labelClass} htmlFor="cost_price">Cost Price (₦)</Label>
-              <Controller
-                name="cost_price"
-                control={control}
-                render={({ field }) => (
-                  <CurrencyInput
-                    id="cost_price"
-                    ref={field.ref}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    onBlur={field.onBlur}
-                    allowEmpty
-                    className={fieldClass}
-                    placeholder="Optional"
-                    aria-invalid={!!errors.cost_price}
-                  />
-                )}
-              />
-              {errors.cost_price && <p className={errorClass}>{errors.cost_price.message}</p>}
-            </div>
+            {canViewProfit && (
+              <div>
+                <Label className={labelClass} htmlFor="cost_price">Cost Price (₦)</Label>
+                <Controller
+                  name="cost_price"
+                  control={control}
+                  render={({ field }) => (
+                    <CurrencyInput
+                      id="cost_price"
+                      ref={field.ref}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      allowEmpty
+                      className={fieldClass}
+                      placeholder="Optional"
+                      aria-invalid={!!errors.cost_price}
+                    />
+                  )}
+                />
+                {errors.cost_price && <p className={errorClass}>{errors.cost_price.message}</p>}
+              </div>
+            )}
           </div>
         </section>
 

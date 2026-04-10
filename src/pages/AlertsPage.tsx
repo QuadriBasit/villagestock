@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { useAuthStore } from '@/store/auth';
 import { AlertTriangle, XCircle, Package, ChevronRight, Pencil } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { AlertsSkeletonList } from '@/components/ui/Skeleton';
 import type { InventoryItem } from '@/types';
 
@@ -54,10 +54,10 @@ export default function AlertsPage() {
     <div className="app-page py-5 md:py-8 space-y-5">
       {total === 0 ? (
         <div className="flex flex-col items-center py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-3">
-            <Package size={28} className="text-green-500" />
+          <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-950/45 flex items-center justify-center mb-3">
+            <Package size={28} className="text-green-500 dark:text-green-400" />
           </div>
-          <h2 className="font-heading font-semibold text-dark text-lg">All good!</h2>
+          <h2 className="font-heading font-semibold text-dark dark:text-zinc-100 text-lg">All good!</h2>
           <p className="text-muted text-sm mt-1">No stock alerts at the moment</p>
         </div>
       ) : (
@@ -125,7 +125,7 @@ function AlertSection({ title, count, icon, items, variant, onEdit }: AlertSecti
     <div>
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <h3 className="font-heading font-semibold text-dark text-sm">
+        <h3 className="font-heading font-semibold text-dark dark:text-zinc-100 text-sm">
           {title} ({count})
         </h3>
       </div>
@@ -148,29 +148,40 @@ function AlertCard({ item, variant, onEdit }: AlertCardProps) {
   const isSerialized = item.mode === 'serialized';
 
   const borderColor =
-    variant === 'error' ? 'border-red-500' :
-    variant === 'last_unit' ? 'border-orange-500' :
-    item.quantity < CRITICAL_FLOOR ? 'border-orange-500' : 'border-accent';
+    variant === 'error' ? 'border-l-red-500' :
+    variant === 'last_unit' ? 'border-l-orange-500' :
+    item.quantity < CRITICAL_FLOOR ? 'border-l-orange-500' : 'border-l-accent';
 
-  const iconBg = variant === 'error' ? 'bg-red-50' : 'bg-orange-50';
+  const iconBg =
+    variant === 'error' ? 'bg-red-50 dark:bg-red-950/45' : 'bg-orange-50 dark:bg-orange-950/40';
 
   const badge = (() => {
     if (variant === 'last_unit') {
-      return { text: 'Last unit in stock!', className: 'bg-orange-100 text-orange-700' };
+      return {
+        text: 'Last unit in stock!',
+        className: 'bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300',
+      };
     }
     if (variant === 'error') {
-      return { text: 'Out of stock', className: 'bg-red-100 text-red-600' };
+      return { text: 'Out of stock', className: 'bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400' };
     }
     const isCritical = item.quantity < CRITICAL_FLOOR;
     return {
       text: isCritical ? `Only ${item.quantity} left!` : `${item.quantity} left (min: ${item.low_stock_threshold})`,
-      className: isCritical ? 'bg-orange-100 text-orange-700' : 'bg-yellow-100 text-yellow-700',
+      className: isCritical
+        ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300'
+        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/45 dark:text-yellow-300',
     };
   })();
 
   return (
-    <div className={`bg-white rounded-xl px-4 py-3 shadow-sm flex items-center gap-3 border-l-4 ${borderColor}`}>
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
+    <div
+      className={cn(
+        'ui-card flex items-center gap-3 rounded-xl px-4 py-3 border-l-4',
+        borderColor,
+      )}
+    >
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border border-slate-100 dark:border-zinc-700/80 ${iconBg}`}>
         {variant === 'error'
           ? <XCircle size={20} className="text-red-500" />
           : <AlertTriangle size={20} className="text-orange-500" />
@@ -178,8 +189,8 @@ function AlertCard({ item, variant, onEdit }: AlertCardProps) {
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="font-medium text-dark text-sm truncate">{item.name}</div>
-        <div className="text-xs text-muted capitalize">
+        <div className="font-medium text-dark dark:text-zinc-100 text-sm truncate">{item.name}</div>
+        <div className="text-xs text-muted dark:text-zinc-400 capitalize">
           {item.brand} · {item.category}
           {isSerialized && item.serial_number ? ` · S/N ${item.serial_number}` : ''}
         </div>
@@ -193,7 +204,7 @@ function AlertCard({ item, variant, onEdit }: AlertCardProps) {
 
       <button
         onClick={onEdit}
-        className="flex items-center gap-1 text-primary text-xs font-medium shrink-0 hover:underline"
+        className="flex items-center gap-1 text-primary dark:text-primary-light text-xs font-medium shrink-0 hover:underline"
       >
         <Pencil size={12} /> Edit
         <ChevronRight size={14} />

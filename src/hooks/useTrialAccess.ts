@@ -1,10 +1,12 @@
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { useAuthStore } from '@/store/auth';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import { trialBannerState, showTrialEndedOverlay, trialBlocksMutations } from '@/lib/trial';
 
 export function useTrialAccess() {
   const user = useAuthStore(s => s.user);
-  const q = useBusinessProfileQuery(user?.id);
+  const { shopOwnerId } = useShopAccess();
+  const q = useBusinessProfileQuery(shopOwnerId ?? user?.id);
   const bp = q.status === 'ready' ? q.profile : undefined;
 
   const accountSuspended = !!bp?.account_disabled;

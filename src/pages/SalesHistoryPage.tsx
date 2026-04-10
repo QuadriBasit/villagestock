@@ -4,6 +4,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { ShoppingCart, TrendingUp, CreditCard, Banknote, Smartphone, Receipt as ReceiptIcon, RotateCcw, ArrowRightLeft } from 'lucide-react';
 import { AlertsSkeletonList } from '@/components/ui/Skeleton';
 import type { PaymentMethod, SalesRecord } from '@/types';
+import { useShopAccess } from '@/context/ShopAccessContext';
 
 const ReceiptModal = lazy(() => import('@/components/sales/ReceiptModal'));
 const ReturnForm = lazy(() => import('@/components/sales/ReturnForm'));
@@ -42,6 +43,7 @@ function friendlyDate(isoDate: string): string {
 }
 
 export default function SalesHistoryPage() {
+  const { canViewProfit } = useShopAccess();
   const { sales, isLoading } = useSalesHistory();
   const [receiptSale, setReceiptSale] = useState<SalesRecord | null>(null);
   const [returnSale, setReturnSale] = useState<SalesRecord | null>(null);
@@ -69,15 +71,17 @@ export default function SalesHistoryPage() {
   return (
     <div className="app-page py-5 md:py-8 space-y-5">
       {/* All-time summary banner */}
-      <div className="bg-linear-to-br from-teal to-teal-dark text-white rounded-2xl px-5 py-4 shadow-md flex gap-6">
+      <div className={`bg-linear-to-br from-teal to-teal-dark text-white rounded-2xl px-5 py-4 shadow-md flex gap-6 ${canViewProfit ? '' : 'items-center'}`}>
         <div>
           <div className="text-xs opacity-75 uppercase tracking-wider mb-0.5">Total Revenue</div>
           <div className="text-2xl font-heading font-bold">{formatCurrency(allRevenue)}</div>
         </div>
-        <div className="border-l border-white/20 pl-6">
-          <div className="text-xs opacity-75 uppercase tracking-wider mb-0.5">Total Profit</div>
-          <div className="text-2xl font-heading font-bold">{formatCurrency(allProfit)}</div>
-        </div>
+        {canViewProfit && (
+          <div className="border-l border-white/20 pl-6">
+            <div className="text-xs opacity-75 uppercase tracking-wider mb-0.5">Total Profit</div>
+            <div className="text-2xl font-heading font-bold">{formatCurrency(allProfit)}</div>
+          </div>
+        )}
         <TrendingUp size={20} className="ml-auto opacity-50 self-start mt-1" />
       </div>
 
@@ -98,11 +102,13 @@ export default function SalesHistoryPage() {
               </h3>
               <div className="text-right">
                 <div className="text-sm font-semibold text-dark dark:text-zinc-100">{formatCurrency(dayRevenue)}</div>
-                <div
-                  className={`text-xs font-medium ${dayProfit >= 0 ? 'text-teal dark:text-teal' : 'text-red-500 dark:text-red-400'}`}
-                >
-                  {dayProfit >= 0 ? '+' : ''}{formatCurrency(dayProfit)} profit
-                </div>
+                {canViewProfit && (
+                  <div
+                    className={`text-xs font-medium ${dayProfit >= 0 ? 'text-teal dark:text-teal' : 'text-red-500 dark:text-red-400'}`}
+                  >
+                    {dayProfit >= 0 ? '+' : ''}{formatCurrency(dayProfit)} profit
+                  </div>
+                )}
               </div>
             </div>
 
@@ -112,6 +118,7 @@ export default function SalesHistoryPage() {
                 <SaleCard
                   key={record.id}
                   record={record}
+                  canViewProfit={canViewProfit}
                   onViewReceipt={() => setReceiptSale(record)}
                   onReturn={() => setReturnSale(record)}
                 />
@@ -142,7 +149,17 @@ export default function SalesHistoryPage() {
   );
 }
 
-function SaleCard({ record, onViewReceipt, onReturn }: { record: SalesRecord; onViewReceipt: () => void; onReturn: () => void }) {
+function SaleCard({
+  record,
+  canViewProfit,
+  onViewReceipt,
+  onReturn,
+}: {
+  record: SalesRecord;
+  canViewProfit: boolean;
+  onViewReceipt: () => void;
+  onReturn: () => void;
+}) {
   const time = new Date(record.sold_at).toLocaleTimeString('en-NG', {
     hour: '2-digit',
     minute: '2-digit',
@@ -178,7 +195,7 @@ function SaleCard({ record, onViewReceipt, onReturn }: { record: SalesRecord; on
             </div>
             <div className="shrink-0 text-right">
               <div className="text-sm font-bold text-dark dark:text-zinc-100">{formatCurrency(record.sale_price)}</div>
-              {hasCostData && (
+              {canViewProfit && hasCostData && (
                 <div
                   className={`text-xs font-medium ${record.profit >= 0 ? 'text-teal dark:text-teal' : 'text-red-500 dark:text-red-400'}`}
                 >

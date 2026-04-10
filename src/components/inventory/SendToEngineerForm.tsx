@@ -18,7 +18,7 @@ import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 
 const schema = z.object({
-  engineer_name: z.string().min(1, 'Engineer name is required'),
+  engineer_name: z.string().min(1, 'Repair shop or technician name is required'),
   engineer_phone: z.string().optional(),
   issue_description: z.string().min(1, 'Issue description is required'),
   repair_cost: z.coerce.number().min(0).optional(),
@@ -95,7 +95,7 @@ export default function SendToEngineerForm({
         <div className={modalSheetHeader}>
           <div className="flex items-center gap-2">
             <Wrench size={18} className="text-accent" />
-            <h2 className="font-heading text-base font-bold text-zinc-900 dark:text-zinc-50">Send To Engineer</h2>
+            <h2 className="font-heading text-base font-bold text-zinc-900 dark:text-zinc-50">Send for repair</h2>
           </div>
           <button
             type="button"
@@ -126,7 +126,7 @@ export default function SendToEngineerForm({
           </section>
           <section className="space-y-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-900/5 dark:bg-zinc-800/50 dark:ring-white/10">
             <div>
-              <label className={labelClass} htmlFor="engineer_name">Engineer Name *</label>
+              <label className={labelClass} htmlFor="engineer_name">Repair shop / technician *</label>
               <input id="engineer_name" list="engineer-names" {...register('engineer_name')} className={fieldClass} />
               <datalist id="engineer-names">
                 {engineerNames.map(name => <option key={name} value={name} />)}
@@ -134,7 +134,7 @@ export default function SendToEngineerForm({
               {errors.engineer_name && <p className="text-red-500 text-xs mt-1">{errors.engineer_name.message}</p>}
             </div>
             <div>
-              <label className={labelClass} htmlFor="engineer_phone">Engineer Phone</label>
+              <label className={labelClass} htmlFor="engineer_phone">Phone (optional)</label>
               <input id="engineer_phone" {...register('engineer_phone')} className={fieldClass} />
             </div>
             <div>

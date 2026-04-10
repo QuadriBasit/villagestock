@@ -1,8 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db, generateReceiptNumber } from '@/lib/db';
+import { flushSyncQueue } from '@/lib/sync';
 import { assertTradingAllowedForStockPolicy } from '@/lib/stockTradingGate';
 import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
+import { useShopAccess } from '@/context/ShopAccessContext';
+import { logShopAudit } from '@/lib/audit';
 import type { DeviceCondition, InventoryItem, PaymentMethod, PaymentStatus, SalesRecord, SwapRecord } from '@/types';
 
 interface ProcessSwapInput {
@@ -27,15 +30,16 @@ interface ProcessSwapInput {
 
 export function useSwapActions() {
   const { user } = useAuthStore();
+  const { shopOwnerId, actorUserId } = useShopAccess();
 
   async function processSwap(input: ProcessSwapInput): Promise<SalesRecord> {
-    if (!user) throw new Error('Not authenticated');
-    await assertTrialAllowsMutations(user.id);
-    await assertTradingAllowedForStockPolicy(user.id);
+    if (!user || !shopOwnerId) throw new Error('Not authenticated');
+    await assertTrialAllowsMutations(shopOwnerId);
+    await assertTradingAllowedForStockPolicy(shopOwnerId);
     if (input.outgoingItem.mode !== 'serialized') throw new Error('Swaps only apply to serialized items');
     if (input.outgoingItem.status !== 'in_stock') throw new Error('Selected item is not in stock');
 
-    const receiptNumber = await generateReceiptNumber(user.id);
+    const receiptNumber = await generateReceiptNumber(shopOwnerId);
     const saleId = uuidv4();
     const incomingItemId = uuidv4();
     const swapId = uuidv4();
@@ -44,7 +48,7 @@ export function useSwapActions() {
 
     const incomingItem: InventoryItem = {
       id: incomingItemId,
-      user_id: user.id,
+      user_id: shopOwnerId,
       name: input.incoming.model,
       category: input.outgoingItem.category,
       brand: input.incoming.brand,
@@ -66,7 +70,7 @@ export function useSwapActions() {
 
     const saleRecord: SalesRecord = {
       id: saleId,
-      user_id: user.id,
+      user_id: shopOwnerId,
       item_id: input.outgoingItem.id,
       sale_type: 'swap',
       item_name: input.outgoingItem.name,
@@ -103,7 +107,7 @@ export function useSwapActions() {
       id: swapId,
       outgoing_item_id: input.outgoingItem.id,
       incoming_item_id: incomingItemId,
-      user_id: user.id,
+      user_id: shopOwnerId,
       sale_id: saleId,
       sale_price: input.sale_price,
       trade_in_value: input.incoming.trade_in_value,
@@ -173,6 +177,23 @@ export function useSwapActions() {
       }
     );
 
+    await flushSyncQueue();
+    if (actorUserId) {
+      void logShopAudit({
+        businessId: shopOwnerId,
+        actorUserId,
+        action: 'swap.completed',
+        entityType: 'swap_record',
+        entityId: swapId,
+        metadata: {
+          sale_id: saleId,
+          receipt_number: receiptNumber,
+          outgoing_item_id: input.outgoingItem.id,
+          incoming_item_id: incomingItemId,
+          sale_price: input.sale_price,
+        },
+      });
+    }
     return saleRecord;
   }
 

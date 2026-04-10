@@ -1,4 +1,5 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense, useRef, useEffect } from 'react';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -80,11 +81,18 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
   const { recordSale } = useSalesActions();
   const { createCreditRecord } = useCreditActions();
   const tradingGate = useTradingGateState();
+  const { canViewProfit } = useShopAccess();
   const [completedSale, setCompletedSale] = useState<SalesRecord | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const submitErrorRef = useRef<HTMLParagraphElement>(null);
 
   const isSerialized = item.mode === 'serialized';
+
+  useEffect(() => {
+    if (!submitError) return;
+    submitErrorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [submitError]);
 
   const {
     register,
@@ -119,8 +127,14 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
 
   const onSubmit = async (data: FormData) => {
     setSubmitError(null);
-    if (data.payment_status === 'credit' && (!data.customer_name || !data.customer_phone || !data.due_date)) {
-      return;
+    if (data.payment_status === 'credit') {
+      const name = (data.customer_name ?? '').trim();
+      const phone = (data.customer_phone ?? '').trim();
+      const due = (data.due_date ?? '').trim();
+      if (!name || !phone || !due) {
+        setSubmitError('For credit sales, fill in customer name, phone, and due date.');
+        return;
+      }
     }
     try {
     const sale = await recordSale({
@@ -206,7 +220,11 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
             </p>
           )}
           {submitError && (
-            <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+            <p
+              ref={submitErrorRef}
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200"
+            >
               {submitError}
             </p>
           )}
@@ -268,7 +286,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
               {errors.sale_price && (
                 <p className="text-red-500 text-xs mt-1">{errors.sale_price.message}</p>
               )}
-              {hasProfit && (
+              {canViewProfit && hasProfit && (
                 <p className={`text-xs mt-1 font-medium ${unitProfit >= 0 ? 'text-teal' : 'text-red-500'}`}>
                   {unitProfit >= 0 ? 'Profit' : 'Loss'}: {formatCurrency(Math.abs(unitProfit))}
                   {!isSerialized && qtySold > 1 ? ` × ${qtySold} = ${formatCurrency(Math.abs(unitProfit) * qtySold)}` : ''}
@@ -467,6 +485,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
             </div>
           ) : (
             <button
+              type="button"
               onClick={handleSubmit(onSubmit)}
               disabled={isSubmitting || !canSell}
               className="w-full bg-teal text-white rounded-xl py-3.5 font-heading font-semibold text-sm hover:bg-teal-dark transition-colors disabled:opacity-60 flex items-center justify-center gap-2"

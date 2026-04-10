@@ -8,7 +8,6 @@ import { supabase } from '@/lib/supabase';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { Package, Loader2, Store, User, MapPin, Mail, Phone, ArrowRight, Sparkles, Lock } from 'lucide-react';
 import FeatureTour from '@/components/onboarding/FeatureTour';
-import { normalizeNgPhone, isLikelyNgMobile } from '@/lib/phone';
 
 const step2Schema = z
   .object({
@@ -86,20 +85,12 @@ export default function OnboardingPage() {
   }
 
   const fieldClass =
-    'w-full border border-border rounded-lg bg-white px-3 py-2.5 text-sm text-dark placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition';
+    'w-full border border-border rounded-lg bg-white px-3 py-2.5 text-sm text-dark placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition dark:bg-zinc-900/90 dark:border-zinc-600 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-primary dark:focus:ring-primary/35';
 
   const onStep2 = async (data: Step2Data) => {
     setSubmitError('');
-    let phone = user.phone ?? profile?.phone ?? '';
     const rawPhone = legacyPhone.trim();
-    if (rawPhone) {
-      const normalized = normalizeNgPhone(rawPhone);
-      if (!isLikelyNgMobile(normalized)) {
-        setSubmitError('Enter a valid Nigerian mobile number, or leave phone blank.');
-        return;
-      }
-      phone = normalized;
-    }
+    const phone = rawPhone || user.phone || profile?.phone || '';
     try {
       const { error: authErr } = await supabase.auth.updateUser({
         email: data.email.trim(),
@@ -154,22 +145,22 @@ export default function OnboardingPage() {
           <p className="text-xs font-medium text-muted uppercase tracking-wide">
             Step {step === 2 ? '2' : '3'} of 3
           </p>
-          <h1 className="text-xl font-heading font-bold text-dark mt-1 text-center">
+          <h1 className="mt-1 text-center text-xl font-heading font-bold text-dark dark:text-zinc-100">
             {step === 2 ? 'Tell us about your shop' : 'You are all set'}
           </h1>
           {step === 2 && (
-            <p className="text-xs text-muted text-center mt-2 max-w-sm mx-auto">
-              This step saves your shop details and attaches this email/password to your <strong>login</strong> (Supabase
-              Auth). That login is what sign-in and password reset use — not the shop table by itself. Optional shop phone
-              below is for receipts.
+            <p className="mx-auto mt-2 max-w-sm text-center text-xs text-muted dark:text-zinc-400">
+              This step saves your shop details and attaches this email/password to your{' '}
+              <strong className="dark:text-zinc-300">login</strong> (Supabase Auth). That login is what sign-in and password
+              reset use — not the shop table by itself. Optional shop phone below is for receipts.
             </p>
           )}
         </div>
 
         {step === 2 ? (
-          <div className="bg-white rounded-2xl shadow-md p-6 space-y-4">
+          <div className="space-y-4 rounded-2xl border border-transparent bg-white p-6 shadow-md dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:shadow-black/20">
             <div>
-              <label className="block text-sm font-medium text-dark mb-1" htmlFor="phone-ro">
+                <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200" htmlFor="phone-ro">
                 <Phone size={13} className="inline mr-1 text-muted" />
                 {needsManualPhone ? 'Shop phone (optional)' : 'Phone (from account)'}
               </label>
@@ -179,7 +170,7 @@ export default function OnboardingPage() {
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
-                  placeholder="0803 123 4567 — optional"
+                  placeholder="Shop contact number (optional)"
                   value={legacyPhone}
                   onChange={e => setLegacyPhone(e.target.value)}
                   className={fieldClass}
@@ -189,30 +180,34 @@ export default function OnboardingPage() {
                   id="phone-ro"
                   readOnly
                   value={phoneDisplay}
-                  className={`${fieldClass} bg-surface text-muted cursor-not-allowed`}
+                  className={`${fieldClass} cursor-not-allowed bg-surface text-muted dark:bg-zinc-800/80 dark:text-zinc-400`}
                 />
               )}
             </div>
 
             <form onSubmit={handleSubmit(onStep2)} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-dark mb-1" htmlFor="shop_name">
+                <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200" htmlFor="shop_name">
                   <Store size={13} className="inline mr-1 text-muted" />
                   Shop name *
                 </label>
                 <input id="shop_name" {...register('shop_name')} placeholder="e.g. Basit Electronics" className={fieldClass} />
-                {errors.shop_name && <p className="text-red-500 text-xs mt-1">{errors.shop_name.message}</p>}
+                {errors.shop_name && (
+                  <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.shop_name.message}</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark mb-1" htmlFor="owner_name">
+                <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200" htmlFor="owner_name">
                   <User size={13} className="inline mr-1 text-muted" />
                   Owner name *
                 </label>
                 <input id="owner_name" {...register('owner_name')} placeholder="Your full name" className={fieldClass} />
-                {errors.owner_name && <p className="text-red-500 text-xs mt-1">{errors.owner_name.message}</p>}
+                {errors.owner_name && (
+                  <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.owner_name.message}</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark mb-1" htmlFor="address">
+                <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200" htmlFor="address">
                   <MapPin size={13} className="inline mr-1 text-muted" />
                   Shop address *
                 </label>
@@ -222,18 +217,22 @@ export default function OnboardingPage() {
                   placeholder="e.g. Shop 14, Computer Village, Ikeja"
                   className={fieldClass}
                 />
-                {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
+                {errors.address && (
+                  <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.address.message}</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark mb-1" htmlFor="email">
+                <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200" htmlFor="email">
                   <Mail size={13} className="inline mr-1 text-muted" />
                   Login email *
                 </label>
                 <input id="email" type="email" autoComplete="email" {...register('email')} placeholder="you@example.com" className={fieldClass} />
-                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+                {errors.email && (
+                  <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.email.message}</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark mb-1" htmlFor="password">
+                <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200" htmlFor="password">
                   <Lock size={13} className="inline mr-1 text-muted" />
                   Password * (min 8 characters)
                 </label>
@@ -244,10 +243,12 @@ export default function OnboardingPage() {
                   {...register('password')}
                   className={fieldClass}
                 />
-                {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+                {errors.password && (
+                  <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.password.message}</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-dark mb-1" htmlFor="password_confirm">
+                <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200" htmlFor="password_confirm">
                   <Lock size={13} className="inline mr-1 text-muted" />
                   Confirm password *
                 </label>
@@ -259,12 +260,14 @@ export default function OnboardingPage() {
                   className={fieldClass}
                 />
                 {errors.password_confirm && (
-                  <p className="text-red-500 text-xs mt-1">{errors.password_confirm.message}</p>
+                  <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.password_confirm.message}</p>
                 )}
               </div>
 
               {submitError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600">{submitError}</div>
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
+                  {submitError}
+                </div>
               )}
 
               <button
@@ -280,22 +283,24 @@ export default function OnboardingPage() {
           </div>
         ) : (
           <div className="space-y-5">
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 text-center">
-              <Sparkles className="mx-auto text-amber-600 mb-2" size={28} />
-              <h2 className="font-heading font-bold text-lg text-dark">Start your 14-day free trial</h2>
-              <p className="text-sm text-muted mt-2">
+            <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-5 text-center dark:border-amber-700/45 dark:from-amber-950/70 dark:to-orange-950/50">
+              <Sparkles className="mx-auto mb-2 text-amber-600 dark:text-amber-400" size={28} />
+              <h2 className="font-heading text-lg font-bold text-dark dark:text-amber-50">Start your 14-day free trial</h2>
+              <p className="mt-2 text-sm text-muted dark:text-zinc-400">
                 When you continue, your trial begins with full access to inventory, sales, credits, repairs, and reports — no
                 usage caps for 14 days.
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-md p-5">
-              <h3 className="font-heading font-semibold text-dark mb-3 text-sm">Quick tour</h3>
+            <div className="rounded-2xl border border-transparent bg-white p-5 shadow-md dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:shadow-black/20">
+              <h3 className="mb-3 font-heading text-sm font-semibold text-dark dark:text-zinc-100">Quick tour</h3>
               <FeatureTour />
             </div>
 
             {submitError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600">{submitError}</div>
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
+                {submitError}
+              </div>
             )}
 
             <button

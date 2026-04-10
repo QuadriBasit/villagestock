@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { X, Share2, Download, Loader2 } from 'lucide-react';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { X, Share2, Download, Loader2, RefreshCw } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import Receipt from './Receipt';
@@ -21,12 +21,19 @@ interface ReceiptModalProps {
   onClose: () => void;
 }
 
+type CaptureReady = { blob: Blob; dataUrl: string; pdfHeightMm: number };
+type CaptureState =
+  | { status: 'loading' }
+  | { status: 'ready' } & CaptureReady
+  | { status: 'error'; message: string };
+
 export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
   const { profile } = useShopProfile();
   const receiptRef = useRef<HTMLDivElement>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
+  const [capture, setCapture] = useState<CaptureState>({ status: 'loading' });
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const captureImage = async (): Promise<Blob> => {
+  const runCapture = useCallback(async (): Promise<CaptureReady> => {
     if (!receiptRef.current) throw new Error('Receipt not mounted');
     const canvas = await html2canvas(receiptRef.current, {
       scale: 2,
@@ -34,110 +41,220 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
       backgroundColor: '#ffffff',
       logging: false,
     });
-    return new Promise(resolve =>
-      canvas.toBlob(blob => resolve(blob!), 'image/png', 1)
-    );
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Could not render receipt image'))), 'image/png', 1);
+    });
+    const dataUrl = canvas.toDataURL('image/png');
+    const pdfWidthMm = 80;
+    const pdfHeightMm = (canvas.height / canvas.width) * pdfWidthMm;
+    return { blob, dataUrl, pdfHeightMm };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCapture({ status: 'loading' });
+    setActionError(null);
+
+    const run = async () => {
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      try {
+        const { blob, dataUrl, pdfHeightMm } = await runCapture();
+        if (cancelled) return;
+        setCapture({
+          status: 'ready',
+          blob,
+          dataUrl,
+          pdfHeightMm,
+        });
+      } catch (e) {
+        if (cancelled) return;
+        setCapture({
+          status: 'error',
+          message: e instanceof Error ? e.message : 'Could not capture receipt',
+        });
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [sale.receipt_number, runCapture]);
+
+  /** Must run synchronously in the click handler (after prefetch) so the browser allows download. */
+  const triggerPngDownload = (blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `receipt-${sale.receipt_number}.png`;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
-  const handleShare = async () => {
-    setIsCapturing(true);
-    try {
-      const blob = await captureImage();
-      const file = new File([blob], `receipt-${sale.receipt_number}.png`, { type: 'image/png' });
+  const handleShare = () => {
+    setActionError(null);
+    if (capture.status !== 'ready') return;
+    const { blob } = capture;
 
-      if (navigator.share && navigator.canShare({ files: [file] })) {
-        await navigator.share({
+    try {
+      const file = new File([blob], `receipt-${sale.receipt_number}.png`, { type: 'image/png' });
+      let canShareFiles = false;
+      try {
+        canShareFiles = navigator.canShare?.({ files: [file] }) === true;
+      } catch {
+        canShareFiles = false;
+      }
+
+      if (canShareFiles) {
+        const sharePromise = navigator.share?.({
           title: `Receipt ${sale.receipt_number}`,
           text: `${profile.shop_name || 'VillageStock'} — ${sale.item_name}`,
           files: [file],
         });
-      } else {
-        // Fallback: download the image
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `receipt-${sale.receipt_number}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
+        if (sharePromise) {
+          void sharePromise.catch(err => {
+            if (err instanceof Error && err.name === 'AbortError') return;
+            try {
+              triggerPngDownload(blob);
+            } catch {
+              setActionError(err instanceof Error ? err.message : 'Share failed');
+            }
+          });
+        }
+        return;
       }
+
+      triggerPngDownload(blob);
     } catch (err) {
-      if (err instanceof Error && err.name !== 'AbortError') {
-        console.error('Share failed', err);
+      try {
+        triggerPngDownload(blob);
+      } catch {
+        setActionError(err instanceof Error ? err.message : 'Share failed');
       }
-    } finally {
-      setIsCapturing(false);
     }
   };
 
-  const handleDownloadPDF = async () => {
-    setIsCapturing(true);
+  /** jsPDF path stays synchronous in the click handler — avoids losing user activation after async work. */
+  const handleDownloadPDF = () => {
+    setActionError(null);
+    if (capture.status !== 'ready') return;
     try {
-      const blob = await captureImage();
-      const imgUrl = URL.createObjectURL(blob);
-      const img = new Image();
-      img.src = imgUrl;
-
-      await new Promise<void>(resolve => { img.onload = () => resolve(); });
-
-      const pdfWidth = 80; // 80mm receipt width
-      const pdfHeight = (img.naturalHeight / img.naturalWidth) * pdfWidth;
-
-      const pdf = new jsPDF({ unit: 'mm', format: [pdfWidth, pdfHeight] });
-      pdf.addImage(imgUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      const { dataUrl, pdfHeightMm } = capture;
+      const pdfWidthMm = 80;
+      const pdf = new jsPDF({ unit: 'mm', format: [pdfWidthMm, pdfHeightMm] });
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidthMm, pdfHeightMm);
       pdf.save(`receipt-${sale.receipt_number}.pdf`);
-      URL.revokeObjectURL(imgUrl);
-    } finally {
-      setIsCapturing(false);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Could not create PDF');
     }
   };
+
+  const handleRetryCapture = () => {
+    setCapture({ status: 'loading' });
+    setActionError(null);
+    void (async () => {
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      try {
+        const { blob, dataUrl, pdfHeightMm } = await runCapture();
+        setCapture({
+          status: 'ready',
+          blob,
+          dataUrl,
+          pdfHeightMm,
+        });
+      } catch (e) {
+        setCapture({
+          status: 'error',
+          message: e instanceof Error ? e.message : 'Could not capture receipt',
+        });
+      }
+    })();
+  };
+
+  const ready = capture.status === 'ready';
+  const busy = capture.status === 'loading';
 
   return (
     <ModalSheetPortal>
-    <div className={cn(modalSheetBackdrop, 'bg-black/60 dark:bg-black/70')} onClick={onClose}>
-      <div className={modalSheetPanelSm} onClick={e => e.stopPropagation()}>
-        <div className={modalSheetHandle}>
-          <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
-        </div>
+      <div className={cn(modalSheetBackdrop, 'bg-black/60 dark:bg-black/70')} onClick={onClose}>
+        <div className={modalSheetPanelSm} onClick={e => e.stopPropagation()}>
+          <div className={modalSheetHandle}>
+            <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+          </div>
 
-        <div className={modalSheetHeader}>
-          <h2 className="font-heading text-base font-bold text-zinc-900 dark:text-zinc-50">Receipt</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          >
-            <X size={18} />
-          </button>
-        </div>
+          <div className={modalSheetHeader}>
+            <h2 className="font-heading text-base font-bold text-zinc-900 dark:text-zinc-50">Receipt</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              <X size={18} />
+            </button>
+          </div>
 
-        <div className={`${modalSheetBodyScroll} bg-zinc-200/90 px-2 py-4 dark:bg-zinc-950/80`}>
-          <div className="overflow-hidden rounded-lg shadow-lg">
-            <Receipt ref={receiptRef} sale={sale} shop={profile} />
+          <div className={`${modalSheetBodyScroll} bg-zinc-200/90 px-2 py-4 dark:bg-zinc-950/80`}>
+            {capture.status === 'error' && (
+              <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
+                {capture.message}
+              </p>
+            )}
+            {actionError && (
+              <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+                {actionError}
+              </p>
+            )}
+            <div className="overflow-hidden rounded-lg shadow-lg">
+              <Receipt ref={receiptRef} sale={sale} shop={profile} />
+            </div>
+            {busy && (
+              <p className="mt-3 text-center text-xs text-zinc-500 dark:text-zinc-400">Preparing receipt for sharing…</p>
+            )}
+          </div>
+
+          <div className={`${modalSheetFooter} flex flex-col gap-2 sm:flex-row sm:gap-3`}>
+            {capture.status === 'error' ? (
+              <button
+                type="button"
+                onClick={handleRetryCapture}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white py-3 text-sm font-medium text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+              >
+                <RefreshCw size={16} />
+                Retry capture
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  disabled={!ready}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+                >
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
+                  Share
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadPDF}
+                  disabled={!ready}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-60"
+                >
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                  Download PDF
+                </button>
+              </>
+            )}
           </div>
         </div>
-
-        <div className={`${modalSheetFooter} flex gap-3`}>
-          <button
-            type="button"
-            onClick={handleShare}
-            disabled={isCapturing}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
-          >
-            {isCapturing ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
-            Share
-          </button>
-          <button
-            type="button"
-            onClick={handleDownloadPDF}
-            disabled={isCapturing}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-60"
-          >
-            {isCapturing ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            Download PDF
-          </button>
-        </div>
       </div>
-    </div>
     </ModalSheetPortal>
   );
 }

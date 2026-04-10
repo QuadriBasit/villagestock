@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { hasStockAccountabilityPlan, localSessionDateKey, tradingBlockedMessage } from '@/lib/stockSessionUtils';
 
-/** Enforced before sell / swap / send to engineer when shop is on Business plan. */
+/** Enforced before sell / swap / send for repair when shop is on Business plan. */
 export async function assertTradingAllowedForStockPolicy(userId: string): Promise<void> {
   const profile = await db.business_profiles.get(userId);
   if (!hasStockAccountabilityPlan(profile)) return;

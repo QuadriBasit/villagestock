@@ -1,9 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import { useCallback } from 'react';
 import { db } from '@/lib/db';
-import { queueSync } from '@/lib/sync';
+import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import type { InventoryItem, SerializedItemStatus, StockSession } from '@/types';
 import {
   buildSessionCloseSummary,
@@ -22,15 +23,16 @@ export class PriorDayStockOpenError extends Error {
 
 export function useStockSessionActions() {
   const user = useAuthStore((s) => s.user);
+  const { shopOwnerId, actorUserId } = useShopAccess();
 
   const openTodaySession = useCallback(async (): Promise<StockSession> => {
-    if (!user) throw new Error('Not authenticated');
-    await assertTrialAllowsMutations(user.id);
-    const profile = await db.business_profiles.get(user.id);
+    if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+    await assertTrialAllowsMutations(shopOwnerId);
+    const profile = await db.business_profiles.get(shopOwnerId);
     if (!hasStockAccountabilityPlan(profile)) throw new Error('Business plan required');
 
     const date = localSessionDateKey();
-    const todays = await db.stock_sessions.where('[user_id+date]').equals([user.id, date]).toArray();
+    const todays = await db.stock_sessions.where('[user_id+date]').equals([shopOwnerId, date]).toArray();
     if (todays.some((s) => s.status === 'open')) throw new Error('Stock is already open for today');
     if (todays.length > 0) {
       throw new Error("Today's stock session is already closed.");
@@ -38,7 +40,7 @@ export function useStockSessionActions() {
 
     const staleOpens = await db.stock_sessions
       .where('user_id')
-      .equals(user.id)
+      .equals(shopOwnerId)
       .filter((s) => s.status === 'open')
       .toArray();
     if (staleOpens.some((s) => s.date < date)) {
@@ -47,17 +49,17 @@ export function useStockSessionActions() {
 
     const inStock = await db.inventory_items
       .where('user_id')
-      .equals(user.id)
+      .equals(shopOwnerId)
       .filter((i) => !i.deleted && i.mode === 'serialized' && i.status === 'in_stock')
       .toArray();
 
     const now = new Date().toISOString();
     const session: StockSession = {
       id: uuidv4(),
-      user_id: user.id,
+      user_id: shopOwnerId,
       date,
       opened_at: now,
-      opened_by_user_id: user.id,
+      opened_by_user_id: actorUserId,
       opening_snapshot_ids: inStock.map((i) => i.id),
       expected_closing_ids: [],
       actual_closing_ids: [],
@@ -67,7 +69,7 @@ export function useStockSessionActions() {
       audit_log: [
         {
           at: now,
-          user_id: user.id,
+          user_id: actorUserId,
           action: 'opened',
           detail: `${inStock.length} serialized units in stock`,
         },
@@ -77,14 +79,14 @@ export function useStockSessionActions() {
 
     await db.stock_sessions.add(session);
     return session;
-  }, [user]);
+  }, [user, shopOwnerId, actorUserId]);
 
   const forceAbandonOpenSession = useCallback(
     async (sessionId: string, detail?: string): Promise<void> => {
-      if (!user) throw new Error('Not authenticated');
-      await assertTrialAllowsMutations(user.id);
+      if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+      await assertTrialAllowsMutations(shopOwnerId);
       const session = await db.stock_sessions.get(sessionId);
-      if (!session || session.user_id !== user.id || session.status !== 'open') {
+      if (!session || session.user_id !== shopOwnerId || session.status !== 'open') {
         throw new Error('Invalid session');
       }
       const now = new Date().toISOString();
@@ -92,7 +94,7 @@ export function useStockSessionActions() {
         ...session.audit_log,
         {
           at: now,
-          user_id: user.id,
+          user_id: actorUserId,
           action: 'skipped_abandoned' as const,
           detail: detail ?? 'Closed from prior day without reconciliation',
         },
@@ -100,25 +102,25 @@ export function useStockSessionActions() {
       await db.stock_sessions.update(sessionId, {
         status: 'closed_with_discrepancy',
         closed_at: now,
-        closed_by_user_id: user.id,
+        closed_by_user_id: actorUserId,
         notes: detail ?? session.notes,
         audit_log: audit,
         sync_status: 'pending',
       });
     },
-    [user]
+    [user, shopOwnerId, actorUserId]
   );
 
   const loadCloseState = useCallback(
     async (sessionId: string) => {
-      if (!user) throw new Error('Not authenticated');
+      if (!user || !shopOwnerId) throw new Error('Not authenticated');
       const session = await db.stock_sessions.get(sessionId);
-      if (!session || session.user_id !== user.id) throw new Error('Session not found');
+      if (!session || session.user_id !== shopOwnerId) throw new Error('Session not found');
       if (session.status !== 'open') throw new Error('Session is not open');
 
-      const items = [...(await loadInventoryMap(user.id)).values()];
+      const items = [...(await loadInventoryMap(shopOwnerId)).values()];
       const expectedIds = computeExpectedClosingIds(session, items);
-      const summary = await buildSessionCloseSummary(user.id, session, items, expectedIds);
+      const summary = await buildSessionCloseSummary(shopOwnerId, session, items, expectedIds);
 
       await db.stock_sessions.update(sessionId, {
         expected_closing_ids: expectedIds,
@@ -133,16 +135,16 @@ export function useStockSessionActions() {
 
       return { session: fresh!, expectedIds, summary, checklistItems };
     },
-    [user]
+    [user, shopOwnerId]
   );
 
   const confirmCloseSession = useCallback(
     async (sessionId: string, confirmedPresentIds: string[], missingNotesByItemId: Record<string, string>) => {
-      if (!user) throw new Error('Not authenticated');
-      await assertTrialAllowsMutations(user.id);
+      if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+      await assertTrialAllowsMutations(shopOwnerId);
 
       const session = await db.stock_sessions.get(sessionId);
-      if (!session || session.user_id !== user.id || session.status !== 'open') {
+      if (!session || session.user_id !== shopOwnerId || session.status !== 'open') {
         throw new Error('Session not found or not open');
       }
 
@@ -182,7 +184,7 @@ export function useStockSessionActions() {
         ...session.audit_log,
         {
           at: now,
-          user_id: user.id,
+          user_id: actorUserId,
           action: 'closed' as const,
           detail: hasDisc ? `${missing.length} missing` : 'All accounted for',
         },
@@ -192,7 +194,7 @@ export function useStockSessionActions() {
         for (const id of missing) {
           audit.push({
             at: now,
-            user_id: user.id,
+            user_id: actorUserId,
             action: 'missing_item_noted' as const,
             detail: `${id}: ${missingNotesByItemId[id]}`,
           });
@@ -202,7 +204,7 @@ export function useStockSessionActions() {
       await db.stock_sessions.update(sessionId, {
         status: nextStatus,
         closed_at: now,
-        closed_by_user_id: user.id,
+        closed_by_user_id: actorUserId,
         actual_closing_ids: [...actualSet],
         missing_item_ids: missing,
         missing_notes_by_item_id: missing.reduce(
@@ -215,8 +217,10 @@ export function useStockSessionActions() {
         audit_log: audit,
         sync_status: 'pending',
       });
+
+      await flushSyncQueue();
     },
-    [user]
+    [user, shopOwnerId, actorUserId]
   );
 
   const resolveMissingItem = useCallback(
@@ -225,10 +229,10 @@ export function useStockSessionActions() {
       resolution: NonNullable<InventoryItem['missing_resolution']>,
       note: string
     ): Promise<void> => {
-      if (!user) throw new Error('Not authenticated');
-      await assertTrialAllowsMutations(user.id);
+      if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+      await assertTrialAllowsMutations(shopOwnerId);
       const item = await db.inventory_items.get(itemId);
-      if (!item || item.user_id !== user.id) throw new Error('Item not found');
+      if (!item || item.user_id !== shopOwnerId) throw new Error('Item not found');
       if (item.status !== 'missing') throw new Error('Item is not marked missing');
 
       const now = new Date().toISOString();
@@ -251,7 +255,7 @@ export function useStockSessionActions() {
 
       const affectedSessions = await db.stock_sessions
         .where('user_id')
-        .equals(user.id)
+        .equals(shopOwnerId)
         .filter((s) => (s.missing_item_ids ?? []).includes(itemId))
         .toArray();
 
@@ -260,15 +264,17 @@ export function useStockSessionActions() {
           ...s.audit_log,
           {
             at: now,
-            user_id: user.id,
+            user_id: actorUserId,
             action: 'missing_resolved' as const,
             detail: `${itemId} → ${resolution}: ${note}`,
           },
         ];
         await db.stock_sessions.update(s.id, { audit_log: log, sync_status: 'pending' });
       }
+
+      await flushSyncQueue();
     },
-    [user]
+    [user, shopOwnerId, actorUserId]
   );
 
   return {

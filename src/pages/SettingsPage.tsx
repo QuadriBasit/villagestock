@@ -6,7 +6,7 @@ import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useAuthStore } from '@/store/auth';
 import PlanPickerGrid from '@/components/billing/PlanPickerGrid';
 import type { BusinessPlan } from '@/types';
-import { supabase } from '@/lib/supabase';
+import { signOutApp } from '@/lib/signOutApp';
 import {
   Store,
   Phone,
@@ -21,7 +21,10 @@ import {
   Sun,
   Moon,
   Laptop,
+  Users,
 } from 'lucide-react';
+import { useShopAccess } from '@/context/ShopAccessContext';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useTheme, type ThemeMode } from '@/components/theme/ThemeProvider';
 import { useState, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -53,10 +56,21 @@ const panelClass =
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const { role, canManageBusinessSettings } = useShopAccess();
+  const team = useTeamMembers();
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteDisplayName, setInviteDisplayName] = useState('');
+  const [memberRole, setMemberRole] = useState<'manager' | 'staff'>('staff');
+  const [addExistingEmail, setAddExistingEmail] = useState('');
+  const [addExistingUserId, setAddExistingUserId] = useState('');
+  const [addExistingDisplayName, setAddExistingDisplayName] = useState('');
+  const [addExistingRole, setAddExistingRole] = useState<'manager' | 'staff'>('staff');
+  const [teamSubmitting, setTeamSubmitting] = useState(false);
+  const [teamMessage, setTeamMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const { mode, setMode } = useTheme();
   const { profile, isLoading, saveProfile } = useShopProfile();
   const { profile: businessProfile, isLoading: isBizLoading } = useBusinessProfile();
-  const { user, signOut } = useAuthStore();
+  const { user } = useAuthStore();
   const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
   const [saved, setSaved] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -94,10 +108,7 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2500);
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    signOut();
-  };
+  const handleSignOut = () => void signOutApp();
 
   const fieldClass =
     'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-zinc-700 dark:bg-zinc-950/60 dark:text-zinc-100';
@@ -261,6 +272,271 @@ export default function SettingsPage() {
             )}
           </button>
         </form>
+      </section>
+
+      <section className={`${panelClass} space-y-3`}>
+        <div className="flex items-center gap-2">
+          <Users size={18} className="text-primary" />
+          <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Team &amp; roles</h3>
+        </div>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Your role:{' '}
+          <span className="font-semibold capitalize text-zinc-900 dark:text-zinc-100">{role}</span>
+        </p>
+        <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+          <strong className="text-zinc-700 dark:text-zinc-300">Staff</strong> can sell and manage stock but not profit,
+          credits, reports, or billing. <strong className="text-zinc-700 dark:text-zinc-300">Managers</strong> have
+          wider access, including inviting staff. Only the <strong className="text-zinc-700 dark:text-zinc-300">owner</strong>{' '}
+          can remove people from the shop.
+        </p>
+
+        {canManageBusinessSettings ? (
+          <>
+            {team.error ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                Team list: {team.error}. If you just added this feature, run the latest SQL migration for{' '}
+                <code className="text-[10px]">business_members</code> RLS (manager can view team) in Supabase.
+              </p>
+            ) : null}
+
+            <div className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+              <div>
+                <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">Email invite (recommended)</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+                  We email them a secure link to <strong className="text-zinc-600 dark:text-zinc-300">choose a password</strong>
+                  . After they sign in with that email, they are attached to <strong className="text-zinc-600 dark:text-zinc-300">this shop</strong> automatically — they do not go through owner onboarding.
+                </p>
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="invite-email">
+                  Their email
+                </label>
+                <input
+                  id="invite-email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="off"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className={fieldClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="invite-display">
+                  Name on receipts (optional)
+                </label>
+                <input
+                  id="invite-display"
+                  type="text"
+                  value={inviteDisplayName}
+                  onChange={e => setInviteDisplayName(e.target.value)}
+                  placeholder="e.g. Ada — front desk"
+                  className={fieldClass}
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <p className={`${labelClass} mb-2`}>Role</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      { id: 'staff' as const, title: 'Staff', hint: 'Sales & stock' },
+                      { id: 'manager' as const, title: 'Manager', hint: 'Staff + reports & invites' },
+                    ]
+                  ).map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setMemberRole(opt.id)}
+                      className={`rounded-xl border px-3 py-2.5 text-left text-xs transition-colors ${
+                        memberRole === opt.id
+                          ? 'border-primary bg-primary/10 text-primary dark:bg-primary/15 dark:text-blue-300'
+                          : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950/50 dark:text-zinc-200 dark:hover:bg-zinc-900'
+                      }`}
+                    >
+                      <span className="block font-semibold">{opt.title}</span>
+                      <span className="mt-0.5 block text-[10px] text-zinc-500 dark:text-zinc-400">{opt.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {teamMessage ? (
+                <p
+                  className={`text-xs ${teamMessage.type === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
+                >
+                  {teamMessage.text}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                disabled={teamSubmitting || !inviteEmail.trim()}
+                onClick={async () => {
+                  setTeamMessage(null);
+                  setTeamSubmitting(true);
+                  try {
+                    await team.inviteStaff({
+                      email: inviteEmail.trim(),
+                      role: memberRole,
+                      displayName: inviteDisplayName,
+                    });
+                    setInviteEmail('');
+                    setInviteDisplayName('');
+                    setTeamMessage({
+                      type: 'ok',
+                      text: 'Invitation sent. They should open the email, set a password, then sign in here.',
+                    });
+                  } catch (e) {
+                    setTeamMessage({ type: 'err', text: e instanceof Error ? e.message : 'Could not send invite' });
+                  } finally {
+                    setTeamSubmitting(false);
+                  }
+                }}
+                className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+              >
+                {teamSubmitting ? 'Sending…' : 'Send invitation email'}
+              </button>
+
+              <details className="rounded-lg border border-zinc-200 bg-white/60 dark:border-zinc-700 dark:bg-zinc-950/30">
+                <summary className="cursor-pointer select-none px-3 py-2 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+                  They already have a VillageStock account?
+                </summary>
+                <div className="space-y-2 border-t border-zinc-200 px-3 py-3 dark:border-zinc-700">
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">
+                    Add them by the email they use to sign in, or paste their Auth user UUID if they have no email on file.
+                  </p>
+                  <input
+                    type="email"
+                    value={addExistingEmail}
+                    onChange={e => setAddExistingEmail(e.target.value)}
+                    placeholder="Their login email"
+                    className={fieldClass}
+                    autoComplete="off"
+                  />
+                  <input
+                    type="text"
+                    value={addExistingUserId}
+                    onChange={e => setAddExistingUserId(e.target.value)}
+                    placeholder="Or user UUID (advanced)"
+                    className={fieldClass}
+                    autoComplete="off"
+                  />
+                  <input
+                    type="text"
+                    value={addExistingDisplayName}
+                    onChange={e => setAddExistingDisplayName(e.target.value)}
+                    placeholder="Name on receipts (optional)"
+                    className={fieldClass}
+                    autoComplete="off"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['staff', 'manager'] as const).map(r => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setAddExistingRole(r)}
+                        className={`rounded-lg border px-2 py-1.5 text-[11px] font-medium capitalize ${
+                          addExistingRole === r
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-zinc-200 bg-white dark:border-zinc-600 dark:bg-zinc-900'
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={teamSubmitting || (!addExistingEmail.trim() && !addExistingUserId.trim())}
+                    onClick={async () => {
+                      setTeamMessage(null);
+                      setTeamSubmitting(true);
+                      try {
+                        await team.addMember({
+                          memberEmail: addExistingEmail.trim() || undefined,
+                          memberUserId: addExistingUserId.trim() || undefined,
+                          role: addExistingRole,
+                          displayName: addExistingDisplayName,
+                        });
+                        setAddExistingEmail('');
+                        setAddExistingUserId('');
+                        setAddExistingDisplayName('');
+                        setTeamMessage({ type: 'ok', text: 'Teammate added to this shop.' });
+                      } catch (e) {
+                        setTeamMessage({ type: 'err', text: e instanceof Error ? e.message : 'Failed to add' });
+                      } finally {
+                        setTeamSubmitting(false);
+                      }
+                    }}
+                    className="w-full rounded-lg border border-zinc-300 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  >
+                    Add existing account to shop
+                  </button>
+                </div>
+              </details>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">People</p>
+              {team.loading ? (
+                <p className="text-xs text-zinc-500">Loading…</p>
+              ) : team.members.length === 0 ? (
+                <p className="text-xs text-zinc-500">No rows returned. Check RLS or run migrations.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {team.members.map(m => (
+                    <li
+                      key={m.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-xs dark:border-zinc-700 dark:bg-zinc-900/60"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                            {m.display_name?.trim() || (m.role === 'owner' ? 'Owner' : 'Team member')}
+                          </span>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${
+                              m.role === 'owner'
+                                ? 'bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-200'
+                                : m.role === 'manager'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-200'
+                                  : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                            }`}
+                          >
+                            {m.role}
+                          </span>
+                        </div>
+                      </div>
+                      {role === 'owner' && m.role !== 'owner' ? (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm('Remove this person from the shop?')) return;
+                            setTeamMessage(null);
+                            try {
+                              await team.removeMember(m);
+                              setTeamMessage({ type: 'ok', text: 'Member removed.' });
+                            } catch (e) {
+                              setTeamMessage({
+                                type: 'err',
+                                text: e instanceof Error ? e.message : 'Could not remove',
+                              });
+                            }
+                          }}
+                          className="shrink-0 rounded-lg border border-red-200 px-2 py-1 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40"
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        ) : (
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Team management is available to owners and managers.</p>
+        )}
       </section>
 
       <section className={`${panelClass} space-y-3`}>

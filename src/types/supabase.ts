@@ -62,6 +62,7 @@ export interface Database {
           deleted?: boolean;
         };
         Update: Partial<Database['public']['Tables']['inventory_items']['Insert']>;
+        Relationships: [];
       };
       stock_movements: {
         Row: {
@@ -83,6 +84,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['stock_movements']['Insert']>;
+        Relationships: [];
       };
       sales_records: {
         Row: {
@@ -152,6 +154,7 @@ export interface Database {
           return_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['sales_records']['Insert']>;
+        Relationships: [];
       };
       swap_records: {
         Row: {
@@ -185,6 +188,7 @@ export interface Database {
           sync_status?: string;
         };
         Update: Partial<Database['public']['Tables']['swap_records']['Insert']>;
+        Relationships: [];
       };
       credit_records: {
         Row: {
@@ -220,6 +224,7 @@ export interface Database {
           sync_status?: string;
         };
         Update: Partial<Database['public']['Tables']['credit_records']['Insert']>;
+        Relationships: [];
       };
       repair_records: {
         Row: {
@@ -253,6 +258,7 @@ export interface Database {
           sync_status?: string;
         };
         Update: Partial<Database['public']['Tables']['repair_records']['Insert']>;
+        Relationships: [];
       };
       return_records: {
         Row: {
@@ -286,6 +292,7 @@ export interface Database {
           sync_status?: string;
         };
         Update: Partial<Database['public']['Tables']['return_records']['Insert']>;
+        Relationships: [];
       };
       business_profiles: {
         Row: {
@@ -323,6 +330,79 @@ export interface Database {
           account_disabled?: boolean;
         };
         Update: Partial<Database['public']['Tables']['business_profiles']['Row']>;
+        Relationships: [];
+      };
+      audit_events: {
+        Row: {
+          id: string;
+          business_id: string;
+          actor_user_id: string;
+          action: string;
+          entity_type: string;
+          entity_id: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          actor_user_id: string;
+          action: string;
+          entity_type: string;
+          entity_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['audit_events']['Row']>;
+        Relationships: [];
+      };
+      business_members: {
+        Row: {
+          id: string;
+          business_id: string;
+          member_user_id: string;
+          role: string;
+          display_name: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          member_user_id: string;
+          role: string;
+          display_name?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['business_members']['Row']>;
+        Relationships: [];
+      };
+      staff_invites: {
+        Row: {
+          id: string;
+          business_id: string;
+          email: string;
+          role: string;
+          display_name: string | null;
+          invited_by: string;
+          token: string;
+          created_at: string;
+          accepted_at: string | null;
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          email: string;
+          role: string;
+          display_name?: string | null;
+          invited_by: string;
+          token?: string;
+          created_at?: string;
+          accepted_at?: string | null;
+          expires_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['staff_invites']['Row']>;
+        Relationships: [];
       };
       admin_users: {
         Row: {
@@ -336,6 +416,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['admin_users']['Row']>;
+        Relationships: [];
       };
       subscription_payments: {
         Row: {
@@ -359,6 +440,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['subscription_payments']['Row']>;
+        Relationships: [];
       };
       profiles: {
         Row: {
@@ -380,6 +462,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
@@ -391,6 +474,14 @@ export interface Database {
       is_admin_user: {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
+      };
+      lookup_shop_teammate_user_id: {
+        Args: { p_business_id: string; p_email: string };
+        Returns: string | null;
+      };
+      accept_staff_invite: {
+        Args: { p_token: string };
+        Returns: undefined;
       };
     };
     Enums: {

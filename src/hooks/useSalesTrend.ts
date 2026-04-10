@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import { useAuthStore } from '@/store/auth';
+import { useShopAccess } from '@/context/ShopAccessContext';
 
 function localYmd(d: Date): string {
   const y = d.getFullYear();
@@ -14,12 +14,12 @@ export type SalesTrendPoint = { date: string; label: string; revenue: number };
 
 /** Last `days` calendar days of revenue (local timezone), including zeros. */
 export function useSalesTrend(days: number = 7): { series: SalesTrendPoint[]; isLoading: boolean } {
-  const { user } = useAuthStore();
+  const { shopOwnerId } = useShopAccess();
 
   const raw = useLiveQuery(async () => {
-    if (!user) return [];
-    return db.sales_records.where('user_id').equals(user.id).toArray();
-  }, [user?.id]);
+    if (!shopOwnerId) return [];
+    return db.sales_records.where('user_id').equals(shopOwnerId).toArray();
+  }, [shopOwnerId]);
 
   const series = useMemo(() => {
     if (!raw) return [];

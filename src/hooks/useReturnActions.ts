@@ -1,21 +1,24 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/db';
-import { queueSync } from '@/lib/sync';
+import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
+import { useShopAccess } from '@/context/ShopAccessContext';
+import { logShopAudit } from '@/lib/audit';
 import type { ReturnRecord, ReturnRecordInput } from '@/types';
 
 export function useReturnActions() {
   const { user } = useAuthStore();
+  const { shopOwnerId, actorUserId } = useShopAccess();
 
   async function processReturn(input: ReturnRecordInput): Promise<ReturnRecord> {
-    if (!user) throw new Error('Not authenticated');
-    await assertTrialAllowsMutations(user.id);
+    if (!user || !shopOwnerId) throw new Error('Not authenticated');
+    await assertTrialAllowsMutations(shopOwnerId);
 
     const record: ReturnRecord = {
       ...input,
       id: uuidv4(),
-      user_id: user.id,
+      user_id: shopOwnerId,
       sync_status: 'pending',
     };
 
@@ -61,6 +64,21 @@ export function useReturnActions() {
       await queueSync('sales_records', 'update', updatedSale as unknown as Record<string, unknown>);
     }
 
+    await flushSyncQueue();
+    if (actorUserId) {
+      void logShopAudit({
+        businessId: shopOwnerId,
+        actorUserId,
+        action: 'return.processed',
+        entityType: 'return_record',
+        entityId: record.id,
+        metadata: {
+          sale_id: input.sale_id,
+          return_type: input.return_type,
+          refund_amount: input.refund_amount,
+        },
+      });
+    }
     return record;
   }
 

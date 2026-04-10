@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type {
+  AuditEvent,
   InventoryItem,
   StockMovement,
   SyncQueueItem,
@@ -23,6 +24,7 @@ export class VillageStockDB extends Dexie {
   repair_records!: Table<RepairRecord>;
   business_profiles!: Table<BusinessProfile>;
   stock_sessions!: Table<StockSession>;
+  audit_events!: Table<AuditEvent>;
   sync_queue!: Table<SyncQueueItem>;
   settings!: Table<AppSetting>;
 
@@ -175,10 +177,35 @@ export class VillageStockDB extends Dexie {
       sync_queue: 'id, table, operation, created_at',
       settings: 'key',
     });
+
+    this.version(11).stores({
+      inventory_items: [
+        'id', 'user_id', 'category', 'name', 'brand', 'quantity',
+        'mode', 'status', 'condition', 'sync_status', 'updated_at',
+        '[user_id+category]', '[user_id+mode]', '[user_id+status]', '[user_id+sync_status]',
+      ].join(', '),
+      stock_movements: 'id, item_id, user_id, type, created_at',
+      sales_records: 'id, user_id, item_id, sold_at, receipt_number, payment_method, payment_status, sale_type, [user_id+sold_at]',
+      return_records: 'id, user_id, sale_id, item_id, returned_at, [user_id+returned_at]',
+      swap_records: 'id, user_id, sale_id, outgoing_item_id, incoming_item_id, date, payment_method, [user_id+date]',
+      credit_records: 'id, user_id, sale_id, customer_name, due_date, status, [user_id+due_date]',
+      repair_records: 'id, user_id, item_id, engineer_name, date_sent, repair_status, expected_return_date, [user_id+engineer_name]',
+      business_profiles: 'id, plan, plan_status, updated_at, onboarding_complete',
+      stock_sessions:
+        'id, user_id, date, status, opened_at, closed_at, [user_id+date], [user_id+status]',
+      audit_events: 'id, business_id, actor_user_id, created_at, [business_id+created_at]',
+      sync_queue: 'id, table, operation, created_at',
+      settings: 'key',
+    });
   }
 }
 
 export const db = new VillageStockDB();
+
+/** Remove every row from all Dexie tables (one shop per device; avoids stale rows after account switch). */
+export async function clearAllLocalShopData(): Promise<void> {
+  await Promise.all(db.tables.map(t => t.clear()));
+}
 
 // ─── Settings helpers ─────────────────────────────────────────────────────────
 
