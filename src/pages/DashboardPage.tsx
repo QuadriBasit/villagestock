@@ -105,10 +105,10 @@ export default function DashboardPage() {
   const {isOnline, pendingCount} = useSyncStatus();
   const navigate = useNavigate();
 
-  const firstName = getGreetingFirstName({
-    ownerName: businessProfile?.owner_name,
-    email: user?.email,
-  });
+  /** Prefer shop/business name on overview; never use owner personal name here. */
+  const greetLabel =
+    businessProfile?.shop_name?.trim() ||
+    getGreetingFirstName({ ownerName: null, email: user?.email });
   const alertCount =
     (summary?.low_stock_count ?? 0) + (summary?.out_of_stock_count ?? 0);
   const totalItems = summary?.total_items ?? 0;
@@ -138,7 +138,7 @@ export default function DashboardPage() {
             </Badge>
           </p>
           <h2 className='text-2xl font-bold leading-none tracking-tighter text-zinc-900 sm:text-4xl md:text-[2.65rem] dark:text-zinc-400'>
-            {firstName}
+            {greetLabel}
             <span className='font-semibold text-zinc-400'>,</span>
             <br className='sm:hidden' />
             <span className='block text-2xl font-semibold text-zinc-500 sm:inline sm:ml-2 sm:text-3xl md:text-[2rem] dark:text-zinc-400'>
