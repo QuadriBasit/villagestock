@@ -16,7 +16,7 @@ function isPlaceholderTrialEnd(iso: string): boolean {
 }
 
 /** True when mutations (inventory, sales, etc.) must be blocked. */
-export function trialBlocksMutations(bp: BusinessProfile | undefined): boolean {
+export function trialBlocksMutations(bp: BusinessProfile | null | undefined): boolean {
   if (!bp?.onboarding_complete) return false;
   if (bp.account_disabled) return true;
 
@@ -39,7 +39,7 @@ export async function assertTrialAllowsMutations(userId: string): Promise<void> 
   if (trialBlocksMutations(effective)) throw new TrialExpiredError();
 }
 
-export function trialBannerState(bp: BusinessProfile | undefined): {
+export function trialBannerState(bp: BusinessProfile | null | undefined): {
   visible: boolean;
   daysRemaining: number;
   urgent: boolean;
@@ -63,7 +63,7 @@ export function trialBannerState(bp: BusinessProfile | undefined): {
   };
 }
 
-export function showTrialEndedOverlay(bp: BusinessProfile | undefined): boolean {
+export function showTrialEndedOverlay(bp: BusinessProfile | null | undefined): boolean {
   return trialBlocksMutations(bp);
 }
 
