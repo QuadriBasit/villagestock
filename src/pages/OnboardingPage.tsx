@@ -13,7 +13,8 @@ const step2Schema = z.object({
   shop_name: z.string().min(1, 'Shop name is required'),
   owner_name: z.string().min(1, 'Owner name is required'),
   address: z.string().min(1, 'Shop address is required'),
-  email: z.string().trim().min(1, 'Email is required').email('Enter a valid email'),
+  /** Only used when the account has no email yet (e.g. phone signup). */
+  email: z.string().optional(),
 });
 type Step2Data = z.infer<typeof step2Schema>;
 
@@ -25,6 +26,10 @@ export default function OnboardingPage() {
   const [submitError, setSubmitError] = useState('');
   const [finishing, setFinishing] = useState(false);
   const [legacyPhone, setLegacyPhone] = useState('');
+
+  const sessionEmail = user?.email?.trim() ?? '';
+  /** Phone-only signups need an email once; everyone else already set email at signup. */
+  const needsEmailField = !sessionEmail;
 
   const verifiedPhone = user?.phone ?? '';
   const needsManualPhone = !verifiedPhone && !(profile?.phone);
@@ -52,9 +57,9 @@ export default function OnboardingPage() {
       shop_name: profile.shop_name,
       owner_name: profile.owner_name,
       address: profile.address,
-      email: profile.email ?? '',
+      email: needsEmailField ? (profile.email ?? '') : '',
     });
-  }, [isReady, profile, reset]);
+  }, [isReady, profile, reset, needsEmailField]);
 
   if (authLoading || !user) {
     return (
@@ -83,23 +88,41 @@ export default function OnboardingPage() {
     setSubmitError('');
     const rawPhone = legacyPhone.trim();
     const phone = rawPhone || user.phone || profile?.phone || '';
-    try {
-      const { error: authErr } = await supabase.auth.updateUser({
-        email: data.email.trim(),
-      });
-      if (authErr) {
-        setSubmitError(
-          authErr.message.includes('confirmation')
-            ? 'Confirm your email from the link we sent, then continue. You can turn off email confirmations in Supabase Auth settings for development.'
-            : authErr.message
-        );
+    const emailFromForm = (data.email ?? '').trim();
+    const emailToUse = sessionEmail || emailFromForm;
+
+    if (!emailToUse) {
+      setSubmitError('Add an email address so you can sign in and recover your account.');
+      return;
+    }
+    if (needsEmailField) {
+      const parsed = z.string().email('Enter a valid email').safeParse(emailToUse);
+      if (!parsed.success) {
+        setSubmitError(parsed.error.issues[0]?.message ?? 'Enter a valid email');
         return;
       }
+    }
+
+    try {
+      if (emailToUse !== sessionEmail) {
+        const { error: authErr } = await supabase.auth.updateUser({
+          email: emailToUse,
+        });
+        if (authErr) {
+          setSubmitError(
+            authErr.message.includes('confirmation')
+              ? 'Confirm your email from the link we sent, then continue. You can turn off email confirmations in Supabase Auth settings for development.'
+              : authErr.message
+          );
+          return;
+        }
+      }
+
       await saveDraft({
         shop_name: data.shop_name,
         owner_name: data.owner_name,
         address: data.address,
-        email: data.email.trim(),
+        email: emailToUse,
         phone,
         onboarding_complete: false,
       });
@@ -141,9 +164,8 @@ export default function OnboardingPage() {
           </h1>
           {step === 2 && (
             <p className="mx-auto mt-2 max-w-sm text-center text-xs text-muted dark:text-zinc-400">
-              This step saves your shop details and updates your <strong className="dark:text-zinc-300">login email</strong>{' '}
-              in Supabase Auth if you change it. You already set your password when you signed up. Optional shop phone below is
-              for receipts.
+              This step saves your shop details. You already chose your password when you signed up — we do not ask for it
+              again here. {needsEmailField ? 'Add an email below if you signed up with phone only.' : 'Your login email is the one you signed up with (shown below).'} Optional shop phone is for receipts.
             </p>
           )}
         </div>
@@ -212,16 +234,36 @@ export default function OnboardingPage() {
                   <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.address.message}</p>
                 )}
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200" htmlFor="email">
-                  <Mail size={13} className="inline mr-1 text-muted" />
-                  Login email *
-                </label>
-                <input id="email" type="email" autoComplete="email" {...register('email')} placeholder="you@example.com" className={fieldClass} />
-                {errors.email && (
-                  <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.email.message}</p>
-                )}
-              </div>
+              {needsEmailField ? (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200" htmlFor="email">
+                    <Mail size={13} className="inline mr-1 text-muted" />
+                    Email for login &amp; recovery *
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    {...register('email')}
+                    placeholder="you@example.com"
+                    className={fieldClass}
+                  />
+                  {errors.email && (
+                    <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.email.message}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border bg-surface/80 px-3 py-2.5 text-sm dark:border-zinc-600 dark:bg-zinc-800/50">
+                  <p className="mb-0.5 text-xs font-medium text-muted dark:text-zinc-400">
+                    <Mail size={12} className="mr-1 inline" />
+                    Login email
+                  </p>
+                  <p className="font-medium text-dark dark:text-zinc-100">{sessionEmail}</p>
+                  <p className="mt-1 text-[11px] text-muted dark:text-zinc-500">
+                    Saved with your shop profile. To change it, use account settings or your Supabase auth flow later.
+                  </p>
+                </div>
+              )}
               {submitError && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
                   {submitError}

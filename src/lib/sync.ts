@@ -131,6 +131,13 @@ function isRlsViolation(err: unknown): boolean {
 
 const MAX_SYNC_QUEUE_RETRIES = 12;
 
+/** Ensure parent `business_profiles` rows exist on the server before `shop_locations` (FK). */
+function syncQueueTier(table: SyncQueueItem['table']): number {
+  if (table === 'business_profiles') return 0;
+  if (table === 'shop_locations') return 1;
+  return 2;
+}
+
 // ─── Queue a write for later sync ────────────────────────────────────────────
 
 /** Call before `signOut`: upload pending changes, then wipe IndexedDB so the next login starts clean. */
@@ -164,6 +171,13 @@ let flushTail: Promise<void> = Promise.resolve();
 
 async function runFlushSyncQueueOnce(): Promise<void> {
   const pending = await db.sync_queue.orderBy('created_at').toArray();
+  pending.sort((a, b) => {
+    const tier = syncQueueTier(a.table) - syncQueueTier(b.table);
+    if (tier !== 0) return tier;
+    const byTime = a.created_at.localeCompare(b.created_at);
+    if (byTime !== 0) return byTime;
+    return a.id.localeCompare(b.id);
+  });
 
   for (const item of pending) {
     try {
