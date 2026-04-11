@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useRef } from 'react';
 import { db } from '@/lib/db';
-import { effectiveBusinessProfileForBilling } from '@/lib/devBillingOverride';
+// import { effectiveBusinessProfileForBilling } from '@/lib/devBillingOverride';
 import type { BusinessProfile } from '@/types';
 
 export type BusinessProfileQueryState =
@@ -28,7 +28,8 @@ export function useBusinessProfileQuery(userId: string | undefined): BusinessPro
         const row = await db.business_profiles.get(userId);
         return {
           status: 'ready',
-          profile: effectiveBusinessProfileForBilling(row ?? null) ?? null,
+          profile: row ?? null,
+          // profile: effectiveBusinessProfileForBilling(row ?? null) ?? null,
         };
       },
       [userId],

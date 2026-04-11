@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, generateReceiptNumber } from '@/lib/db';
 import { flushSyncQueue } from '@/lib/sync';
 import { assertTradingAllowedForStockPolicy } from '@/lib/stockTradingGate';
-import { assertTrialAllowsMutations } from '@/lib/trial';
+// import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
@@ -38,7 +38,7 @@ export function useSwapActions() {
   async function processSwap(input: ProcessSwapInput): Promise<SalesRecord> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
     if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     await assertTradingAllowedForStockPolicy(shopOwnerId, activeLocationId);
     if (input.outgoingItem.mode !== 'serialized') throw new Error('Swaps only apply to serialized items');
     if (input.outgoingItem.status !== 'in_stock') throw new Error('Selected item is not in stock');

@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/db';
 import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { assertTradingAllowedForStockPolicy } from '@/lib/stockTradingGate';
-import { assertTrialAllowsMutations } from '@/lib/trial';
+// import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
@@ -18,7 +18,7 @@ export function useRepairActions() {
   async function sendToEngineer(input: RepairRecordInput): Promise<RepairRecord> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
     if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     await assertTradingAllowedForStockPolicy(shopOwnerId, activeLocationId);
 
     const record: RepairRecord = {
@@ -64,7 +64,7 @@ export function useRepairActions() {
 
   async function updateRepairStatus(id: string, repairStatus: Exclude<RepairStatus, 'collected'>): Promise<void> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     await db.repair_records.update(id, { repair_status: repairStatus, sync_status: 'pending' });
     const latest = await db.repair_records.get(id);
     if (latest) {
@@ -92,7 +92,7 @@ export function useRepairActions() {
 
   async function markCollected(id: string, itemId: string, condition?: DeviceCondition, notes?: string): Promise<void> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     const now = new Date().toISOString();
     await db.repair_records.update(id, {
       repair_status: 'collected',

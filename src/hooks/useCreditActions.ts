@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/db';
 import { flushSyncQueue, queueSync } from '@/lib/sync';
-import { assertTrialAllowsMutations } from '@/lib/trial';
+// import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { logShopAudit } from '@/lib/audit';
@@ -11,11 +11,11 @@ import type { CreditRecord, CreditRecordInput, PaymentMethod } from '@/types';
 
 export function useCreditActions() {
   const { user } = useAuthStore();
-  const { shopOwnerId, actorUserId, role } = useShopAccess();
+  const { shopOwnerId, actorUserId /* , role */ } = useShopAccess();
 
   async function createCreditRecord(input: CreditRecordInput): Promise<CreditRecord> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     const saleRow = await db.sales_records.get(input.sale_id);
     const location_id = saleRow?.location_id;
     if (!location_id) throw new Error('Sale is missing branch — sync and try again');
@@ -62,8 +62,8 @@ export function useCreditActions() {
 
   async function recordPayment(creditId: string, amount: number, date: string, method?: PaymentMethod): Promise<void> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
-    if (role === 'staff') throw new Error('Credits are not available for staff accounts.');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // if (role === 'staff') throw new Error('Credits are not available for staff accounts.');
+    // await assertTrialAllowsMutations(shopOwnerId);
     const existing = await db.credit_records.get(creditId);
     if (!existing) throw new Error('Credit not found');
 

@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, generateReceiptNumber } from '@/lib/db';
 import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { assertTradingAllowedForStockPolicy } from '@/lib/stockTradingGate';
-import { assertTrialAllowsMutations } from '@/lib/trial';
+// import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
@@ -18,7 +18,7 @@ export function useSalesActions() {
   async function recordSale(input: SalesRecordInput): Promise<SalesRecord> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     await assertTradingAllowedForStockPolicy(shopOwnerId, activeLocationId);
 
     const receipt_number = await generateReceiptNumber(shopOwnerId);

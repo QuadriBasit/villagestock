@@ -56,9 +56,10 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
 }
 
 function StaffRedirect({ children }: { children: React.ReactNode }) {
-  const { role, status } = useShopAccess();
-  if (status !== 'ready') return null;
-  if (role === 'staff') return <Navigate to="/dashboard" replace />;
+  // Staff blocked from audit/credits/reports/settings — disabled so all roles have full routes.
+  // const { role, status } = useShopAccess();
+  // if (status !== 'ready') return null;
+  // if (role === 'staff') return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 

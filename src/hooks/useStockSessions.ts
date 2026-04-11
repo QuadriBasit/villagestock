@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { useBusinessProfileQuery } from './useBusinessProfileQuery';
-import { hasStockAccountabilityPlan, localSessionDateKey, tradingBlockedMessage } from '@/lib/stockSessionUtils';
+import { localSessionDateKey, tradingBlockedMessage } from '@/lib/stockSessionUtils';
 import type { InventoryItem, StockSession } from '@/types';
 
 type NoUser = '__nouser__';
@@ -138,10 +138,13 @@ export function useTradingGateState(): {
   const { session: todaySession, isLoading } = useTodayStockSessionState();
 
   const isReady = profileQ.status === 'ready' && !isLoading;
-  const gateApplies =
-    profileQ.status === 'ready' && profileQ.profile != null && hasStockAccountabilityPlan(profileQ.profile);
-  const tradingBlocked =
-    gateApplies && (todaySession == null || todaySession.status !== 'open');
+  // Plan-based open-stock gate disabled (full trading access).
+  // const gateApplies =
+  //   profileQ.status === 'ready' && profileQ.profile != null && hasStockAccountabilityPlan(profileQ.profile);
+  // const tradingBlocked =
+  //   gateApplies && (todaySession == null || todaySession.status !== 'open');
+  const gateApplies = false;
+  const tradingBlocked = false;
 
   return {
     isReady,

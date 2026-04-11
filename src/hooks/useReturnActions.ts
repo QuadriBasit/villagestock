@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/db';
 import { flushSyncQueue, queueSync } from '@/lib/sync';
-import { assertTrialAllowsMutations } from '@/lib/trial';
+// import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { logShopAudit } from '@/lib/audit';
@@ -14,7 +14,7 @@ export function useReturnActions() {
 
   async function processReturn(input: ReturnRecordInput): Promise<ReturnRecord> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     const saleRow = await db.sales_records.get(input.sale_id);
     const location_id = saleRow?.location_id;
     if (!location_id) throw new Error('Original sale is missing branch — sync and try again');

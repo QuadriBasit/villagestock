@@ -14,8 +14,13 @@ export function addCalendarDaysYmd(ymd: string, deltaDays: number): string {
   return localSessionDateKey(dt);
 }
 
-export function hasStockAccountabilityPlan(profile: BusinessProfile | null | undefined): boolean {
-  return profile?.plan === 'business' && profile?.plan_status === 'active';
+/**
+ * Stock sessions + trading gate available for all users (plan check disabled).
+ *
+ * PREVIOUS: return profile?.plan === 'business' && profile?.plan_status === 'active';
+ */
+export function hasStockAccountabilityPlan(_profile: BusinessProfile | null | undefined): boolean {
+  return true;
 }
 
 export async function loadInventoryMap(userId: string, locationId?: string): Promise<Map<string, InventoryItem>> {

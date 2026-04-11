@@ -3,7 +3,7 @@ import BottomNav from './BottomNav';
 import DesktopSidebar from './DesktopSidebar';
 import TopBar from './TopBar';
 import { SidebarLayoutProvider, useSidebarLayout } from './SidebarLayoutContext';
-import TrialBanner from '@/components/billing/TrialBanner';
+// import TrialBanner from '@/components/billing/TrialBanner';
 import TrialExpiredOverlay from '@/components/billing/TrialExpiredOverlay';
 import { useTrialAccess } from '@/hooks/useTrialAccess';
 
@@ -24,8 +24,10 @@ export default function AppLayout() {
 function AppLayoutInner() {
   const location = useLocation();
   const { collapsed } = useSidebarLayout();
-  const { businessProfile, banner, showExpiredOverlay, accountSuspended } = useTrialAccess();
-  const mainTopClass = banner.visible ? 'pt-[7.25rem]' : 'pt-16';
+  // Trial banner & trial-ended overlay disabled (full access). Restore: businessProfile, banner, showExpiredOverlay.
+  const { /* businessProfile, banner, showExpiredOverlay, */ accountSuspended } = useTrialAccess();
+  // const mainTopClass = banner.visible ? 'pt-[7.25rem]' : 'pt-16';
+  const mainTopClass = 'pt-16';
   const mainBottomLg = isItemFormRoute(location.pathname) ? 'lg:pb-0' : 'lg:pb-8';
   const sidebarPad = collapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-64';
   const headerFixedLeft = collapsed ? 'lg:left-[4.5rem]' : 'lg:left-64';
@@ -39,9 +41,9 @@ function AppLayoutInner() {
           <div className="relative z-50 isolate">
             <TopBar />
           </div>
-          <div className="relative z-10">
+          {/* <div className="relative z-10">
             <TrialBanner profile={businessProfile} />
-          </div>
+          </div> */}
         </div>
         <main
           className={`flex-1 overflow-y-auto max-lg:pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] ${mainBottomLg} ${mainTopClass}`}
@@ -53,7 +55,7 @@ function AppLayoutInner() {
         <BottomNav />
       </div>
       {accountSuspended && <TrialExpiredOverlay variant="account_suspended" />}
-      {showExpiredOverlay && <TrialExpiredOverlay />}
+      {/* {showExpiredOverlay && <TrialExpiredOverlay />} */}
     </div>
   );
 }

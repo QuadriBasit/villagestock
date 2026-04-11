@@ -4,8 +4,8 @@ import { z } from 'zod';
 import { useShopProfile } from '@/hooks/useShopProfile';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useAuthStore } from '@/store/auth';
-import PlanPickerGrid from '@/components/billing/PlanPickerGrid';
-import type { BusinessPlan } from '@/types';
+// import PlanPickerGrid from '@/components/billing/PlanPickerGrid';
+// import type { BusinessPlan } from '@/types';
 import { signOutApp } from '@/lib/signOutApp';
 import {
   Store,
@@ -17,7 +17,7 @@ import {
   LogOut,
   FileBarChart2,
   ChevronRight,
-  CreditCard,
+  // CreditCard,
   Sun,
   Moon,
   Laptop,
@@ -42,19 +42,19 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-function formatPlanLabel(plan: BusinessPlan): string {
-  const map: Record<BusinessPlan, string> = {
-    trial: 'Trial',
-    starter: 'Starter',
-    pro: 'Pro',
-    business: 'Business',
-  };
-  return map[plan];
-}
-
-function formatPlanStatus(status: string): string {
-  return status.charAt(0).toUpperCase() + status.slice(1);
-}
+// function formatPlanLabel(plan: BusinessPlan): string {
+//   const map: Record<BusinessPlan, string> = {
+//     trial: 'Trial',
+//     starter: 'Starter',
+//     pro: 'Pro',
+//     business: 'Business',
+//   };
+//   return map[plan];
+// }
+//
+// function formatPlanStatus(status: string): string {
+//   return status.charAt(0).toUpperCase() + status.slice(1);
+// }
 
 const panelClass =
   'rounded-2xl border border-zinc-200/80 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/75';
@@ -144,16 +144,17 @@ export default function SettingsPage() {
     );
   }
 
-  const trialEndReal =
-    businessProfile?.trial_end_date &&
-    !businessProfile.trial_end_date.startsWith('1970-01-01');
-  const trialEndLabel = trialEndReal
-    ? new Date(businessProfile!.trial_end_date).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
-    : null;
+  // Subscription / trial-end UI hidden — keep trial_end_date in DB for later.
+  // const trialEndReal =
+  //   businessProfile?.trial_end_date &&
+  //   !businessProfile.trial_end_date.startsWith('1970-01-01');
+  // const trialEndLabel = trialEndReal
+  //   ? new Date(businessProfile!.trial_end_date).toLocaleDateString(undefined, {
+  //       year: 'numeric',
+  //       month: 'short',
+  //       day: 'numeric',
+  //     })
+  //   : null;
 
   const currentLogo = logoUrl ?? profile.logo_data_url;
 
@@ -860,6 +861,7 @@ export default function SettingsPage() {
         )}
       </section>
 
+      {/* Subscription / plan picker hidden — restore when billing returns.
       <section className={`${panelClass} space-y-3`}>
         <div className="flex items-center gap-2">
           <CreditCard size={18} className="text-primary" />
@@ -892,6 +894,7 @@ export default function SettingsPage() {
           during your trial.
         </p>
       </section>
+      */}
 
       <section className={`${panelClass} space-y-3`}>
         <div className="flex items-center gap-2">

@@ -2,16 +2,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { useCallback } from 'react';
 import { db } from '@/lib/db';
 import { flushSyncQueue, queueSync } from '@/lib/sync';
-import { assertTrialAllowsMutations } from '@/lib/trial';
+// import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import type { InventoryItem, SerializedItemStatus, StockSession } from '@/types';
-import { effectiveBusinessProfileForBilling } from '@/lib/devBillingOverride';
+// import { effectiveBusinessProfileForBilling } from '@/lib/devBillingOverride';
 import {
   buildSessionCloseSummary,
   computeExpectedClosingIds,
-  hasStockAccountabilityPlan,
   loadInventoryMap,
   localSessionDateKey,
 } from '@/lib/stockSessionUtils';
@@ -31,10 +30,10 @@ export function useStockSessionActions() {
   const openTodaySession = useCallback(async (): Promise<StockSession> => {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
-    await assertTrialAllowsMutations(shopOwnerId);
-    const rawProfile = await db.business_profiles.get(shopOwnerId);
-    const profile = effectiveBusinessProfileForBilling(rawProfile ?? undefined);
-    if (!hasStockAccountabilityPlan(profile)) throw new Error('Business plan required');
+    // await assertTrialAllowsMutations(shopOwnerId);
+    // const rawProfile = await db.business_profiles.get(shopOwnerId);
+    // const profile = effectiveBusinessProfileForBilling(rawProfile ?? undefined);
+    // if (!hasStockAccountabilityPlan(profile)) throw new Error('Business plan required');
 
     const date = localSessionDateKey();
     const todays = await db.stock_sessions
@@ -101,7 +100,7 @@ export function useStockSessionActions() {
   const forceAbandonOpenSession = useCallback(
     async (sessionId: string, detail?: string): Promise<void> => {
       if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
-      await assertTrialAllowsMutations(shopOwnerId);
+      // await assertTrialAllowsMutations(shopOwnerId);
       const session = await db.stock_sessions.get(sessionId);
       if (!session || session.user_id !== shopOwnerId || session.status !== 'open') {
         throw new Error('Invalid session');
@@ -159,7 +158,7 @@ export function useStockSessionActions() {
   const confirmCloseSession = useCallback(
     async (sessionId: string, confirmedPresentIds: string[], missingNotesByItemId: Record<string, string>) => {
       if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
-      await assertTrialAllowsMutations(shopOwnerId);
+      // await assertTrialAllowsMutations(shopOwnerId);
 
       const session = await db.stock_sessions.get(sessionId);
       if (!session || session.user_id !== shopOwnerId || session.status !== 'open') {
@@ -248,7 +247,7 @@ export function useStockSessionActions() {
       note: string
     ): Promise<void> => {
       if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
-      await assertTrialAllowsMutations(shopOwnerId);
+      // await assertTrialAllowsMutations(shopOwnerId);
       const item = await db.inventory_items.get(itemId);
       if (!item || item.user_id !== shopOwnerId) throw new Error('Item not found');
       if (item.status !== 'missing') throw new Error('Item is not marked missing');

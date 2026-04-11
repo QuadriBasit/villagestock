@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/db';
 import { flushSyncQueue, queueSync } from '@/lib/sync';
-import { assertTrialAllowsMutations } from '@/lib/trial';
+// import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
@@ -18,7 +18,7 @@ export function useInventoryActions() {
   async function addItem(input: InventoryItemInput): Promise<string> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
 
     const mode = getCategoryMode(input.category);
     const now = new Date().toISOString();
@@ -56,7 +56,7 @@ export function useInventoryActions() {
 
   async function updateItem(id: string, changes: Partial<InventoryItemInput>): Promise<void> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     const now = new Date().toISOString();
     const { location_id: _ignoreLoc, ...rest } = changes as Partial<InventoryItemInput> & {
       location_id?: string;
@@ -86,7 +86,7 @@ export function useInventoryActions() {
 
   async function updateSerializedStatus(id: string, status: SerializedItemStatus): Promise<void> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     const now = new Date().toISOString();
     await db.inventory_items.update(id, { status, updated_at: now, sync_status: 'pending' as const });
     const updated = await db.inventory_items.get(id);
@@ -112,7 +112,7 @@ export function useInventoryActions() {
 
   async function deleteItem(id: string): Promise<void> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     await db.inventory_items.update(id, {
       deleted: true,
       sync_status: 'pending',
@@ -135,7 +135,7 @@ export function useInventoryActions() {
 
   async function adjustStock(id: string, delta: number, note?: string): Promise<void> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     const item = await db.inventory_items.get(id);
     if (!item) throw new Error('Item not found');
     if (item.mode === 'serialized') throw new Error('Use updateSerializedStatus for serialized items');
@@ -176,7 +176,7 @@ export function useInventoryActions() {
   async function transferItemToBranch(itemId: string, targetLocationId: string): Promise<void> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     if (!locationReady) throw new Error('Select a branch first');
-    await assertTrialAllowsMutations(shopOwnerId);
+    // await assertTrialAllowsMutations(shopOwnerId);
     const item = await db.inventory_items.get(itemId);
     if (!item || item.user_id !== shopOwnerId || item.deleted) throw new Error('Item not found');
     const fromId = item.location_id;

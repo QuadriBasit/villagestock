@@ -250,19 +250,24 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
   }, [load]);
 
   const value = useMemo<ShopAccessValue>(() => {
-    const role = state.role;
-    const staffLike = role === 'staff';
-    const branchRestrictedManager =
-      role === 'manager' &&
-      !!state.actorAllowedLocationIds &&
-      state.actorAllowedLocationIds.length > 0;
+    // const role = state.role;
+    // const staffLike = role === 'staff';
+    // const branchRestrictedManager =
+    //   role === 'manager' &&
+    //   !!state.actorAllowedLocationIds &&
+    //   state.actorAllowedLocationIds.length > 0;
     return {
       ...state,
-      canViewProfit: !staffLike,
-      canAccessFinancialNav: !staffLike,
-      canManageBusinessSettings:
-        role === 'owner' || (role === 'manager' && !branchRestrictedManager),
-      canInviteTeamMembers: role === 'owner' || role === 'manager',
+      // Role-based feature caps disabled (everyone full app access).
+      // canViewProfit: !staffLike,
+      // canAccessFinancialNav: !staffLike,
+      // canManageBusinessSettings:
+      //   role === 'owner' || (role === 'manager' && !branchRestrictedManager),
+      // canInviteTeamMembers: role === 'owner' || role === 'manager',
+      canViewProfit: true,
+      canAccessFinancialNav: true,
+      canManageBusinessSettings: true,
+      canInviteTeamMembers: true,
       refetch: () => { void load(); },
     };
   }, [state, load]);
