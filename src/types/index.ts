@@ -39,6 +39,28 @@ export interface AppleMobileDeviceDetails {
   biometric_status?: AppleBiometricStatus;
   storage?: '64GB' | '128GB' | '256GB' | '512GB' | '1TB';
   color?: string;
+  /**
+   * iOS Settings → Battery / Parts history: “Unable to verify genuine Apple battery” / Unknown Part (battery).
+   * Common from XR/XS onward when battery was replaced without Apple pairing. Multiple flags can be true.
+   * @see https://support.apple.com/HT210323
+   */
+  important_battery_message?: boolean;
+  /**
+   * iOS Important Display Message / Unknown Part (display) after non-genuine or unpaired screen work.
+   * @see https://support.apple.com/103256
+   */
+  important_display_message?: boolean;
+  /**
+   * Derived on save: `true` when `battery_health` is set and under 80%. Kept on the record for sync/search;
+   * legacy rows may still have this flag alone.
+   */
+  serviced_battery_third_party?: boolean;
+  /** Trade / MDM: IBM-style (bypass) profile — often stocked alongside battery unknown-part disclosures. */
+  mdm_ibm?: boolean;
+  /** Trade / MDM: IDM (iCloud disabled – MDM) — often associated with display/part warnings in listings. */
+  mdm_idm?: boolean;
+  /** Trade / MDM: ICM (iCloud managed / enterprise). */
+  mdm_icm?: boolean;
 }
 
 export interface AppleLaptopDeviceDetails {
@@ -73,12 +95,47 @@ export function isAppleDevice(brand: string, category: Category): boolean {
   return isAppleMobileDevice(brand, category) || isAppleLaptopDevice(brand, category);
 }
 
+/** Serviced / low-health battery disclosure for iPhone & iPad: health under 80%, or legacy stored flag. */
+export function appleMobileShowsServicedBattery(d: AppleMobileDeviceDetails): boolean {
+  const h = d.battery_health;
+  if (typeof h === 'number' && h < 80) return true;
+  return d.serviced_battery_third_party === true;
+}
+
+const APPLE_MOBILE_SEARCH_FLAG_LABELS: Record<string, string> = {
+  important_battery_message: 'important battery message unknown battery',
+  important_display_message: 'important display message unknown display',
+  serviced_battery_third_party: 'serviced battery third party battery',
+  mdm_ibm: 'ibm mdm bypass',
+  mdm_idm: 'idm mdm',
+  mdm_icm: 'icm managed',
+};
+
 export function getDeviceDetailsSearchText(details?: DeviceDetails): string {
   if (!details) return '';
-  return Object.values(details)
-    .filter((value): value is string | number => value !== undefined && value !== null && value !== '')
-    .join(' ')
-    .toLowerCase();
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(details)) {
+    if (value === true && key in APPLE_MOBILE_SEARCH_FLAG_LABELS) {
+      parts.push(APPLE_MOBILE_SEARCH_FLAG_LABELS[key]);
+      continue;
+    }
+    if (value !== undefined && value !== null && value !== '' && value !== false) {
+      if (typeof value === 'string' || typeof value === 'number') {
+        parts.push(String(value));
+      }
+    }
+  }
+  const mobileHint =
+    typeof details === 'object' &&
+    details !== null &&
+    ('icloud_lock_status' in details || 'carrier_lock' in details);
+  if (mobileHint) {
+    const svcLabel = APPLE_MOBILE_SEARCH_FLAG_LABELS.serviced_battery_third_party;
+    if (appleMobileShowsServicedBattery(details as AppleMobileDeviceDetails) && !parts.includes(svcLabel)) {
+      parts.push(svcLabel);
+    }
+  }
+  return parts.join(' ').toLowerCase();
 }
 
 export type SyncStatus = 'synced' | 'pending' | 'conflict';

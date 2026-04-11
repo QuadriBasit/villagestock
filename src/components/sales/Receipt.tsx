@@ -1,6 +1,14 @@
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
-import { isAppleDevice } from '@/types';
-import type { AppleICloudStatus, SalesRecord, ShopProfile } from '@/types';
+import {
+  appleMobileShowsServicedBattery,
+  isAppleDevice,
+  isAppleMobileDevice,
+  type AppleICloudStatus,
+  type AppleMobileDeviceDetails,
+  type Category,
+  type SalesRecord,
+  type ShopProfile,
+} from '@/types';
 import { formatCurrency } from '@/lib/utils';
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -117,6 +125,34 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ sale, shop }, ref) =
           )}
           {'icloud_lock_status' in sale.device_details! && sale.device_details.icloud_lock_status && (
             <Row label="iCloud Status" value={icloudStatusLabel(sale.device_details.icloud_lock_status)} />
+          )}
+          {'important_battery_message' in sale.device_details! && sale.device_details.important_battery_message && (
+            <Row label="Battery disclosure" value="Important Battery Message / Unknown Part" bold />
+          )}
+          {'important_display_message' in sale.device_details! && sale.device_details.important_display_message && (
+            <Row label="Display disclosure" value="Important Display Message / Unknown Part" bold />
+          )}
+          {isAppleMobileDevice(sale.item_brand, sale.item_category as Category) &&
+            sale.device_details &&
+            appleMobileShowsServicedBattery(sale.device_details as AppleMobileDeviceDetails) && (
+              <Row
+                label="Battery service"
+                value={
+                  typeof (sale.device_details as AppleMobileDeviceDetails).battery_health === 'number' &&
+                  (sale.device_details as AppleMobileDeviceDetails).battery_health! < 80
+                    ? 'Battery health under 80% (auto: serviced / low-health disclosure)'
+                    : 'Serviced battery (recorded flag)'
+                }
+              />
+            )}
+          {'mdm_ibm' in sale.device_details! && sale.device_details.mdm_ibm && (
+            <Row label="MDM" value="IBM (bypass) flagged" />
+          )}
+          {'mdm_idm' in sale.device_details! && sale.device_details.mdm_idm && (
+            <Row label="MDM" value="IDM flagged" />
+          )}
+          {'mdm_icm' in sale.device_details! && sale.device_details.mdm_icm && (
+            <Row label="MDM" value="ICM (managed) flagged" />
           )}
           {'carrier_lock' in sale.device_details! && sale.device_details.carrier_lock && (
             <Row label="Carrier Lock" value={readableValue(sale.device_details.carrier_lock)} />
@@ -346,11 +382,11 @@ function icloudStatusLabel(status: AppleICloudStatus) {
     case 'clean':
       return 'Clean';
     case 'ibm':
-      return 'IBM';
+      return 'IBM (bypass MDM — often with battery / Unknown Part warnings)';
     case 'idm':
-      return 'IDM';
+      return 'IDM (iCloud disabled MDM — often with display / Unknown Part warnings)';
     case 'icm':
-      return 'ICM';
+      return 'ICM (iCloud managed / enterprise)';
     case 'icloud_locked':
       return 'iCloud Locked';
     case 'find_my_on':

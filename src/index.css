@@ -313,3 +313,32 @@ h1, h2, h3, h4, h5, h6 {
 .dark .reports-calendar .rdp-nav .rdp-button_next {
   color: #d4d4d8;
 }
+
+/*
+ * Mobile Chrome & Safari zoom the viewport when focusing fields with computed font-size < 16px.
+ * Tailwind text-sm is ~14px. This file loads before/within Tailwind layers; keep this block LAST
+ * so !important wins. Match: narrow viewports OR primary coarse pointer (phones, many tablets,
+ * large phones in landscape where width > 1023px).
+ */
+@media (max-width: 1023px), (pointer: coarse) {
+  textarea,
+  select,
+  [contenteditable='true']:not([role='button']) {
+    font-size: 16px !important;
+  }
+
+  input:not(
+      [type='button'],
+      [type='submit'],
+      [type='reset'],
+      [type='checkbox'],
+      [type='radio'],
+      [type='file'],
+      [type='image'],
+      [type='range'],
+      [type='hidden'],
+      [type='color']
+    ) {
+    font-size: 16px !important;
+  }
+}

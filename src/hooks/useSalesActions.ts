@@ -8,6 +8,7 @@ import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
+import { saleBlockedMissingIdentifiers } from '@/lib/serializedIdentifiers';
 import type { SalesRecord, SalesRecordInput } from '@/types';
 
 export function useSalesActions() {
@@ -20,6 +21,11 @@ export function useSalesActions() {
     if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
     // await assertTrialAllowsMutations(shopOwnerId);
     await assertTradingAllowedForStockPolicy(shopOwnerId, activeLocationId);
+
+    const itemPre = await db.inventory_items.get(input.item_id);
+    if (!itemPre) throw new Error('Item not found');
+    const idBlock = saleBlockedMissingIdentifiers(itemPre);
+    if (idBlock) throw new Error(idBlock);
 
     const receipt_number = await generateReceiptNumber(shopOwnerId);
 
@@ -37,33 +43,30 @@ export function useSalesActions() {
 
     await db.sales_records.add(record);
 
-    const item = await db.inventory_items.get(input.item_id);
-    if (item) {
-      if (item.mode === 'serialized') {
-        await db.inventory_items.update(input.item_id, {
-          status: 'sold',
-          updated_at: new Date().toISOString(),
-          sync_status: 'pending',
-        });
-      } else {
-        const newQty = Math.max(0, item.quantity - input.quantity_sold);
-        await db.inventory_items.update(input.item_id, {
-          quantity: newQty,
-          updated_at: new Date().toISOString(),
-          sync_status: 'pending',
-        });
-      }
-      const updatedItem = await db.inventory_items.get(input.item_id);
-      if (updatedItem) {
-        await queueSync('inventory_items', 'update', updatedItem as unknown as Record<string, unknown>);
-      }
+    if (itemPre.mode === 'serialized') {
+      await db.inventory_items.update(input.item_id, {
+        status: 'sold',
+        updated_at: new Date().toISOString(),
+        sync_status: 'pending',
+      });
+    } else {
+      const newQty = Math.max(0, itemPre.quantity - input.quantity_sold);
+      await db.inventory_items.update(input.item_id, {
+        quantity: newQty,
+        updated_at: new Date().toISOString(),
+        sync_status: 'pending',
+      });
+    }
+    const updatedItem = await db.inventory_items.get(input.item_id);
+    if (updatedItem) {
+      await queueSync('inventory_items', 'update', updatedItem as unknown as Record<string, unknown>);
     }
 
     await queueSync('sales_records', 'insert', record as unknown as Record<string, unknown>);
     await flushSyncQueue();
 
     const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
-    const itemLabel = item ? `${item.brand} ${item.name}`.trim() : undefined;
+    const itemLabel = `${itemPre.brand} ${itemPre.name}`.trim();
     void logShopAudit({
       businessId: shopOwnerId,
       actorUserId,

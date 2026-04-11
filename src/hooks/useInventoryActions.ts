@@ -8,6 +8,7 @@ import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import { getCategoryMode } from '@/types';
+import { inventoryMissingRequiredIdentifiers } from '@/lib/serializedIdentifiers';
 import type { InventoryItem, InventoryItemInput, SerializedItemStatus } from '@/types';
 
 export function useInventoryActions() {
@@ -21,6 +22,9 @@ export function useInventoryActions() {
     // await assertTrialAllowsMutations(shopOwnerId);
 
     const mode = getCategoryMode(input.category);
+    const idErr = inventoryMissingRequiredIdentifiers(input.category, input.imei, input.serial_number);
+    if (idErr) throw new Error(idErr);
+
     const now = new Date().toISOString();
 
     const item: InventoryItem = {
@@ -57,11 +61,16 @@ export function useInventoryActions() {
   async function updateItem(id: string, changes: Partial<InventoryItemInput>): Promise<void> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     // await assertTrialAllowsMutations(shopOwnerId);
+    const existing = await db.inventory_items.get(id);
+    if (!existing) throw new Error('Item not found');
     const now = new Date().toISOString();
     const { location_id, ...rest } = changes as Partial<InventoryItemInput> & {
       location_id?: string;
     };
     void location_id;
+    const merged = { ...existing, ...rest };
+    const idErr = inventoryMissingRequiredIdentifiers(merged.category, merged.imei, merged.serial_number);
+    if (idErr) throw new Error(idErr);
     const updates = { ...rest, updated_at: now, sync_status: 'pending' as const };
     await db.inventory_items.update(id, updates);
     const updated = await db.inventory_items.get(id);

@@ -8,6 +8,7 @@ import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
+import { saleBlockedMissingIdentifiers } from '@/lib/serializedIdentifiers';
 import type { DeviceCondition, InventoryItem, PaymentMethod, PaymentStatus, SalesRecord, SwapRecord } from '@/types';
 
 interface ProcessSwapInput {
@@ -42,6 +43,8 @@ export function useSwapActions() {
     await assertTradingAllowedForStockPolicy(shopOwnerId, activeLocationId);
     if (input.outgoingItem.mode !== 'serialized') throw new Error('Swaps only apply to serialized items');
     if (input.outgoingItem.status !== 'in_stock') throw new Error('Selected item is not in stock');
+    const outgoingIdBlock = saleBlockedMissingIdentifiers(input.outgoingItem);
+    if (outgoingIdBlock) throw new Error(outgoingIdBlock);
 
     const receiptNumber = await generateReceiptNumber(shopOwnerId);
     const saleId = uuidv4();

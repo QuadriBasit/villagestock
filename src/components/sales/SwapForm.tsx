@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,6 +18,7 @@ import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { DatePickerField } from '@/components/ui/DatePickerField';
 import { formatCurrency } from '@/lib/utils';
+import { saleBlockedMissingIdentifiers } from '@/lib/serializedIdentifiers';
 import type { DeviceCondition, InventoryItem, PaymentMethod, PaymentStatus, SalesRecord } from '@/types';
 
 const ReceiptModal = lazy(() => import('./ReceiptModal'));
@@ -147,7 +148,8 @@ export default function SwapForm({
 
   const tradeLocked =
     tradingGate.gateApplies && tradingGate.isReady && tradingGate.tradingBlocked;
-  const canSwap = item.status === 'in_stock' && !tradeLocked;
+  const outgoingIdBlock = useMemo(() => saleBlockedMissingIdentifiers(item), [item]);
+  const canSwap = item.status === 'in_stock' && !tradeLocked && !outgoingIdBlock;
 
   const fieldClass =
     'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
@@ -186,6 +188,14 @@ export default function SwapForm({
           {tradeLocked && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
               {tradingGate.message}
+            </p>
+          )}
+          {outgoingIdBlock && (
+            <p
+              role="alert"
+              className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100"
+            >
+              {outgoingIdBlock}
             </p>
           )}
           {submitError && (
@@ -417,7 +427,11 @@ export default function SwapForm({
               {isSubmitting ? (
                 <><Loader2 size={16} className="animate-spin" /> Processing…</>
               ) : !canSwap ? (
-                tradeLocked ? tradingGate.message : `Status: ${item.status ?? 'unknown'}`
+                outgoingIdBlock
+                  ? 'Add IMEI or serial on outgoing item first'
+                  : tradeLocked
+                    ? tradingGate.message
+                    : `Status: ${item.status ?? 'unknown'}`
               ) : (
                 <><ArrowRightLeft size={16} /> Confirm Swap</>
               )}

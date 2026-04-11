@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, useRef, useEffect } from 'react';
+import { useState, lazy, Suspense, useRef, useEffect, useMemo } from 'react';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { DatePickerField } from '@/components/ui/DatePickerField';
 import { formatCurrency } from '@/lib/utils';
+import { saleBlockedMissingIdentifiers } from '@/lib/serializedIdentifiers';
 import type { InventoryItem, PaymentMethod, PaymentStatus, SalesRecord } from '@/types';
 
 const ReceiptModal = lazy(() => import('./ReceiptModal'));
@@ -89,6 +90,10 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
   const submitErrorRef = useRef<HTMLParagraphElement>(null);
 
   const isSerialized = item.mode === 'serialized';
+  const identifierBlock = useMemo(
+    () => (isSerialized ? saleBlockedMissingIdentifiers(item) : null),
+    [isSerialized, item]
+  );
 
   useEffect(() => {
     if (!submitError) return;
@@ -184,7 +189,9 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
   const tradeLocked =
     tradingGate.gateApplies && tradingGate.isReady && tradingGate.tradingBlocked;
   const canSell =
-    !tradeLocked && (isSerialized ? item.status === 'in_stock' : item.quantity > 0);
+    !tradeLocked &&
+    (isSerialized ? item.status === 'in_stock' : item.quantity > 0) &&
+    !identifierBlock;
 
   const fieldClass =
     'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
@@ -218,6 +225,14 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
           {tradeLocked && (
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
               {tradingGate.message}
+            </p>
+          )}
+          {identifierBlock && (
+            <p
+              role="alert"
+              className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100"
+            >
+              {identifierBlock}
             </p>
           )}
           {submitError && (
@@ -494,11 +509,13 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
               {isSubmitting
                 ? <><Loader2 size={16} className="animate-spin" /> Recording…</>
                 : !canSell
-                ? tradeLocked
-                  ? tradingGate.message
-                  : isSerialized
-                    ? `Unit is ${item.status}`
-                    : 'Out of Stock'
+                ? identifierBlock
+                  ? 'Add IMEI or serial on the item first'
+                  : tradeLocked
+                    ? tradingGate.message
+                    : isSerialized
+                      ? `Unit is ${item.status}`
+                      : 'Out of Stock'
                 : <><ShoppingCart size={16} /> Confirm Sale</>
               }
             </button>

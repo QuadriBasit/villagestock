@@ -9,7 +9,7 @@ import {
   forwardRef,
   useCallback,
 } from 'react';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, X } from 'lucide-react';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/Popover';
 import { Label } from '@/components/ui/Label';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,7 @@ const labelCls = 'mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-20
 const errorCls = 'mt-1 text-xs text-red-500';
 
 const baseInputCls =
-  'h-11 w-full rounded-xl border bg-white px-3 py-2 pr-10 text-sm text-zinc-900 shadow-sm shadow-zinc-900/[0.04] ring-offset-white transition-[color,box-shadow] focus:outline-none focus:ring-2 focus:ring-offset-0 dark:bg-zinc-900/95 dark:text-zinc-100 dark:ring-offset-zinc-950';
+  'h-11 w-full rounded-xl border bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm shadow-zinc-900/[0.04] ring-offset-white transition-[color,box-shadow] focus:outline-none focus:ring-2 focus:ring-offset-0 dark:bg-zinc-900/95 dark:text-zinc-100 dark:ring-offset-zinc-950';
 
 const optionBtnCls =
   'flex w-full cursor-pointer select-none items-center rounded-lg px-2 py-2 text-left text-sm outline-none transition-colors hover:bg-zinc-100 focus-visible:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus-visible:bg-zinc-800';
@@ -148,7 +148,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
               aria-controls={showList ? listboxId : undefined}
               aria-activedescendant={showList && highlight >= 0 ? `${id}-opt-${highlight}` : undefined}
               aria-autocomplete="list"
-              className={cn(baseInputCls, modeClass, inputClassName)}
+              className={cn(baseInputCls, trimmed ? 'pr-20' : 'pr-10', modeClass, inputClassName)}
               aria-invalid={error ? true : undefined}
               aria-describedby={
                 error ? `${id}-error` : trimmed ? `${id}-mode` : emptyHint ? `${id}-hint` : undefined
@@ -207,6 +207,23 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
                 }
               }}
             />
+            {trimmed.length > 0 ? (
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label={`Clear ${label}`}
+                className="absolute right-10 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                onMouseDown={e => {
+                  e.preventDefault();
+                  clearBlurTimer();
+                  emitValue('');
+                  setOpen(false);
+                  setHighlight(-1);
+                }}
+              >
+                <X strokeWidth={2} className="size-4" aria-hidden />
+              </button>
+            ) : null}
             <button
               type="button"
               tabIndex={-1}
@@ -253,7 +270,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
             id={listboxId}
             role="listbox"
             aria-label={label}
-            className="max-h-[min(18rem,70vh)] overflow-y-auto p-1 outline-none"
+            className="max-h-[min(18rem,70vh)] touch-pan-y overflow-y-auto overscroll-y-contain p-1 outline-none [-webkit-overflow-scrolling:touch]"
           >
             {filtered.length === 0 ? (
               <div className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
@@ -275,12 +292,13 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
                     i === highlight && 'bg-zinc-100 dark:bg-zinc-800',
                     trimmed.toLowerCase() === opt.toLowerCase() && 'bg-primary/10 dark:bg-primary/15'
                   )}
-                  tabIndex={-1}
+                                   tabIndex={-1}
                   onMouseEnter={() => setHighlight(i)}
                   onPointerDown={e => {
-                    if (e.pointerType === 'mouse' && e.button !== 0) return;
-                    pickOption(opt);
+                    // Touch: do not preventDefault — allows scroll. Mouse: avoid input blur before click.
+                    if (e.pointerType === 'mouse' && e.button === 0) e.preventDefault();
                   }}
+                  onClick={() => pickOption(opt)}
                 >
                   <Check
                     strokeWidth={2}
