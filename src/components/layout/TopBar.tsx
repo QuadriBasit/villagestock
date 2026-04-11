@@ -11,6 +11,13 @@ import { useInventoryStore } from '@/store/inventory';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { signOutApp } from '@/lib/signOutApp';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -104,24 +111,21 @@ export default function TopBar() {
           {title}
         </h1>
         {shopAccessStatus === 'ready' && locationReady && locations.length > 0 ? (
-          <>
-            <label className="sr-only" htmlFor="vs-branch-select">
-              Branch
-            </label>
-            <select
-              id="vs-branch-select"
-              value={activeLocationId ?? ''}
-              onChange={e => setActiveLocationId(e.target.value)}
-              className="max-w-[9.5rem] shrink-0 rounded-lg border border-zinc-200/90 bg-zinc-50/95 py-1 pl-2 pr-6 text-[11px] font-semibold text-zinc-800 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 md:max-w-[11rem] md:text-xs"
+          <Select value={activeLocationId ?? undefined} onValueChange={setActiveLocationId}>
+            <SelectTrigger
               aria-label="Active branch"
+              className="h-8 w-auto max-w-[9.5rem] shrink-0 gap-1 rounded-lg border-zinc-200/90 bg-zinc-50/95 px-2 py-0 text-[11px] font-semibold text-zinc-800 shadow-none ring-offset-0 focus:ring-primary/25 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 md:h-9 md:max-w-[11rem] md:text-xs [&_svg]:size-3.5 [&_svg]:opacity-70"
             >
+              <SelectValue placeholder="Branch" />
+            </SelectTrigger>
+            <SelectContent align="start" sideOffset={4}>
               {locations.map(loc => (
-                <option key={loc.id} value={loc.id}>
+                <SelectItem key={loc.id} value={loc.id} className="text-xs md:text-sm">
                   {loc.name}
-                </option>
+                </SelectItem>
               ))}
-            </select>
-          </>
+            </SelectContent>
+          </Select>
         ) : null}
       </div>
 

@@ -126,7 +126,7 @@ export default function DashboardPage() {
     <div className='app-page space-y-5 py-4 md:space-y-6 md:py-6'>
       <header className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
         <div>
-          <p className='label-caps mb-1.5 flex flex-wrap items-center gap-2 text-primary'>
+          <div className='label-caps mb-1.5 flex flex-wrap items-center gap-2 text-primary'>
             <span className='flex items-center gap-2'>
               <Sparkles size={12} className='text-amber-500' />
               Overview
@@ -136,7 +136,7 @@ export default function DashboardPage() {
               className='font-bold'>
               {isOnline ? 'Live' : 'Offline'}
             </Badge>
-          </p>
+          </div>
           <h2 className='text-2xl font-bold leading-none tracking-tighter text-zinc-900 sm:text-4xl md:text-[2.65rem] dark:text-zinc-400'>
             {greetLabel}
             <span className='font-semibold text-zinc-400'>,</span>
