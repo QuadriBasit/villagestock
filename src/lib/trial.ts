@@ -35,8 +35,8 @@ export function trialBlocksMutations(bp: BusinessProfile | null | undefined): bo
  *
  * PREVIOUS: loaded profile, applied devBillingOverride, threw TrialExpiredError when gated.
  */
-export async function assertTrialAllowsMutations(_userId: string): Promise<void> {
-  return;
+export async function assertTrialAllowsMutations(userId: string): Promise<void> {
+  void userId;
 }
 
 /**
@@ -44,11 +44,12 @@ export async function assertTrialAllowsMutations(_userId: string): Promise<void>
  *
  * PREVIOUS: computed days left from trial_end_date for trial plan.
  */
-export function trialBannerState(_bp: BusinessProfile | null | undefined): {
+export function trialBannerState(bp: BusinessProfile | null | undefined): {
   visible: boolean;
   daysRemaining: number;
   urgent: boolean;
 } {
+  void bp;
   return { visible: false, daysRemaining: 0, urgent: false };
 }
 
@@ -57,6 +58,7 @@ export function trialBannerState(_bp: BusinessProfile | null | undefined): {
  *
  * PREVIOUS: return trialBlocksMutations(bp);
  */
-export function showTrialEndedOverlay(_bp: BusinessProfile | null | undefined): boolean {
+export function showTrialEndedOverlay(bp: BusinessProfile | null | undefined): boolean {
+  void bp;
   return false;
 }

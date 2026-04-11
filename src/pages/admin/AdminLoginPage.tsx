@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useIsAdminUser } from '@/hooks/useIsAdminUser';
 import { Shield, Loader2 } from 'lucide-react';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -100,9 +101,8 @@ export default function AdminLoginPage() {
             <label className="block text-xs font-medium text-slate-300 mb-1" htmlFor="admin-password">
               Password
             </label>
-            <input
+            <PasswordInput
               id="admin-password"
-              type="password"
               autoComplete="current-password"
               {...register('password')}
               className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"

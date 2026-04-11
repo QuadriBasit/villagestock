@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { Package, Loader2, Mail, Lock } from 'lucide-react';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { authCallbackUrl } from '@/lib/authSiteUrl';
@@ -229,16 +230,14 @@ export default function AuthPage() {
                   : 'Your reset link was valid — set a password you will use with your email.'}
               </p>
               <div className="space-y-3">
-                <input
-                  type="password"
+                <PasswordInput
                   autoComplete="new-password"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   className={inputClass}
                   placeholder="New password"
                 />
-                <input
-                  type="password"
+                <PasswordInput
                   autoComplete="new-password"
                   value={newPassword2}
                   onChange={e => setNewPassword2(e.target.value)}
@@ -313,9 +312,8 @@ export default function AuthPage() {
                   <label className="block text-sm font-medium text-dark mb-1" htmlFor="password-login">
                     Password
                   </label>
-                  <input
+                  <PasswordInput
                     id="password-login"
-                    type="password"
                     autoComplete="current-password"
                     value={passwordLogin}
                     onChange={e => setPasswordLogin(e.target.value)}
@@ -433,9 +431,8 @@ export default function AuthPage() {
                       <label className="block text-sm font-medium text-dark mb-1" htmlFor="signup-password">
                         Password
                       </label>
-                      <input
+                      <PasswordInput
                         id="signup-password"
-                        type="password"
                         autoComplete="new-password"
                         value={signupPassword}
                         onChange={e => setSignupPassword(e.target.value)}
@@ -447,9 +444,8 @@ export default function AuthPage() {
                       <label className="block text-sm font-medium text-dark mb-1" htmlFor="signup-password-2">
                         Confirm password
                       </label>
-                      <input
+                      <PasswordInput
                         id="signup-password-2"
-                        type="password"
                         autoComplete="new-password"
                         value={signupPassword2}
                         onChange={e => setSignupPassword2(e.target.value)}

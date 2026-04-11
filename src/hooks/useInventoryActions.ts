@@ -58,9 +58,10 @@ export function useInventoryActions() {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     // await assertTrialAllowsMutations(shopOwnerId);
     const now = new Date().toISOString();
-    const { location_id: _ignoreLoc, ...rest } = changes as Partial<InventoryItemInput> & {
+    const { location_id, ...rest } = changes as Partial<InventoryItemInput> & {
       location_id?: string;
     };
+    void location_id;
     const updates = { ...rest, updated_at: now, sync_status: 'pending' as const };
     await db.inventory_items.update(id, updates);
     const updated = await db.inventory_items.get(id);

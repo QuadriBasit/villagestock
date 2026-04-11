@@ -19,7 +19,8 @@ export function addCalendarDaysYmd(ymd: string, deltaDays: number): string {
  *
  * PREVIOUS: return profile?.plan === 'business' && profile?.plan_status === 'active';
  */
-export function hasStockAccountabilityPlan(_profile: BusinessProfile | null | undefined): boolean {
+export function hasStockAccountabilityPlan(profile: BusinessProfile | null | undefined): boolean {
+  void profile;
   return true;
 }
 

@@ -10,10 +10,11 @@ import { tradingBlockedMessage } from '@/lib/stockSessionUtils';
  *   // loaded profile; if hasStockAccountabilityPlan, required open session for today or threw tradingBlockedMessage.
  */
 export async function assertTradingAllowedForStockPolicy(
-  _userId: string,
-  _locationId: string
+  userId: string,
+  locationId: string
 ): Promise<void> {
-  return;
+  void userId;
+  void locationId;
 }
 
 export { tradingBlockedMessage };
