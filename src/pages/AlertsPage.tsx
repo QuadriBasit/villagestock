@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { useAuthStore } from '@/store/auth';
+import { useShopAccess } from '@/context/ShopAccessContext';
+import { useShopLocation } from '@/context/ShopLocationContext';
 import { AlertTriangle, XCircle, Package, ChevronRight, Pencil } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { AlertsSkeletonList } from '@/components/ui/Skeleton';
@@ -11,14 +13,16 @@ const CRITICAL_FLOOR = 3;
 
 export default function AlertsPage() {
   const { user } = useAuthStore();
+  const { shopOwnerId } = useShopAccess();
+  const { activeLocationId, ready: locationReady } = useShopLocation();
   const navigate = useNavigate();
 
   const alerts = useLiveQuery(async () => {
-    if (!user) return null;
+    if (!user || !shopOwnerId || !locationReady || !activeLocationId) return null;
     const items = await db.inventory_items
       .where('user_id')
-      .equals(user.id)
-      .filter(i => !i.deleted)
+      .equals(shopOwnerId)
+      .filter(i => !i.deleted && i.location_id === activeLocationId)
       .toArray();
 
     // ── Non-serialized qty alerts ─────────────────────────────────────────────
@@ -43,7 +47,7 @@ export default function AlertsPage() {
       .map(units => units[0]);
 
     return { lowStock, outOfStock, lastUnits };
-  }, [user?.id]);
+  }, [user?.id, shopOwnerId, activeLocationId, locationReady]);
 
   if (alerts === undefined) return <AlertsSkeletonList />;
 

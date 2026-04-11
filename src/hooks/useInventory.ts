@@ -1,21 +1,24 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { useShopLocation } from '@/context/ShopLocationContext';
 import { useInventoryStore } from '@/store/inventory';
 import { getDeviceDetailsSearchText } from '@/types';
 import type { InventoryItem, StockSummary } from '@/types';
 
 export function useInventory() {
   const { shopOwnerId } = useShopAccess();
+  const { activeLocationId, ready: locationReady } = useShopLocation();
   const { filters } = useInventoryStore();
 
   const items = useLiveQuery(async () => {
     if (!shopOwnerId) return [];
+    if (!locationReady || !activeLocationId) return [];
 
     let arr = await db.inventory_items
       .where('user_id')
       .equals(shopOwnerId)
-      .filter(item => !item.deleted)
+      .filter(item => !item.deleted && item.location_id === activeLocationId)
       .toArray();
 
     // By default hide sold/defective serialized units unless showSold is on
@@ -62,7 +65,7 @@ export function useInventory() {
     });
 
     return arr;
-  }, [shopOwnerId, filters]);
+  }, [shopOwnerId, activeLocationId, locationReady, filters]);
 
   return { items: items ?? [], isLoading: items === undefined };
 }
@@ -77,13 +80,15 @@ export function useInventoryItem(id: string) {
 
 export function useStockSummary() {
   const { shopOwnerId } = useShopAccess();
+  const { activeLocationId, ready: locationReady } = useShopLocation();
 
   const summary = useLiveQuery(async () => {
     if (!shopOwnerId) return null;
+    if (!locationReady || !activeLocationId) return null;
     const items = await db.inventory_items
       .where('user_id')
       .equals(shopOwnerId)
-      .filter(i => !i.deleted)
+      .filter(i => !i.deleted && i.location_id === activeLocationId)
       .toArray();
 
     const categories = ['phones', 'laptops', 'tablets', 'accessories', 'parts'] as const;
@@ -128,7 +133,7 @@ export function useStockSummary() {
     low_stock_count += lastUnitCount;
 
     return { total_items, total_value, low_stock_count, out_of_stock_count, by_category } satisfies StockSummary;
-  }, [shopOwnerId]);
+  }, [shopOwnerId, activeLocationId, locationReady]);
 
   return { summary: summary ?? null, isLoading: summary === undefined };
 }

@@ -90,9 +90,22 @@ export type ReturnType = 'refund' | 'exchange';
 
 // ─── Core Models ─────────────────────────────────────────────────────────────
 
+/** Branch / counter under a shop (`business_id` = `business_profiles.id` = owner `user_id`). */
+export interface ShopLocation {
+  id: string;
+  business_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  sync_status: SyncStatus;
+}
+
 export interface InventoryItem {
   id: string;
   user_id: string;
+  /** Set after multi-branch migration / sync; treat missing as “needs backfill”. */
+  location_id?: string;
   name: string;
   category: Category;
   brand: string;
@@ -139,6 +152,7 @@ export interface StockMovement {
 export interface SalesRecord {
   id: string;
   user_id: string;
+  location_id?: string;
   item_id: string;
   sale_type: SaleType;
   item_name: string;
@@ -177,6 +191,7 @@ export interface ReturnRecord {
   sale_id: string;
   item_id: string;
   user_id: string;
+  location_id?: string;
   reason: ReturnReason;
   return_type: ReturnType;
   notes?: string;
@@ -194,6 +209,7 @@ export interface SwapRecord {
   outgoing_item_id: string;
   incoming_item_id: string;
   user_id: string;
+  location_id?: string;
   sale_id: string;
   sale_price: number;
   trade_in_value: number;
@@ -215,6 +231,7 @@ export interface CreditRecord {
   id: string;
   sale_id: string;
   user_id: string;
+  location_id?: string;
   customer_name: string;
   customer_phone: string;
   item_name: string;
@@ -232,6 +249,7 @@ export interface RepairRecord {
   id: string;
   item_id: string;
   user_id: string;
+  location_id?: string;
   engineer_name: string;
   engineer_phone?: string;
   issue_description: string;
@@ -316,6 +334,8 @@ export interface StockSession {
   id: string;
   /** Shop owner user id (= business id in app) */
   user_id: string;
+  /** Branch this session belongs to */
+  location_id?: string;
   /** Local calendar date YYYY-MM-DD when the session was opened */
   date: string;
   opened_at: string;
@@ -427,7 +447,8 @@ export interface SyncQueueItem {
     | 'swap_records'
     | 'credit_records'
     | 'repair_records'
-    | 'business_profiles';
+    | 'business_profiles'
+    | 'shop_locations';
   operation: 'insert' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;

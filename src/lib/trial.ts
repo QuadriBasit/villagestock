@@ -1,5 +1,6 @@
 import type { BusinessProfile } from '@/types';
 import { db } from '@/lib/db';
+import { effectiveBusinessProfileForBilling } from '@/lib/devBillingOverride';
 
 export class TrialExpiredError extends Error {
   constructor() {
@@ -34,7 +35,8 @@ export function trialBlocksMutations(bp: BusinessProfile | undefined): boolean {
 
 export async function assertTrialAllowsMutations(userId: string): Promise<void> {
   const bp = await db.business_profiles.get(userId);
-  if (trialBlocksMutations(bp)) throw new TrialExpiredError();
+  const effective = effectiveBusinessProfileForBilling(bp ?? undefined);
+  if (trialBlocksMutations(effective)) throw new TrialExpiredError();
 }
 
 export function trialBannerState(bp: BusinessProfile | undefined): {

@@ -16,6 +16,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
+          location_id: string;
           name: string;
           category: string;
           brand: string;
@@ -40,6 +41,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id: string;
+          location_id: string;
           name: string;
           category: string;
           brand: string;
@@ -90,6 +92,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
+          location_id: string;
           item_id: string | null;
           sale_type: 'sale' | 'swap';
           item_name: string;
@@ -123,6 +126,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id: string;
+          location_id: string;
           item_id?: string | null;
           sale_type?: 'sale' | 'swap';
           item_name: string;
@@ -162,6 +166,7 @@ export interface Database {
           outgoing_item_id: string;
           incoming_item_id: string;
           user_id: string;
+          location_id: string;
           sale_id: string;
           sale_price: number;
           trade_in_value: number;
@@ -177,6 +182,7 @@ export interface Database {
           outgoing_item_id: string;
           incoming_item_id: string;
           user_id: string;
+          location_id: string;
           sale_id: string;
           sale_price: number;
           trade_in_value: number;
@@ -195,6 +201,7 @@ export interface Database {
           id: string;
           sale_id: string;
           user_id: string;
+          location_id: string;
           customer_name: string;
           customer_phone: string;
           item_name: string;
@@ -211,6 +218,7 @@ export interface Database {
           id?: string;
           sale_id: string;
           user_id: string;
+          location_id: string;
           customer_name: string;
           customer_phone: string;
           item_name: string;
@@ -231,6 +239,7 @@ export interface Database {
           id: string;
           item_id: string;
           user_id: string;
+          location_id: string;
           engineer_name: string;
           engineer_phone: string | null;
           issue_description: string;
@@ -246,6 +255,7 @@ export interface Database {
           id?: string;
           item_id: string;
           user_id: string;
+          location_id: string;
           engineer_name: string;
           engineer_phone?: string | null;
           issue_description: string;
@@ -266,6 +276,7 @@ export interface Database {
           sale_id: string;
           item_id: string;
           user_id: string;
+          location_id: string;
           reason: 'defective' | 'changed_mind' | 'wrong_item' | 'other';
           return_type: 'refund' | 'exchange';
           notes: string | null;
@@ -281,6 +292,7 @@ export interface Database {
           sale_id: string;
           item_id: string;
           user_id: string;
+          location_id: string;
           reason: 'defective' | 'changed_mind' | 'wrong_item' | 'other';
           return_type: 'refund' | 'exchange';
           notes?: string | null;
@@ -332,6 +344,26 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['business_profiles']['Row']>;
         Relationships: [];
       };
+      shop_locations: {
+        Row: {
+          id: string;
+          business_id: string;
+          name: string;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          name: string;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['shop_locations']['Insert']>;
+        Relationships: [];
+      };
       audit_events: {
         Row: {
           id: string;
@@ -363,6 +395,7 @@ export interface Database {
           member_user_id: string;
           role: string;
           display_name: string | null;
+          allowed_location_ids: string[] | null;
           created_at: string;
         };
         Insert: {
@@ -371,6 +404,7 @@ export interface Database {
           member_user_id: string;
           role: string;
           display_name?: string | null;
+          allowed_location_ids?: string[] | null;
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['business_members']['Row']>;
@@ -383,6 +417,7 @@ export interface Database {
           email: string;
           role: string;
           display_name: string | null;
+          allowed_location_ids: string[] | null;
           invited_by: string;
           token: string;
           created_at: string;
@@ -395,6 +430,7 @@ export interface Database {
           email: string;
           role: string;
           display_name?: string | null;
+          allowed_location_ids?: string[] | null;
           invited_by: string;
           token?: string;
           created_at?: string;

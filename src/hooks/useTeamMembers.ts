@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { logShopAudit } from '@/lib/audit';
+import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import type { Database } from '@/types/supabase';
 
 export type TeamMemberRow = Database['public']['Tables']['business_members']['Row'];
@@ -19,7 +20,7 @@ function functionsInvokeErrorMessage(error: unknown, data: unknown): string {
 }
 
 export function useTeamMembers() {
-  const { shopOwnerId, actorUserId, canManageBusinessSettings } = useShopAccess();
+  const { shopOwnerId, actorUserId, canInviteTeamMembers, canManageBusinessSettings } = useShopAccess();
   const [members, setMembers] = useState<TeamMemberRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,9 +54,17 @@ export function useTeamMembers() {
    * Sends Supabase Auth invite email; user sets password from link, then `accept_staff_invite` runs in ShopAccessProvider.
    */
   const inviteStaff = useCallback(
-    async (params: { email: string; role: 'manager' | 'staff'; displayName: string }) => {
+    async (params: {
+      email: string;
+      role: 'manager' | 'staff';
+      displayName: string;
+      /** Omit or null = all branches */
+      allowedLocationIds?: string[] | null;
+    }) => {
       if (!shopOwnerId || !actorUserId) throw new Error('Not authenticated');
-      if (!canManageBusinessSettings) throw new Error('Only owners and managers can invite team members.');
+      if (!canInviteTeamMembers) throw new Error('Only owners and managers can invite team members.');
+      const displayName = params.displayName.trim();
+      if (!displayName) throw new Error('Name on receipts is required.');
       const email = params.email.trim().toLowerCase();
       if (!email || !email.includes('@')) throw new Error('Enter a valid email address.');
       const {
@@ -69,12 +78,17 @@ export function useTeamMembers() {
       if (!session?.access_token) {
         throw new Error('You must be signed in to send invites. Sign in again if your session expired.');
       }
+      const loc = params.allowedLocationIds;
+      const allowed_location_ids =
+        loc && loc.length > 0 ? loc : null;
+
       const { data, error: fnErr } = await supabase.functions.invoke('invite-staff', {
         body: {
           business_id: shopOwnerId,
           email,
           role: params.role,
-          display_name: params.displayName.trim() || null,
+          display_name: displayName,
+          allowed_location_ids,
         },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
@@ -82,16 +96,18 @@ export function useTeamMembers() {
       if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
         throw new Error(String((data as { error: string }).error));
       }
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
         actorUserId,
         action: 'team.member_invited',
         entityType: 'staff_invite',
         entityId: email,
-        metadata: { role: params.role, display_name: params.displayName.trim() || null },
+        metadata: { role: params.role, name: displayName },
+        actorLabel,
       });
     },
-    [shopOwnerId, actorUserId, canManageBusinessSettings]
+    [shopOwnerId, actorUserId, canInviteTeamMembers]
   );
 
   /** For accounts that already exist in Auth (no email invite). */
@@ -101,9 +117,12 @@ export function useTeamMembers() {
       memberUserId?: string;
       role: 'manager' | 'staff';
       displayName: string;
+      allowedLocationIds?: string[] | null;
     }) => {
       if (!shopOwnerId || !actorUserId) throw new Error('Not authenticated');
-      if (!canManageBusinessSettings) throw new Error('Only owners and managers can add team members.');
+      if (!canInviteTeamMembers) throw new Error('Only owners and managers can add team members.');
+      const display_name = params.displayName.trim();
+      if (!display_name) throw new Error('Name on receipts is required.');
       const email = params.memberEmail?.trim() ?? '';
       const rawId = params.memberUserId?.trim() ?? '';
       let id: string;
@@ -126,21 +145,56 @@ export function useTeamMembers() {
         throw new Error('Enter their email or user ID.');
       }
       if (id === shopOwnerId) throw new Error('The shop owner is already a member.');
-      const display_name = params.displayName.trim() || null;
+      const loc = params.allowedLocationIds;
+      const allowed_location_ids = loc && loc.length > 0 ? loc : null;
       const { error: e } = await supabase.from('business_members').insert({
         business_id: shopOwnerId,
         member_user_id: id,
         role: params.role,
         display_name,
+        allowed_location_ids,
       } as never);
       if (e) throw new Error(e.message);
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
         actorUserId,
         action: 'team.member_added',
         entityType: 'business_member',
         entityId: id,
-        metadata: { role: params.role, display_name },
+        metadata: { role: params.role, name: display_name },
+        actorLabel,
+      });
+      await refetch();
+    },
+    [shopOwnerId, actorUserId, canInviteTeamMembers, refetch]
+  );
+
+  const updateMemberBranchAccess = useCallback(
+    async (row: TeamMemberRow, allowedLocationIds: string[] | null) => {
+      if (!shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+      if (!canManageBusinessSettings) {
+        throw new Error(
+          'Only the shop owner or a manager with access to all branches can change branch access for teammates.'
+        );
+      }
+      if (row.role === 'owner') throw new Error('Cannot change branch access for the owner.');
+      const allowed_location_ids =
+        allowedLocationIds && allowedLocationIds.length > 0 ? allowedLocationIds : null;
+      const { error: e } = await supabase
+        .from('business_members')
+        .update({ allowed_location_ids } as never)
+        .eq('id', row.id);
+      if (e) throw new Error(e.message);
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
+      void logShopAudit({
+        businessId: shopOwnerId,
+        actorUserId,
+        action: 'team.member_branch_scope_updated',
+        entityType: 'business_member',
+        entityId: row.member_user_id,
+        metadata: { allowed_location_ids },
+        actorLabel,
       });
       await refetch();
     },
@@ -154,6 +208,7 @@ export function useTeamMembers() {
       if (row.member_user_id === shopOwnerId) throw new Error('Cannot remove the owner account.');
       const { error: e } = await supabase.from('business_members').delete().eq('id', row.id);
       if (e) throw new Error(e.message);
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
         actorUserId,
@@ -161,11 +216,21 @@ export function useTeamMembers() {
         entityType: 'business_member',
         entityId: row.member_user_id,
         metadata: { role: row.role },
+        actorLabel,
       });
       await refetch();
     },
     [shopOwnerId, actorUserId, refetch]
   );
 
-  return { members, loading, error, refetch, inviteStaff, addMember, removeMember };
+  return {
+    members,
+    loading,
+    error,
+    refetch,
+    inviteStaff,
+    addMember,
+    removeMember,
+    updateMemberBranchAccess,
+  };
 }

@@ -5,6 +5,7 @@ import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { logShopAudit } from '@/lib/audit';
+import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import type { ReturnRecord, ReturnRecordInput } from '@/types';
 
 export function useReturnActions() {
@@ -14,11 +15,15 @@ export function useReturnActions() {
   async function processReturn(input: ReturnRecordInput): Promise<ReturnRecord> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
     await assertTrialAllowsMutations(shopOwnerId);
+    const saleRow = await db.sales_records.get(input.sale_id);
+    const location_id = saleRow?.location_id;
+    if (!location_id) throw new Error('Original sale is missing branch — sync and try again');
 
     const record: ReturnRecord = {
       ...input,
       id: uuidv4(),
       user_id: shopOwnerId,
+      location_id,
       sync_status: 'pending',
     };
 
@@ -66,6 +71,9 @@ export function useReturnActions() {
 
     await flushSyncQueue();
     if (actorUserId) {
+      const sale = await db.sales_records.get(input.sale_id);
+      const retItem = await db.inventory_items.get(input.item_id);
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
         actorUserId,
@@ -73,10 +81,12 @@ export function useReturnActions() {
         entityType: 'return_record',
         entityId: record.id,
         metadata: {
-          sale_id: input.sale_id,
+          receipt: sale?.receipt_number,
+          item: retItem ? `${retItem.brand} ${retItem.name}`.trim() : undefined,
           return_type: input.return_type,
           refund_amount: input.refund_amount,
         },
+        actorLabel,
       });
     }
     return record;

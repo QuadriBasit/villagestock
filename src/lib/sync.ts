@@ -10,6 +10,7 @@ import type {
   RepairRecord,
   ReturnRecord,
   SalesRecord,
+  ShopLocation,
   SwapRecord,
   SyncQueueItem,
 } from '@/types';
@@ -23,6 +24,7 @@ type RemoteSwapRow = Database['public']['Tables']['swap_records']['Row'];
 type RemoteCreditRow = Database['public']['Tables']['credit_records']['Row'];
 type RemoteRepairRow = Database['public']['Tables']['repair_records']['Row'];
 type RemoteAuditRow = Database['public']['Tables']['audit_events']['Row'];
+type RemoteShopLocationRow = Database['public']['Tables']['shop_locations']['Row'];
 
 function parseCreditPayments(json: unknown): CreditRecord['payments'] {
   if (!Array.isArray(json)) return [];
@@ -31,9 +33,11 @@ function parseCreditPayments(json: unknown): CreditRecord['payments'] {
 
 /** Strip Dexie-only fields and map keys so PostgREST accepts the body (unknown columns → 400). */
 function inventoryItemToRemoteRow(item: InventoryItem): Database['public']['Tables']['inventory_items']['Insert'] {
+  if (!item.location_id) throw new Error('inventory_items.location_id required before sync');
   return {
     id: item.id,
     user_id: item.user_id,
+    location_id: item.location_id,
     name: item.name,
     category: item.category,
     brand: item.brand,
@@ -61,9 +65,11 @@ function inventoryItemToRemoteRow(item: InventoryItem): Database['public']['Tabl
 }
 
 function salesRecordToRemoteRow(record: SalesRecord): Database['public']['Tables']['sales_records']['Insert'] {
+  if (!record.location_id) throw new Error('sales_records.location_id required before sync');
   return {
     id: record.id,
     user_id: record.user_id,
+    location_id: record.location_id,
     item_id: record.item_id?.trim() ? record.item_id : null,
     sale_type: record.sale_type,
     item_name: record.item_name,
@@ -177,6 +183,8 @@ async function runFlushSyncQueueOnce(): Promise<void> {
         await syncRepairRecord(item);
       } else if (item.table === 'business_profiles') {
         await syncBusinessProfile(item);
+      } else if (item.table === 'shop_locations') {
+        await syncShopLocation(item);
       }
       await db.sync_queue.delete(item.id);
     } catch (err) {
@@ -347,7 +355,159 @@ async function syncBusinessProfile(item: SyncQueueItem) {
   }
 }
 
+async function syncShopLocation(item: SyncQueueItem) {
+  const payload = item.payload as unknown as ShopLocation;
+  if (item.operation === 'insert' || item.operation === 'update') {
+    const row: Database['public']['Tables']['shop_locations']['Insert'] = {
+      id: payload.id,
+      business_id: payload.business_id,
+      name: payload.name,
+      sort_order: payload.sort_order,
+      created_at: payload.created_at,
+      updated_at: payload.updated_at,
+    };
+    const { error } = await supabase.from('shop_locations').upsert(row as never);
+    if (error) throw error;
+  }
+}
+
+/** Assign first branch id to legacy rows missing `location_id`. */
+export async function backfillMissingLocationIds(businessId: string): Promise<void> {
+  const rows = await db.shop_locations.where('business_id').equals(businessId).sortBy('sort_order');
+  const locId = rows[0]?.id;
+  if (!locId) return;
+  await db.inventory_items
+    .where('user_id')
+    .equals(businessId)
+    .modify(i => {
+      if (!i.location_id) i.location_id = locId;
+    });
+  await db.sales_records
+    .where('user_id')
+    .equals(businessId)
+    .modify(r => {
+      if (!r.location_id) r.location_id = locId;
+    });
+  await db.return_records
+    .where('user_id')
+    .equals(businessId)
+    .modify(r => {
+      if (!r.location_id) r.location_id = locId;
+    });
+  await db.swap_records
+    .where('user_id')
+    .equals(businessId)
+    .modify(r => {
+      if (!r.location_id) r.location_id = locId;
+    });
+  await db.credit_records
+    .where('user_id')
+    .equals(businessId)
+    .modify(r => {
+      if (!r.location_id) r.location_id = locId;
+    });
+  await db.repair_records
+    .where('user_id')
+    .equals(businessId)
+    .modify(r => {
+      if (!r.location_id) r.location_id = locId;
+    });
+  await db.stock_sessions
+    .where('user_id')
+    .equals(businessId)
+    .modify(s => {
+      if (!s.location_id) s.location_id = locId;
+    });
+}
+
+/** When no branches exist locally (new shop or pre-migration), create Main branch and sync. */
+/** Create an additional branch and queue sync (owner/manager only on server). */
+export async function createShopLocation(businessId: string, name: string): Promise<ShopLocation> {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Branch name required');
+  if (trimmed.toLowerCase() === 'main branch') {
+    const rows = await db.shop_locations.where('business_id').equals(businessId).toArray();
+    if (rows.some(r => r.name.toLowerCase() === 'main branch')) {
+      throw new Error('A branch named "Main branch" already exists. Pick another name.');
+    }
+  }
+  const rows = await db.shop_locations.where('business_id').equals(businessId).sortBy('sort_order');
+  const sort_order = rows.length ? Math.max(...rows.map(r => r.sort_order)) + 1 : 0;
+  const id = uuidv4();
+  const now = new Date().toISOString();
+  const row: ShopLocation = {
+    id,
+    business_id: businessId,
+    name: trimmed,
+    sort_order,
+    created_at: now,
+    updated_at: now,
+    sync_status: 'pending',
+  };
+  await db.shop_locations.add(row);
+  await queueSync('shop_locations', 'insert', row as unknown as Record<string, unknown>);
+  await flushSyncQueue();
+  return row;
+}
+
+export async function ensureDefaultShopLocation(businessId: string): Promise<string> {
+  if (isOnline()) {
+    try {
+      await pullRemoteShopLocations(businessId);
+    } catch (e) {
+      console.error('[sync] ensureDefaultShopLocation: pull shop_locations failed', e);
+    }
+  }
+  const rows = await db.shop_locations.where('business_id').equals(businessId).sortBy('sort_order');
+  if (rows.length) {
+    await backfillMissingLocationIds(businessId);
+    return rows[0].id;
+  }
+  const id = uuidv4();
+  const now = new Date().toISOString();
+  const row: ShopLocation = {
+    id,
+    business_id: businessId,
+    name: 'Main branch',
+    sort_order: 0,
+    created_at: now,
+    updated_at: now,
+    sync_status: 'pending',
+  };
+  await db.shop_locations.add(row);
+  await queueSync('shop_locations', 'insert', row as unknown as Record<string, unknown>);
+  await flushSyncQueue();
+  await backfillMissingLocationIds(businessId);
+  return id;
+}
+
 // ─── Pull remote changes and merge into local DB ──────────────────────────────
+
+export async function pullRemoteShopLocations(businessId: string): Promise<void> {
+  if (!isOnline()) return;
+
+  const { data, error } = await supabase
+    .from('shop_locations')
+    .select('*')
+    .eq('business_id', businessId)
+    .order('sort_order', { ascending: true });
+
+  if (error) throw error;
+  if (!data?.length) return;
+
+  const rows = data as unknown as RemoteShopLocationRow[];
+  const mapped: ShopLocation[] = rows.map(row => ({
+    id: row.id,
+    business_id: row.business_id,
+    name: row.name,
+    sort_order: row.sort_order,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    sync_status: 'synced',
+  }));
+
+  await db.shop_locations.bulkPut(mapped);
+}
 
 export async function pullRemoteInventory(userId: string): Promise<void> {
   if (!isOnline()) return;
@@ -368,6 +528,7 @@ export async function pullRemoteInventory(userId: string): Promise<void> {
     return {
       id: row.id,
       user_id: row.user_id,
+      location_id: row.location_id,
       name: row.name,
       category,
       brand: row.brand,
@@ -438,6 +599,7 @@ export async function pullRemoteSalesRecords(userId: string): Promise<void> {
   const mapped: SalesRecord[] = rows.map(row => ({
     id: row.id,
     user_id: row.user_id,
+    location_id: row.location_id,
     item_id: row.item_id ?? '',
     sale_type: row.sale_type,
     item_name: row.item_name,
@@ -493,6 +655,7 @@ export async function pullRemoteReturnRecords(userId: string): Promise<void> {
     sale_id: row.sale_id,
     item_id: row.item_id,
     user_id: row.user_id,
+    location_id: row.location_id,
     reason: row.reason,
     return_type: row.return_type,
     notes: row.notes ?? undefined,
@@ -525,6 +688,7 @@ export async function pullRemoteSwapRecords(userId: string): Promise<void> {
     outgoing_item_id: row.outgoing_item_id,
     incoming_item_id: row.incoming_item_id,
     user_id: row.user_id,
+    location_id: row.location_id,
     sale_id: row.sale_id,
     sale_price: row.sale_price,
     trade_in_value: row.trade_in_value,
@@ -556,6 +720,7 @@ export async function pullRemoteCreditRecords(userId: string): Promise<void> {
     id: row.id,
     sale_id: row.sale_id,
     user_id: row.user_id,
+    location_id: row.location_id,
     customer_name: row.customer_name,
     customer_phone: row.customer_phone,
     item_name: row.item_name,
@@ -589,6 +754,7 @@ export async function pullRemoteRepairRecords(userId: string): Promise<void> {
     id: row.id,
     item_id: row.item_id,
     user_id: row.user_id,
+    location_id: row.location_id,
     engineer_name: row.engineer_name,
     engineer_phone: row.engineer_phone ?? undefined,
     issue_description: row.issue_description,
@@ -668,8 +834,10 @@ async function runFullPullWork(userId: string): Promise<void> {
 
   const run = (async () => {
     try {
+      await pullRemoteBusinessProfile(userId);
+      await pullRemoteShopLocations(userId);
+
       const pulls: [string, () => Promise<void>][] = [
-        ['business_profiles', () => pullRemoteBusinessProfile(userId)],
         ['inventory_items', () => pullRemoteInventory(userId)],
         ['sales_records', () => pullRemoteSalesRecords(userId)],
         ['return_records', () => pullRemoteReturnRecords(userId)],
@@ -688,6 +856,15 @@ async function runFullPullWork(userId: string): Promise<void> {
           }
         })
       );
+      try {
+        await backfillMissingLocationIds(userId);
+        const locCount = await db.shop_locations.where('business_id').equals(userId).count();
+        if (locCount === 0) {
+          await ensureDefaultShopLocation(userId);
+        }
+      } catch (e) {
+        console.error('[sync] backfill / default location failed', e);
+      }
     } finally {
       const now = Date.now();
       lastFullPullCompletedAt.set(userId, now);
@@ -810,6 +987,12 @@ export function subscribeShopRemoteChanges(userId: string): () => void {
   channel.on(
     'postgres_changes',
     { event: '*', schema: 'public', table: 'business_profiles', filter: `id=eq.${userId}` },
+    scheduleFullPullFromRealtime
+  );
+
+  channel.on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'shop_locations', filter: `business_id=eq.${userId}` },
     scheduleFullPullFromRealtime
   );
 

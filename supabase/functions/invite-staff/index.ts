@@ -10,6 +10,8 @@ type Body = {
   email?: string;
   role?: 'manager' | 'staff';
   display_name?: string;
+  /** If set, invitee is limited to these shop_locations ids; omit or null = all branches. */
+  allowed_location_ids?: string[] | null;
 };
 
 Deno.serve(async (req: Request) => {
@@ -67,7 +69,12 @@ Deno.serve(async (req: Request) => {
   const email = (body.email ?? '').trim().toLowerCase();
   const businessId = (body.business_id ?? '').trim();
   const role = body.role;
-  const displayName = (body.display_name ?? '').trim() || null;
+  const displayName = (body.display_name ?? '').trim();
+  const rawLocIds = body.allowed_location_ids;
+  const allowedLocationIds =
+    Array.isArray(rawLocIds) && rawLocIds.length > 0
+      ? rawLocIds.map((id) => String(id).trim()).filter(Boolean)
+      : null;
 
   if (!email || !email.includes('@')) {
     return new Response(JSON.stringify({ error: 'Valid email is required' }), {
@@ -87,6 +94,12 @@ Deno.serve(async (req: Request) => {
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }
+  if (!displayName) {
+    return new Response(JSON.stringify({ error: 'Name on receipts is required' }), {
+      status: 400,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
 
   const { data: memberRow, error: memErr } = await admin
     .from('business_members')
@@ -102,6 +115,63 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const { data: inviterRow, error: inviterErr } = await admin
+    .from('business_members')
+    .select('allowed_location_ids')
+    .eq('business_id', businessId)
+    .eq('member_user_id', authData.user.id)
+    .maybeSingle();
+
+  if (inviterErr) {
+    return new Response(JSON.stringify({ error: inviterErr.message }), {
+      status: 400,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
+
+  const inviterScope = (inviterRow?.allowed_location_ids ?? null) as string[] | null;
+  const inviterRestricted = inviterScope && inviterScope.length > 0;
+
+  if (inviterRestricted) {
+    if (!allowedLocationIds || allowedLocationIds.length === 0) {
+      return new Response(
+        JSON.stringify({
+          error: 'Choose at least one branch for this invite (you manage specific branches only).',
+        }),
+        { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } }
+      );
+    }
+    const allowedSet = new Set(inviterScope);
+    for (const id of allowedLocationIds) {
+      if (!allowedSet.has(id)) {
+        return new Response(JSON.stringify({ error: 'You cannot assign branches outside your own access.' }), {
+          status: 403,
+          headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+  }
+
+  if (allowedLocationIds && allowedLocationIds.length > 0) {
+    const { data: locRows, error: locErr } = await admin
+      .from('shop_locations')
+      .select('id')
+      .eq('business_id', businessId)
+      .in('id', allowedLocationIds);
+    if (locErr) {
+      return new Response(JSON.stringify({ error: locErr.message }), {
+        status: 400,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!locRows || locRows.length !== allowedLocationIds.length) {
+      return new Response(JSON.stringify({ error: 'One or more branch ids are invalid for this shop.' }), {
+        status: 400,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
   if (email === (authData.user.email ?? '').trim().toLowerCase()) {
     return new Response(JSON.stringify({ error: 'You cannot invite your own email' }), {
       status: 400,
@@ -112,7 +182,7 @@ Deno.serve(async (req: Request) => {
   const siteUrl =
     Deno.env.get('INVITE_PUBLIC_SITE_URL') ??
     Deno.env.get('PUBLIC_SITE_URL') ??
-    'http://localhost:5173';
+    'http://localhost:5174';
   const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth`;
 
   const token = crypto.randomUUID();
@@ -122,6 +192,7 @@ Deno.serve(async (req: Request) => {
     email,
     role,
     display_name: displayName,
+    allowed_location_ids: allowedLocationIds,
     invited_by: authData.user.id,
     token,
     expires_at: new Date(Date.now() + 14 * 864e5).toISOString(),

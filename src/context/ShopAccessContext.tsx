@@ -30,9 +30,17 @@ export interface ShopAccessValue {
   /** Signed-in account (owner, manager, or staff). */
   actorUserId: string | null;
   role: ShopRole;
+  /**
+   * Null or empty = can work in all branches. Non-empty = only these `shop_locations.id` values.
+   * Owners always have null here (full access).
+   */
+  actorAllowedLocationIds: string[] | null;
+  /** Shop-wide settings (profile, branches, billing) — not branch-only managers. */
+  canManageBusinessSettings: boolean;
+  /** Invite or add teammates (owners and all managers, including branch-scoped). */
+  canInviteTeamMembers: boolean;
   canViewProfit: boolean;
   canAccessFinancialNav: boolean;
-  canManageBusinessSettings: boolean;
   refetch: () => void;
 }
 
@@ -41,9 +49,11 @@ const defaultValue: ShopAccessValue = {
   shopOwnerId: null,
   actorUserId: null,
   role: 'owner',
+  actorAllowedLocationIds: null,
   canViewProfit: true,
   canAccessFinancialNav: true,
   canManageBusinessSettings: true,
+  canInviteTeamMembers: true,
   refetch: () => {},
 };
 
@@ -59,11 +69,21 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
   const loadCoalesceRef = useRef<{ userId: string; promise: Promise<void>; token: symbol } | null>(null);
   /** After first successful `business_members` resolution for this login — do not flip `loading` again (avoids unmounting the whole app on every auth heartbeat → request storm). */
   const completedForUserIdRef = useRef<string | null>(null);
-  const [state, setState] = useState<Omit<ShopAccessValue, 'refetch' | 'canViewProfit' | 'canAccessFinancialNav' | 'canManageBusinessSettings'>>({
+  const [state, setState] = useState<
+    Omit<
+      ShopAccessValue,
+      | 'refetch'
+      | 'canViewProfit'
+      | 'canAccessFinancialNav'
+      | 'canManageBusinessSettings'
+      | 'canInviteTeamMembers'
+    >
+  >({
     status: 'idle',
     shopOwnerId: null,
     actorUserId: null,
     role: 'owner',
+    actorAllowedLocationIds: null,
   });
 
   const load = useCallback(async () => {
@@ -71,7 +91,13 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
       resetShopBootstrapDedupe();
       completedForUserIdRef.current = null;
       loadCoalesceRef.current = null;
-      setState({ status: 'idle', shopOwnerId: null, actorUserId: null, role: 'owner' });
+      setState({
+        status: 'idle',
+        shopOwnerId: null,
+        actorUserId: null,
+        role: 'owner',
+        actorAllowedLocationIds: null,
+      });
       return;
     }
 
@@ -122,6 +148,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
           shopOwnerId: null,
           actorUserId: capturedUserId,
           role: 'owner',
+          actorAllowedLocationIds: null,
         });
       }
 
@@ -135,6 +162,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
         shopOwnerId: string;
         actorUserId: string;
         role: ShopRole;
+        actorAllowedLocationIds: string[] | null;
       }) => {
         if (latestUserIdRef.current !== capturedUserId) return;
         setState({
@@ -143,7 +171,12 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
         });
       };
 
-      const finishWithPatch = async (patch: { shopOwnerId: string; actorUserId: string; role: ShopRole }) => {
+      const finishWithPatch = async (patch: {
+        shopOwnerId: string;
+        actorUserId: string;
+        role: ShopRole;
+        actorAllowedLocationIds: string[] | null;
+      }) => {
         try {
           await pullRemoteBusinessProfile(patch.shopOwnerId);
         } catch (bpErr) {
@@ -156,7 +189,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
       try {
         const { data, error } = await supabase
           .from('business_members')
-          .select('business_id, role')
+          .select('business_id, role, allowed_location_ids')
           .eq('member_user_id', capturedUserId)
           .order('created_at', { ascending: true })
           .limit(1)
@@ -168,6 +201,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
             shopOwnerId: capturedUserId,
             actorUserId: capturedUserId,
             role: 'owner',
+            actorAllowedLocationIds: null,
           });
           return;
         }
@@ -177,15 +211,20 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
             shopOwnerId: capturedUserId,
             actorUserId: capturedUserId,
             role: 'owner',
+            actorAllowedLocationIds: null,
           });
           return;
         }
 
         const role = data.role as ShopRole;
+        const raw = data.allowed_location_ids as string[] | null | undefined;
+        const actorAllowedLocationIds =
+          raw && raw.length > 0 ? raw : null;
         await finishWithPatch({
           shopOwnerId: data.business_id,
           actorUserId: capturedUserId,
           role: role === 'manager' || role === 'staff' ? role : 'owner',
+          actorAllowedLocationIds: role === 'owner' ? null : actorAllowedLocationIds,
         });
       } catch (e) {
         console.warn('[shop access] business_members network error; using solo-owner fallback', e);
@@ -193,6 +232,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
           shopOwnerId: capturedUserId,
           actorUserId: capturedUserId,
           role: 'owner',
+          actorAllowedLocationIds: null,
         });
       } finally {
         loadInFlight.current = false;
@@ -212,11 +252,17 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ShopAccessValue>(() => {
     const role = state.role;
     const staffLike = role === 'staff';
+    const branchRestrictedManager =
+      role === 'manager' &&
+      !!state.actorAllowedLocationIds &&
+      state.actorAllowedLocationIds.length > 0;
     return {
       ...state,
       canViewProfit: !staffLike,
       canAccessFinancialNav: !staffLike,
-      canManageBusinessSettings: role === 'owner' || role === 'manager',
+      canManageBusinessSettings:
+        role === 'owner' || (role === 'manager' && !branchRestrictedManager),
+      canInviteTeamMembers: role === 'owner' || role === 'manager',
       refetch: () => { void load(); },
     };
   }, [state, load]);

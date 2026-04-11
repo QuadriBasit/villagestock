@@ -1,0 +1,2 @@
+-- Baseline: this version was applied on the hosted database outside this repo.
+-- Empty migration keeps local history aligned with remote supabase_migrations.

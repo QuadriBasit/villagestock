@@ -22,13 +22,18 @@ import {
   Moon,
   Laptop,
   Users,
+  Layers,
 } from 'lucide-react';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { useShopLocation } from '@/context/ShopLocationContext';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { createShopLocation } from '@/lib/sync';
 import { useTheme, type ThemeMode } from '@/components/theme/ThemeProvider';
 import { useState, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import type { ShopProfile } from '@/types';
+import { Checkbox } from '@/components/ui/Checkbox';
 
 const schema = z.object({
   shop_name: z.string().min(1, 'Shop name is required'),
@@ -56,7 +61,14 @@ const panelClass =
 
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const { role, canManageBusinessSettings } = useShopAccess();
+  const {
+    role,
+    canManageBusinessSettings,
+    canInviteTeamMembers,
+    shopOwnerId,
+    actorAllowedLocationIds,
+  } = useShopAccess();
+  const { locations } = useShopLocation();
   const team = useTeamMembers();
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteDisplayName, setInviteDisplayName] = useState('');
@@ -66,7 +78,16 @@ export default function SettingsPage() {
   const [addExistingDisplayName, setAddExistingDisplayName] = useState('');
   const [addExistingRole, setAddExistingRole] = useState<'manager' | 'staff'>('staff');
   const [teamSubmitting, setTeamSubmitting] = useState(false);
-  const [teamMessage, setTeamMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [newBranchName, setNewBranchName] = useState('');
+  const [branchSubmitting, setBranchSubmitting] = useState(false);
+  const [branchMessage, setBranchMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [inviteAllBranches, setInviteAllBranches] = useState(true);
+  const [inviteBranchIds, setInviteBranchIds] = useState<string[]>([]);
+  const [addExistingAllBranches, setAddExistingAllBranches] = useState(true);
+  const [addExistingBranchIds, setAddExistingBranchIds] = useState<string[]>([]);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editMemberAllBranches, setEditMemberAllBranches] = useState(true);
+  const [editMemberBranchIds, setEditMemberBranchIds] = useState<string[]>([]);
   const { mode, setMode } = useTheme();
   const { profile, isLoading, saveProfile } = useShopProfile();
   const { profile: businessProfile, isLoading: isBizLoading } = useBusinessProfile();
@@ -105,6 +126,7 @@ export default function SettingsPage() {
     };
     await saveProfile(updated);
     setSaved(true);
+    toast.success('Shop profile saved');
     setTimeout(() => setSaved(false), 2500);
   };
 
@@ -145,6 +167,26 @@ export default function SettingsPage() {
   const accountPrimary = ownerName || user?.phone || user?.email || '—';
   const accountShowEmail = Boolean(user?.email && accountPrimary !== user.email);
   const accountShowPhone = Boolean(user?.phone && accountPrimary !== user.phone);
+
+  const inviterRestricted = !!(actorAllowedLocationIds && actorAllowedLocationIds.length > 0);
+
+  function inviteAllowedLocationPayload(): string[] | null {
+    if (locations.length <= 1) return null;
+    if (inviterRestricted) {
+      return inviteBranchIds.length ? inviteBranchIds : null;
+    }
+    if (inviteAllBranches) return null;
+    return inviteBranchIds.length ? inviteBranchIds : null;
+  }
+
+  function addExistingAllowedLocationPayload(): string[] | null {
+    if (locations.length <= 1) return null;
+    if (inviterRestricted) {
+      return addExistingBranchIds.length ? addExistingBranchIds : null;
+    }
+    if (addExistingAllBranches) return null;
+    return addExistingBranchIds.length ? addExistingBranchIds : null;
+  }
 
   return (
     <div className="app-page space-y-4 py-4 md:space-y-4 md:py-6">
@@ -276,6 +318,84 @@ export default function SettingsPage() {
 
       <section className={`${panelClass} space-y-3`}>
         <div className="flex items-center gap-2">
+          <Layers size={18} className="text-primary" />
+          <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Branches</h3>
+        </div>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Inventory, sales, and stock sessions are scoped to the branch you select in the header. Each branch has its own stock.
+        </p>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">Your locations</p>
+          {locations.length === 0 ? (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">No branches loaded yet. Sync online once, or add a branch below.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {locations.map(loc => (
+                <li
+                  key={loc.id}
+                  className="rounded-lg border border-zinc-200 bg-zinc-50/80 px-3 py-2 text-xs font-medium text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-100"
+                >
+                  {loc.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {canManageBusinessSettings && shopOwnerId ? (
+          <div className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+            <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">Add a branch</p>
+            <label className={labelClass} htmlFor="new-branch-name">
+              Branch name
+            </label>
+            <input
+              id="new-branch-name"
+              type="text"
+              value={newBranchName}
+              onChange={e => setNewBranchName(e.target.value)}
+              placeholder="e.g. Ikeja counter"
+              className={fieldClass}
+              autoComplete="off"
+            />
+            {branchMessage ? (
+              <p
+                className={`text-xs ${branchMessage.type === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
+              >
+                {branchMessage.text}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              disabled={branchSubmitting || !newBranchName.trim()}
+              onClick={async () => {
+                setBranchMessage(null);
+                setBranchSubmitting(true);
+                try {
+                  await createShopLocation(shopOwnerId, newBranchName);
+                  setNewBranchName('');
+                  setBranchMessage({ type: 'ok', text: 'Branch added. Select it from the header when you are ready.' });
+                  toast.success('Branch added — pick it in the header when you are ready.');
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : 'Could not add branch';
+                  setBranchMessage({ type: 'err', text: msg });
+                  toast.error(msg);
+                } finally {
+                  setBranchSubmitting(false);
+                }
+              }}
+              className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+            >
+              {branchSubmitting ? 'Saving…' : 'Add branch'}
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Only the owner or a manager with access to all branches can add or rename branches.
+          </p>
+        )}
+      </section>
+
+      <section className={`${panelClass} space-y-3`}>
+        <div className="flex items-center gap-2">
           <Users size={18} className="text-primary" />
           <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Team &amp; roles</h3>
         </div>
@@ -286,11 +406,14 @@ export default function SettingsPage() {
         <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
           <strong className="text-zinc-700 dark:text-zinc-300">Staff</strong> can sell and manage stock but not profit,
           credits, reports, or billing. <strong className="text-zinc-700 dark:text-zinc-300">Managers</strong> have
-          wider access, including inviting staff. Only the <strong className="text-zinc-700 dark:text-zinc-300">owner</strong>{' '}
-          can remove people from the shop.
+          wider access. You can limit each person to specific branches or give them the whole shop. Only the{' '}
+          <strong className="text-zinc-700 dark:text-zinc-300">Owner</strong> can remove people.{' '}
+          <strong className="text-zinc-700 dark:text-zinc-300">Owner</strong> or a{' '}
+          <strong className="text-zinc-700 dark:text-zinc-300">manager with all branches</strong> can edit branch access
+          after someone joins.
         </p>
 
-        {canManageBusinessSettings ? (
+        {canInviteTeamMembers ? (
           <>
             {team.error ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
@@ -324,7 +447,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className={labelClass} htmlFor="invite-display">
-                  Name on receipts (optional)
+                  Name on receipts *
                 </label>
                 <input
                   id="invite-display"
@@ -361,33 +484,79 @@ export default function SettingsPage() {
                   ))}
                 </div>
               </div>
-              {teamMessage ? (
-                <p
-                  className={`text-xs ${teamMessage.type === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
-                >
-                  {teamMessage.text}
-                </p>
+              {locations.length > 1 ? (
+                <div className="space-y-2 rounded-lg border border-zinc-200 bg-white/70 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-950/30">
+                  <p className={`${labelClass} mb-0`}>Branch access</p>
+                  {inviterRestricted ? (
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      Pick one or more branches they may use (you are limited to your own branches).
+                    </p>
+                  ) : (
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-800 dark:text-zinc-200">
+                      <Checkbox
+                        checked={inviteAllBranches}
+                        onCheckedChange={c => {
+                          const on = c === true;
+                          setInviteAllBranches(on);
+                          if (on) setInviteBranchIds([]);
+                        }}
+                      />
+                      All branches (whole shop)
+                    </label>
+                  )}
+                  {(inviterRestricted || !inviteAllBranches) && (
+                    <div className="flex flex-col gap-1.5 pl-1">
+                      {locations.map(loc => (
+                        <label
+                          key={loc.id}
+                          className="flex cursor-pointer items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"
+                        >
+                          <Checkbox
+                            checked={inviteBranchIds.includes(loc.id)}
+                            onCheckedChange={c => {
+                              const on = c === true;
+                              setInviteBranchIds(prev =>
+                                on ? [...prev, loc.id] : prev.filter(x => x !== loc.id)
+                              );
+                            }}
+                          />
+                          {loc.name}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : null}
               <button
                 type="button"
-                disabled={teamSubmitting || !inviteEmail.trim()}
+                disabled={
+                  teamSubmitting ||
+                  !inviteEmail.trim() ||
+                  !inviteDisplayName.trim() ||
+                  (locations.length > 1 &&
+                    inviterRestricted &&
+                    inviteBranchIds.length === 0) ||
+                  (locations.length > 1 &&
+                    !inviterRestricted &&
+                    !inviteAllBranches &&
+                    inviteBranchIds.length === 0)
+                }
                 onClick={async () => {
-                  setTeamMessage(null);
                   setTeamSubmitting(true);
                   try {
                     await team.inviteStaff({
                       email: inviteEmail.trim(),
                       role: memberRole,
                       displayName: inviteDisplayName,
+                      allowedLocationIds: inviteAllowedLocationPayload(),
                     });
                     setInviteEmail('');
                     setInviteDisplayName('');
-                    setTeamMessage({
-                      type: 'ok',
-                      text: 'Invitation sent. They should open the email, set a password, then sign in here.',
-                    });
+                    setInviteAllBranches(true);
+                    setInviteBranchIds([]);
+                    toast.success('Invitation sent — they should open the email and set a password.');
                   } catch (e) {
-                    setTeamMessage({ type: 'err', text: e instanceof Error ? e.message : 'Could not send invite' });
+                    toast.error(e instanceof Error ? e.message : 'Could not send invite');
                   } finally {
                     setTeamSubmitting(false);
                   }
@@ -421,11 +590,15 @@ export default function SettingsPage() {
                     className={fieldClass}
                     autoComplete="off"
                   />
+                  <label className={labelClass} htmlFor="add-existing-display">
+                    Name on receipts *
+                  </label>
                   <input
+                    id="add-existing-display"
                     type="text"
                     value={addExistingDisplayName}
                     onChange={e => setAddExistingDisplayName(e.target.value)}
-                    placeholder="Name on receipts (optional)"
+                    placeholder="e.g. Ada — front desk"
                     className={fieldClass}
                     autoComplete="off"
                   />
@@ -445,11 +618,62 @@ export default function SettingsPage() {
                       </button>
                     ))}
                   </div>
+                  {locations.length > 1 ? (
+                    <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50/80 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-950/40">
+                      <p className="text-[11px] font-medium text-zinc-800 dark:text-zinc-200">Branch access</p>
+                      {inviterRestricted ? (
+                        <p className="text-[10px] text-zinc-500">Select at least one branch.</p>
+                      ) : (
+                        <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-800 dark:text-zinc-200">
+                          <Checkbox
+                            checked={addExistingAllBranches}
+                            onCheckedChange={c => {
+                              const on = c === true;
+                              setAddExistingAllBranches(on);
+                              if (on) setAddExistingBranchIds([]);
+                            }}
+                          />
+                          All branches
+                        </label>
+                      )}
+                      {(inviterRestricted || !addExistingAllBranches) && (
+                        <div className="flex flex-col gap-1">
+                          {locations.map(loc => (
+                            <label
+                              key={loc.id}
+                              className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-700 dark:text-zinc-300"
+                            >
+                              <Checkbox
+                                checked={addExistingBranchIds.includes(loc.id)}
+                                onCheckedChange={c => {
+                                  const on = c === true;
+                                  setAddExistingBranchIds(prev =>
+                                    on ? [...prev, loc.id] : prev.filter(x => x !== loc.id)
+                                  );
+                                }}
+                              />
+                              {loc.name}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                   <button
                     type="button"
-                    disabled={teamSubmitting || (!addExistingEmail.trim() && !addExistingUserId.trim())}
+                    disabled={
+                      teamSubmitting ||
+                      (!addExistingEmail.trim() && !addExistingUserId.trim()) ||
+                      !addExistingDisplayName.trim() ||
+                      (locations.length > 1 &&
+                        inviterRestricted &&
+                        addExistingBranchIds.length === 0) ||
+                      (locations.length > 1 &&
+                        !inviterRestricted &&
+                        !addExistingAllBranches &&
+                        addExistingBranchIds.length === 0)
+                    }
                     onClick={async () => {
-                      setTeamMessage(null);
                       setTeamSubmitting(true);
                       try {
                         await team.addMember({
@@ -457,13 +681,16 @@ export default function SettingsPage() {
                           memberUserId: addExistingUserId.trim() || undefined,
                           role: addExistingRole,
                           displayName: addExistingDisplayName,
+                          allowedLocationIds: addExistingAllowedLocationPayload(),
                         });
                         setAddExistingEmail('');
                         setAddExistingUserId('');
                         setAddExistingDisplayName('');
-                        setTeamMessage({ type: 'ok', text: 'Teammate added to this shop.' });
+                        setAddExistingAllBranches(true);
+                        setAddExistingBranchIds([]);
+                        toast.success('Teammate added to this shop.');
                       } catch (e) {
-                        setTeamMessage({ type: 'err', text: e instanceof Error ? e.message : 'Failed to add' });
+                        toast.error(e instanceof Error ? e.message : 'Failed to add');
                       } finally {
                         setTeamSubmitting(false);
                       }
@@ -506,21 +733,113 @@ export default function SettingsPage() {
                             {m.role}
                           </span>
                         </div>
+                        {locations.length > 1 && m.role !== 'owner' ? (
+                          <p className="mt-1 text-[10px] text-zinc-500 dark:text-zinc-400">
+                            Branches:{' '}
+                            {!m.allowed_location_ids?.length ? (
+                              <span className="font-medium text-zinc-700 dark:text-zinc-300">All branches</span>
+                            ) : (
+                              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                                {m.allowed_location_ids
+                                  .map(lid => locations.find(l => l.id === lid)?.name ?? 'Unknown branch')
+                                  .join(', ')}
+                              </span>
+                            )}
+                          </p>
+                        ) : null}
+                        {canManageBusinessSettings && m.role !== 'owner' && locations.length > 1 ? (
+                          <div className="mt-2 w-full border-t border-zinc-100 pt-2 dark:border-zinc-800">
+                            {editingMemberId === m.id ? (
+                              <div className="space-y-2">
+                                <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-800 dark:text-zinc-200">
+                                  <Checkbox
+                                    checked={editMemberAllBranches}
+                                    onCheckedChange={c => {
+                                      const on = c === true;
+                                      setEditMemberAllBranches(on);
+                                      if (on) setEditMemberBranchIds([]);
+                                    }}
+                                  />
+                                  All branches
+                                </label>
+                                {!editMemberAllBranches && (
+                                  <div className="flex flex-col gap-1 pl-1">
+                                    {locations.map(loc => (
+                                      <label
+                                        key={loc.id}
+                                        className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-700 dark:text-zinc-300"
+                                      >
+                                        <Checkbox
+                                          checked={editMemberBranchIds.includes(loc.id)}
+                                          onCheckedChange={c => {
+                                            const on = c === true;
+                                            setEditMemberBranchIds(prev =>
+                                              on ? [...prev, loc.id] : prev.filter(x => x !== loc.id)
+                                            );
+                                          }}
+                                        />
+                                        {loc.name}
+                                      </label>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={!editMemberAllBranches && editMemberBranchIds.length === 0}
+                                    className="rounded-lg bg-primary px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+                                    onClick={async () => {
+                                      if (!editMemberAllBranches && editMemberBranchIds.length === 0) return;
+                                      try {
+                                        await team.updateMemberBranchAccess(
+                                          m,
+                                          editMemberAllBranches ? null : editMemberBranchIds
+                                        );
+                                        setEditingMemberId(null);
+                                        toast.success('Branch access updated.');
+                                      } catch (e) {
+                                        toast.error(e instanceof Error ? e.message : 'Update failed');
+                                      }
+                                    }}
+                                  >
+                                    Save branches
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="rounded-lg border border-zinc-200 px-2 py-1 text-[11px] dark:border-zinc-600"
+                                    onClick={() => setEditingMemberId(null)}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="text-[11px] font-medium text-primary hover:underline"
+                                onClick={() => {
+                                  const ids = m.allowed_location_ids ?? [];
+                                  setEditingMemberId(m.id);
+                                  setEditMemberAllBranches(!ids.length);
+                                  setEditMemberBranchIds(ids.length ? [...ids] : []);
+                                }}
+                              >
+                                Edit branch access
+                              </button>
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                       {role === 'owner' && m.role !== 'owner' ? (
                         <button
                           type="button"
                           onClick={async () => {
                             if (!confirm('Remove this person from the shop?')) return;
-                            setTeamMessage(null);
                             try {
                               await team.removeMember(m);
-                              setTeamMessage({ type: 'ok', text: 'Member removed.' });
+                              toast.success('Member removed.');
                             } catch (e) {
-                              setTeamMessage({
-                                type: 'err',
-                                text: e instanceof Error ? e.message : 'Could not remove',
-                              });
+                              toast.error(e instanceof Error ? e.message : 'Could not remove');
                             }
                           }}
                           className="shrink-0 rounded-lg border border-red-200 px-2 py-1 text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/40"
@@ -535,7 +854,9 @@ export default function SettingsPage() {
             </div>
           </>
         ) : (
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Team management is available to owners and managers.</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Inviting teammates is available to owners and managers.
+          </p>
         )}
       </section>
 

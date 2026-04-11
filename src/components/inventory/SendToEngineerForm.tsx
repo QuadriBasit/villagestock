@@ -16,6 +16,7 @@ import {
 } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { DatePickerField } from '@/components/ui/DatePickerField';
 
 const schema = z.object({
   engineer_name: z.string().min(1, 'Repair shop or technician name is required'),
@@ -50,6 +51,8 @@ export default function SendToEngineerForm({
     register,
     control,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema) as never,
@@ -65,6 +68,7 @@ export default function SendToEngineerForm({
   const tradeLocked =
     tradingGate.gateApplies && tradingGate.isReady && tradingGate.tradingBlocked;
   const canSend = item.status === 'in_stock' && !tradeLocked;
+  const expectedReturn = watch('expected_return_date') ?? '';
 
   const onSubmit = async (data: FormData) => {
     setSubmitError(null);
@@ -166,10 +170,14 @@ export default function SendToEngineerForm({
                 <input id="date_sent" type="datetime-local" {...register('date_sent')} className={fieldClass} />
               </div>
             </div>
-            <div>
-              <label className={labelClass} htmlFor="expected_return_date">Expected Return Date</label>
-              <input id="expected_return_date" type="date" {...register('expected_return_date')} className={fieldClass} />
-            </div>
+            <DatePickerField
+              id="expected_return_date"
+              label="Expected return date"
+              value={expectedReturn}
+              onChange={v =>
+                setValue('expected_return_date', v, { shouldDirty: true, shouldValidate: true })
+              }
+            />
           </section>
           <div className="pb-4">
             <button

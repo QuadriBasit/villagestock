@@ -6,19 +6,15 @@ import { z } from 'zod';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
-import { Package, Loader2, Store, User, MapPin, Mail, Phone, ArrowRight, Sparkles, Lock } from 'lucide-react';
+import { Package, Loader2, Store, User, MapPin, Mail, Phone, ArrowRight, Sparkles } from 'lucide-react';
 import FeatureTour from '@/components/onboarding/FeatureTour';
 
-const step2Schema = z
-  .object({
-    shop_name: z.string().min(1, 'Shop name is required'),
-    owner_name: z.string().min(1, 'Owner name is required'),
-    address: z.string().min(1, 'Shop address is required'),
-    email: z.string().trim().min(1, 'Email is required').email('Enter a valid email'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
-    password_confirm: z.string().min(1, 'Confirm your password'),
-  })
-  .refine(d => d.password === d.password_confirm, { message: 'Passwords do not match', path: ['password_confirm'] });
+const step2Schema = z.object({
+  shop_name: z.string().min(1, 'Shop name is required'),
+  owner_name: z.string().min(1, 'Owner name is required'),
+  address: z.string().min(1, 'Shop address is required'),
+  email: z.string().trim().min(1, 'Email is required').email('Enter a valid email'),
+});
 type Step2Data = z.infer<typeof step2Schema>;
 
 export default function OnboardingPage() {
@@ -46,8 +42,6 @@ export default function OnboardingPage() {
       owner_name: '',
       address: '',
       email: '',
-      password: '',
-      password_confirm: '',
     },
   });
 
@@ -59,8 +53,6 @@ export default function OnboardingPage() {
       owner_name: profile.owner_name,
       address: profile.address,
       email: profile.email ?? '',
-      password: '',
-      password_confirm: '',
     });
   }, [isReady, profile, reset]);
 
@@ -94,7 +86,6 @@ export default function OnboardingPage() {
     try {
       const { error: authErr } = await supabase.auth.updateUser({
         email: data.email.trim(),
-        password: data.password,
       });
       if (authErr) {
         setSubmitError(
@@ -150,9 +141,9 @@ export default function OnboardingPage() {
           </h1>
           {step === 2 && (
             <p className="mx-auto mt-2 max-w-sm text-center text-xs text-muted dark:text-zinc-400">
-              This step saves your shop details and attaches this email/password to your{' '}
-              <strong className="dark:text-zinc-300">login</strong> (Supabase Auth). That login is what sign-in and password
-              reset use — not the shop table by itself. Optional shop phone below is for receipts.
+              This step saves your shop details and updates your <strong className="dark:text-zinc-300">login email</strong>{' '}
+              in Supabase Auth if you change it. You already set your password when you signed up. Optional shop phone below is
+              for receipts.
             </p>
           )}
         </div>
@@ -231,39 +222,6 @@ export default function OnboardingPage() {
                   <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.email.message}</p>
                 )}
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200" htmlFor="password">
-                  <Lock size={13} className="inline mr-1 text-muted" />
-                  Password * (min 8 characters)
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  {...register('password')}
-                  className={fieldClass}
-                />
-                {errors.password && (
-                  <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.password.message}</p>
-                )}
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200" htmlFor="password_confirm">
-                  <Lock size={13} className="inline mr-1 text-muted" />
-                  Confirm password *
-                </label>
-                <input
-                  id="password_confirm"
-                  type="password"
-                  autoComplete="new-password"
-                  {...register('password_confirm')}
-                  className={fieldClass}
-                />
-                {errors.password_confirm && (
-                  <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.password_confirm.message}</p>
-                )}
-              </div>
-
               {submitError && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
                   {submitError}

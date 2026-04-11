@@ -18,8 +18,16 @@ export function hasStockAccountabilityPlan(profile: BusinessProfile | null | und
   return profile?.plan === 'business' && profile?.plan_status === 'active';
 }
 
-export async function loadInventoryMap(userId: string): Promise<Map<string, InventoryItem>> {
-  const rows = await db.inventory_items.where('user_id').equals(userId).filter((i) => !i.deleted).toArray();
+export async function loadInventoryMap(userId: string, locationId?: string): Promise<Map<string, InventoryItem>> {
+  const rows = await db.inventory_items
+    .where('user_id')
+    .equals(userId)
+    .filter((i) => {
+      if (i.deleted) return false;
+      if (locationId && i.location_id !== locationId) return false;
+      return true;
+    })
+    .toArray();
   return new Map(rows.map((i) => [i.id, i]));
 }
 

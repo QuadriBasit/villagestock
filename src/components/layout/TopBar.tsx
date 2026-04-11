@@ -9,6 +9,7 @@ import { useSyncStatus } from '@/hooks/useSyncStatus';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { useInventoryStore } from '@/store/inventory';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { useShopLocation } from '@/context/ShopLocationContext';
 import { signOutApp } from '@/lib/signOutApp';
 
 const PAGE_TITLES: Record<string, string> = {
@@ -30,6 +31,7 @@ export default function TopBar() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { canManageBusinessSettings, status: shopAccessStatus } = useShopAccess();
+  const { locations, activeLocationId, setActiveLocationId, ready: locationReady } = useShopLocation();
   const { profile: businessProfile } = useBusinessProfile();
   const { collapsed: sidebarCollapsed, toggleCollapsed } = useSidebarLayout();
   const { isOnline, pendingCount } = useSyncStatus();
@@ -101,6 +103,26 @@ export default function TopBar() {
         <h1 className="truncate text-[1.05rem] font-semibold leading-none tracking-tight text-[#0f172a] dark:text-white md:text-lg">
           {title}
         </h1>
+        {shopAccessStatus === 'ready' && locationReady && locations.length > 0 ? (
+          <>
+            <label className="sr-only" htmlFor="vs-branch-select">
+              Branch
+            </label>
+            <select
+              id="vs-branch-select"
+              value={activeLocationId ?? ''}
+              onChange={e => setActiveLocationId(e.target.value)}
+              className="max-w-[9.5rem] shrink-0 rounded-lg border border-zinc-200/90 bg-zinc-50/95 py-1 pl-2 pr-6 text-[11px] font-semibold text-zinc-800 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 md:max-w-[11rem] md:text-xs"
+              aria-label="Active branch"
+            >
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : null}
       </div>
 
       <form

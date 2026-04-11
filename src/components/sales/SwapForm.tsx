@@ -16,6 +16,7 @@ import {
 } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { DatePickerField } from '@/components/ui/DatePickerField';
 import { formatCurrency } from '@/lib/utils';
 import type { DeviceCondition, InventoryItem, PaymentMethod, PaymentStatus, SalesRecord } from '@/types';
 
@@ -353,10 +354,18 @@ export default function SwapForm({
                     <div className={readonlyClass}>{formatCurrency(balanceOwed)}</div>
                   </div>
                 </div>
-                <div>
-                  <label className={labelClass} htmlFor="due_date">Due Date *</label>
-                  <input id="due_date" type="date" {...register('due_date')} className={fieldClass} />
-                </div>
+                <Controller
+                  name="due_date"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePickerField
+                      id="due_date"
+                      label="Due date *"
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
               </>
             )}
 

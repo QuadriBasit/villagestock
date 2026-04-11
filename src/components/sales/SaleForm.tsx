@@ -18,6 +18,7 @@ import {
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { DatePickerField } from '@/components/ui/DatePickerField';
 import { formatCurrency } from '@/lib/utils';
 import type { InventoryItem, PaymentMethod, PaymentStatus, SalesRecord } from '@/types';
 
@@ -382,10 +383,18 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
                     <div className={readonlyClass}>{formatCurrency(balanceOwed)}</div>
                   </div>
                 </div>
-                <div>
-                  <label className={labelClass} htmlFor="due_date">Due Date *</label>
-                  <input id="due_date" type="date" {...register('due_date')} className={fieldClass} />
-                </div>
+                <Controller
+                  name="due_date"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePickerField
+                      id="due_date"
+                      label="Due date *"
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
               </>
             )}
 
@@ -396,25 +405,17 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label
-                    className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-                    htmlFor="sold_at_date"
-                  >
-                    Date
-                  </label>
-                  <input
+                  <DatePickerField
                     id="sold_at_date"
-                    type="date"
+                    label="Date"
                     value={saleDateStr}
-                    onChange={e => {
+                    onChange={ymd => {
                       const { time } = parseSoldAtLocal(getValues('sold_at'));
-                      setValue('sold_at', `${e.target.value}T${time}`, {
+                      setValue('sold_at', `${ymd}T${time}`, {
                         shouldValidate: true,
                         shouldDirty: true,
                       });
                     }}
-                    className={dateTimeInputClass}
-                    autoComplete="off"
                   />
                 </div>
                 <div>

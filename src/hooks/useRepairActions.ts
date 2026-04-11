@@ -5,22 +5,27 @@ import { assertTradingAllowedForStockPolicy } from '@/lib/stockTradingGate';
 import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
+import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import type { DeviceCondition, RepairRecord, RepairRecordInput, RepairStatus } from '@/types';
 
 export function useRepairActions() {
   const { user } = useAuthStore();
   const { shopOwnerId, actorUserId } = useShopAccess();
+  const { activeLocationId, ready: locationReady } = useShopLocation();
 
   async function sendToEngineer(input: RepairRecordInput): Promise<RepairRecord> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
+    if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
     await assertTrialAllowsMutations(shopOwnerId);
-    await assertTradingAllowedForStockPolicy(shopOwnerId);
+    await assertTradingAllowedForStockPolicy(shopOwnerId, activeLocationId);
 
     const record: RepairRecord = {
       ...input,
       id: uuidv4(),
       user_id: shopOwnerId,
+      location_id: activeLocationId,
       repair_status: 'sent',
       sync_status: 'pending',
     };
@@ -39,13 +44,19 @@ export function useRepairActions() {
     }
     await flushSyncQueue();
     if (actorUserId) {
+      const repItem = await db.inventory_items.get(input.item_id);
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
         actorUserId,
         action: 'repair.sent',
         entityType: 'repair_record',
         entityId: record.id,
-        metadata: { item_id: input.item_id, engineer_name: input.engineer_name },
+        metadata: {
+          item: repItem ? `${repItem.brand} ${repItem.name}`.trim() : undefined,
+          engineer: input.engineer_name,
+        },
+        actorLabel,
       });
     }
     return record;
@@ -61,13 +72,20 @@ export function useRepairActions() {
     }
     await flushSyncQueue();
     if (actorUserId) {
+      const rep = await db.repair_records.get(id);
+      const repItem = rep ? await db.inventory_items.get(rep.item_id) : undefined;
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
         actorUserId,
         action: 'repair.status_updated',
         entityType: 'repair_record',
         entityId: id,
-        metadata: { repair_status: repairStatus },
+        metadata: {
+          item: repItem ? `${repItem.brand} ${repItem.name}`.trim() : undefined,
+          status: repairStatus,
+        },
+        actorLabel,
       });
     }
   }
@@ -94,13 +112,16 @@ export function useRepairActions() {
     if (item) await queueSync('inventory_items', 'update', item as unknown as Record<string, unknown>);
     await flushSyncQueue();
     if (actorUserId) {
+      const colItem = await db.inventory_items.get(itemId);
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
         actorUserId,
         action: 'repair.collected',
         entityType: 'repair_record',
         entityId: id,
-        metadata: { item_id: itemId },
+        metadata: { item: colItem ? `${colItem.brand} ${colItem.name}`.trim() : undefined },
+        actorLabel,
       });
     }
   }

@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { endOfDay, endOfWeek, format, startOfDay, startOfWeek, subDays } from 'date-fns';
 import { db } from '@/lib/db';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { useShopLocation } from '@/context/ShopLocationContext';
 import type { Category, PaymentMethod, ReturnRecord, SalesRecord, SwapRecord } from '@/types';
 
 export type ReportPreset = 'today' | 'week' | 'custom';
@@ -112,14 +113,16 @@ export function buildCustomRange(start: string, end: string): ReportRange {
 
 export function useReportMetrics(range: ReportRange) {
   const { shopOwnerId } = useShopAccess();
+  const { activeLocationId, ready: locationReady } = useShopLocation();
 
   const metrics = useLiveQuery(async (): Promise<ReportMetrics> => {
-    if (!shopOwnerId) return emptyReport(range);
+    if (!shopOwnerId || !locationReady || !activeLocationId) return emptyReport(range);
 
     const sales = await db.sales_records
       .where('user_id')
       .equals(shopOwnerId)
       .filter((sale) => {
+        if (sale.location_id !== activeLocationId) return false;
         const soldAt = new Date(sale.sold_at);
         return soldAt >= range.start && soldAt <= range.end;
       })
@@ -129,6 +132,7 @@ export function useReportMetrics(range: ReportRange) {
       .where('user_id')
       .equals(shopOwnerId)
       .filter((record) => {
+        if (record.location_id !== activeLocationId) return false;
         const returnedAt = new Date(record.returned_at);
         return returnedAt >= range.start && returnedAt <= range.end;
       })
@@ -138,13 +142,14 @@ export function useReportMetrics(range: ReportRange) {
       .where('user_id')
       .equals(shopOwnerId)
       .filter((swap) => {
+        if (swap.location_id !== activeLocationId) return false;
         const date = new Date(swap.date);
         return date >= range.start && date <= range.end;
       })
       .toArray();
 
     return buildMetrics(range, sales, returns, swaps);
-  }, [shopOwnerId, range.start.getTime(), range.end.getTime(), range.label]);
+  }, [shopOwnerId, activeLocationId, locationReady, range.start.getTime(), range.end.getTime(), range.label]);
 
   return { metrics: metrics ?? emptyReport(range), isLoading: metrics === undefined };
 }

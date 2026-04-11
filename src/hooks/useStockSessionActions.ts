@@ -5,7 +5,9 @@ import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { useShopLocation } from '@/context/ShopLocationContext';
 import type { InventoryItem, SerializedItemStatus, StockSession } from '@/types';
+import { effectiveBusinessProfileForBilling } from '@/lib/devBillingOverride';
 import {
   buildSessionCloseSummary,
   computeExpectedClosingIds,
@@ -24,15 +26,21 @@ export class PriorDayStockOpenError extends Error {
 export function useStockSessionActions() {
   const user = useAuthStore((s) => s.user);
   const { shopOwnerId, actorUserId } = useShopAccess();
+  const { activeLocationId, ready: locationReady } = useShopLocation();
 
   const openTodaySession = useCallback(async (): Promise<StockSession> => {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+    if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
     await assertTrialAllowsMutations(shopOwnerId);
-    const profile = await db.business_profiles.get(shopOwnerId);
+    const rawProfile = await db.business_profiles.get(shopOwnerId);
+    const profile = effectiveBusinessProfileForBilling(rawProfile ?? undefined);
     if (!hasStockAccountabilityPlan(profile)) throw new Error('Business plan required');
 
     const date = localSessionDateKey();
-    const todays = await db.stock_sessions.where('[user_id+date]').equals([shopOwnerId, date]).toArray();
+    const todays = await db.stock_sessions
+      .where('[user_id+location_id+date]')
+      .equals([shopOwnerId, activeLocationId, date])
+      .toArray();
     if (todays.some((s) => s.status === 'open')) throw new Error('Stock is already open for today');
     if (todays.length > 0) {
       throw new Error("Today's stock session is already closed.");
@@ -41,22 +49,31 @@ export function useStockSessionActions() {
     const staleOpens = await db.stock_sessions
       .where('user_id')
       .equals(shopOwnerId)
-      .filter((s) => s.status === 'open')
+      .filter(
+        (s) => s.status === 'open' && s.location_id === activeLocationId && s.date < date
+      )
       .toArray();
-    if (staleOpens.some((s) => s.date < date)) {
+    if (staleOpens.length > 0) {
       throw new PriorDayStockOpenError();
     }
 
     const inStock = await db.inventory_items
       .where('user_id')
       .equals(shopOwnerId)
-      .filter((i) => !i.deleted && i.mode === 'serialized' && i.status === 'in_stock')
+      .filter(
+        (i) =>
+          !i.deleted &&
+          i.mode === 'serialized' &&
+          i.status === 'in_stock' &&
+          i.location_id === activeLocationId
+      )
       .toArray();
 
     const now = new Date().toISOString();
     const session: StockSession = {
       id: uuidv4(),
       user_id: shopOwnerId,
+      location_id: activeLocationId,
       date,
       opened_at: now,
       opened_by_user_id: actorUserId,
@@ -79,7 +96,7 @@ export function useStockSessionActions() {
 
     await db.stock_sessions.add(session);
     return session;
-  }, [user, shopOwnerId, actorUserId]);
+  }, [user, shopOwnerId, actorUserId, activeLocationId, locationReady]);
 
   const forceAbandonOpenSession = useCallback(
     async (sessionId: string, detail?: string): Promise<void> => {
@@ -117,8 +134,9 @@ export function useStockSessionActions() {
       const session = await db.stock_sessions.get(sessionId);
       if (!session || session.user_id !== shopOwnerId) throw new Error('Session not found');
       if (session.status !== 'open') throw new Error('Session is not open');
+      if (!session.location_id) throw new Error('Session missing branch');
 
-      const items = [...(await loadInventoryMap(shopOwnerId)).values()];
+      const items = [...(await loadInventoryMap(shopOwnerId, session.location_id)).values()];
       const expectedIds = computeExpectedClosingIds(session, items);
       const summary = await buildSessionCloseSummary(shopOwnerId, session, items, expectedIds);
 
@@ -256,7 +274,11 @@ export function useStockSessionActions() {
       const affectedSessions = await db.stock_sessions
         .where('user_id')
         .equals(shopOwnerId)
-        .filter((s) => (s.missing_item_ids ?? []).includes(itemId))
+        .filter(
+          (s) =>
+            (s.missing_item_ids ?? []).includes(itemId) &&
+            (!item.location_id || s.location_id === item.location_id)
+        )
         .toArray();
 
       for (const s of affectedSessions) {

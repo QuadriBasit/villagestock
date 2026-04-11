@@ -5,7 +5,9 @@ import { assertTradingAllowedForStockPolicy } from '@/lib/stockTradingGate';
 import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
+import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import type { DeviceCondition, InventoryItem, PaymentMethod, PaymentStatus, SalesRecord, SwapRecord } from '@/types';
 
 interface ProcessSwapInput {
@@ -31,11 +33,13 @@ interface ProcessSwapInput {
 export function useSwapActions() {
   const { user } = useAuthStore();
   const { shopOwnerId, actorUserId } = useShopAccess();
+  const { activeLocationId, ready: locationReady } = useShopLocation();
 
   async function processSwap(input: ProcessSwapInput): Promise<SalesRecord> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
+    if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
     await assertTrialAllowsMutations(shopOwnerId);
-    await assertTradingAllowedForStockPolicy(shopOwnerId);
+    await assertTradingAllowedForStockPolicy(shopOwnerId, activeLocationId);
     if (input.outgoingItem.mode !== 'serialized') throw new Error('Swaps only apply to serialized items');
     if (input.outgoingItem.status !== 'in_stock') throw new Error('Selected item is not in stock');
 
@@ -49,6 +53,7 @@ export function useSwapActions() {
     const incomingItem: InventoryItem = {
       id: incomingItemId,
       user_id: shopOwnerId,
+      location_id: activeLocationId,
       name: input.incoming.model,
       category: input.outgoingItem.category,
       brand: input.incoming.brand,
@@ -71,6 +76,7 @@ export function useSwapActions() {
     const saleRecord: SalesRecord = {
       id: saleId,
       user_id: shopOwnerId,
+      location_id: activeLocationId,
       item_id: input.outgoingItem.id,
       sale_type: 'swap',
       item_name: input.outgoingItem.name,
@@ -108,6 +114,7 @@ export function useSwapActions() {
       outgoing_item_id: input.outgoingItem.id,
       incoming_item_id: incomingItemId,
       user_id: shopOwnerId,
+      location_id: activeLocationId,
       sale_id: saleId,
       sale_price: input.sale_price,
       trade_in_value: input.incoming.trade_in_value,
@@ -179,6 +186,8 @@ export function useSwapActions() {
 
     await flushSyncQueue();
     if (actorUserId) {
+      const incoming = await db.inventory_items.get(incomingItemId);
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
         actorUserId,
@@ -186,12 +195,12 @@ export function useSwapActions() {
         entityType: 'swap_record',
         entityId: swapId,
         metadata: {
-          sale_id: saleId,
-          receipt_number: receiptNumber,
-          outgoing_item_id: input.outgoingItem.id,
-          incoming_item_id: incomingItemId,
+          receipt: receiptNumber,
+          traded_out: `${input.outgoingItem.brand} ${input.outgoingItem.name}`.trim(),
+          traded_in: incoming ? `${incoming.brand} ${incoming.name}`.trim() : undefined,
           sale_price: input.sale_price,
         },
+        actorLabel,
       });
     }
     return saleRecord;

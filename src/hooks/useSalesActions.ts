@@ -5,17 +5,21 @@ import { assertTradingAllowedForStockPolicy } from '@/lib/stockTradingGate';
 import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
+import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import type { SalesRecord, SalesRecordInput } from '@/types';
 
 export function useSalesActions() {
   const { user } = useAuthStore();
   const { shopOwnerId, actorUserId } = useShopAccess();
+  const { activeLocationId, ready: locationReady } = useShopLocation();
 
   async function recordSale(input: SalesRecordInput): Promise<SalesRecord> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+    if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
     await assertTrialAllowsMutations(shopOwnerId);
-    await assertTradingAllowedForStockPolicy(shopOwnerId);
+    await assertTradingAllowedForStockPolicy(shopOwnerId, activeLocationId);
 
     const receipt_number = await generateReceiptNumber(shopOwnerId);
 
@@ -23,6 +27,7 @@ export function useSalesActions() {
       ...input,
       id: uuidv4(),
       user_id: shopOwnerId,
+      location_id: activeLocationId,
       sale_type: input.sale_type ?? 'sale',
       payment_status: input.payment_status ?? 'paid',
       device_details: input.device_details,
@@ -57,6 +62,8 @@ export function useSalesActions() {
     await queueSync('sales_records', 'insert', record as unknown as Record<string, unknown>);
     await flushSyncQueue();
 
+    const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
+    const itemLabel = item ? `${item.brand} ${item.name}`.trim() : undefined;
     void logShopAudit({
       businessId: shopOwnerId,
       actorUserId,
@@ -64,11 +71,12 @@ export function useSalesActions() {
       entityType: 'sales_record',
       entityId: record.id,
       metadata: {
-        receipt_number: record.receipt_number,
-        item_id: record.item_id,
+        receipt: record.receipt_number,
+        item: itemLabel,
         sale_price: record.sale_price,
         quantity_sold: record.quantity_sold,
       },
+      actorLabel,
     });
 
     return record;

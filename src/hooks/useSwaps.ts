@@ -1,12 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { useShopLocation } from '@/context/ShopLocationContext';
 
 export function useTodaySwapSummary() {
   const { shopOwnerId } = useShopAccess();
+  const { activeLocationId, ready: locationReady } = useShopLocation();
 
   const summary = useLiveQuery(async () => {
-    if (!shopOwnerId) return { count: 0, tradeInValue: 0, averageBalance: 0 };
+    if (!shopOwnerId || !locationReady || !activeLocationId) return { count: 0, tradeInValue: 0, averageBalance: 0 };
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -14,7 +16,9 @@ export function useTodaySwapSummary() {
     const swaps = await db.swap_records
       .where('user_id')
       .equals(shopOwnerId)
-      .filter((swap) => new Date(swap.date) >= startOfDay)
+      .filter(
+        (swap) => new Date(swap.date) >= startOfDay && swap.location_id === activeLocationId
+      )
       .toArray();
 
     const totalBalance = swaps.reduce((sum, swap) => sum + swap.balance_paid, 0);
@@ -25,7 +29,7 @@ export function useTodaySwapSummary() {
       tradeInValue,
       averageBalance: swaps.length > 0 ? totalBalance / swaps.length : 0,
     };
-  }, [shopOwnerId]);
+  }, [shopOwnerId, activeLocationId, locationReady]);
 
   return {
     summary: summary ?? { count: 0, tradeInValue: 0, averageBalance: 0 },

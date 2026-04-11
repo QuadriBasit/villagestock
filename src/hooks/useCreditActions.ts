@@ -5,6 +5,7 @@ import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { logShopAudit } from '@/lib/audit';
+import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import { buildCreditPayment, getCreditStatus } from '@/hooks/useCredits';
 import type { CreditRecord, CreditRecordInput, PaymentMethod } from '@/types';
 
@@ -15,6 +16,9 @@ export function useCreditActions() {
   async function createCreditRecord(input: CreditRecordInput): Promise<CreditRecord> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
     await assertTrialAllowsMutations(shopOwnerId);
+    const saleRow = await db.sales_records.get(input.sale_id);
+    const location_id = saleRow?.location_id;
+    if (!location_id) throw new Error('Sale is missing branch — sync and try again');
 
     const balanceOwed = Math.max(0, input.total_amount - input.amount_paid);
     const status = balanceOwed <= 0
@@ -27,6 +31,7 @@ export function useCreditActions() {
       ...input,
       id: uuidv4(),
       user_id: shopOwnerId,
+      location_id,
       balance_owed: balanceOwed,
       status,
       sync_status: 'pending',
@@ -36,13 +41,20 @@ export function useCreditActions() {
     await queueSync('credit_records', 'insert', record as unknown as Record<string, unknown>);
     await flushSyncQueue();
     if (actorUserId) {
+      const sale = await db.sales_records.get(input.sale_id);
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
         actorUserId,
         action: 'credit.created',
         entityType: 'credit_record',
         entityId: record.id,
-        metadata: { sale_id: input.sale_id, customer_name: input.customer_name, total_amount: input.total_amount },
+        metadata: {
+          receipt: sale?.receipt_number,
+          customer: input.customer_name,
+          total_amount: input.total_amount,
+        },
+        actorLabel,
       });
     }
     return record;
@@ -79,13 +91,20 @@ export function useCreditActions() {
     }
     await flushSyncQueue();
     if (actorUserId) {
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
         actorUserId,
         action: 'credit.payment_recorded',
         entityType: 'credit_record',
         entityId: creditId,
-        metadata: { amount, date, balance_owed: balanceOwed },
+        metadata: {
+          customer: existing.customer_name,
+          amount,
+          date,
+          balance_remaining: balanceOwed,
+        },
+        actorLabel,
       });
     }
   }

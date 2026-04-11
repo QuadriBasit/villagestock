@@ -4,16 +4,20 @@ import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
+import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import { getCategoryMode } from '@/types';
 import type { InventoryItem, InventoryItemInput, SerializedItemStatus } from '@/types';
 
 export function useInventoryActions() {
   const { user } = useAuthStore();
-  const { shopOwnerId, actorUserId } = useShopAccess();
+  const { shopOwnerId, actorUserId, actorAllowedLocationIds } = useShopAccess();
+  const { activeLocationId, ready: locationReady } = useShopLocation();
 
   async function addItem(input: InventoryItemInput): Promise<string> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+    if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
     await assertTrialAllowsMutations(shopOwnerId);
 
     const mode = getCategoryMode(input.category);
@@ -23,6 +27,7 @@ export function useInventoryActions() {
       ...input,
       id: uuidv4(),
       user_id: shopOwnerId,
+      location_id: activeLocationId,
       mode,
       quantity: mode === 'serialized' ? 1 : input.quantity,
       low_stock_threshold: mode === 'serialized' ? 0 : input.low_stock_threshold,
@@ -36,13 +41,15 @@ export function useInventoryActions() {
     await db.inventory_items.add(item);
     await queueSync('inventory_items', 'insert', item as unknown as Record<string, unknown>);
     await flushSyncQueue();
+    const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
     void logShopAudit({
       businessId: shopOwnerId,
       actorUserId,
       action: 'inventory.item_created',
       entityType: 'inventory_item',
       entityId: item.id,
-      metadata: { name: item.name, category: item.category },
+      metadata: { item: `${item.brand} ${item.name}`.trim(), category: item.category },
+      actorLabel,
     });
     return item.id;
   }
@@ -51,20 +58,29 @@ export function useInventoryActions() {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     await assertTrialAllowsMutations(shopOwnerId);
     const now = new Date().toISOString();
-    const updates = { ...changes, updated_at: now, sync_status: 'pending' as const };
+    const { location_id: _ignoreLoc, ...rest } = changes as Partial<InventoryItemInput> & {
+      location_id?: string;
+    };
+    const updates = { ...rest, updated_at: now, sync_status: 'pending' as const };
     await db.inventory_items.update(id, updates);
     const updated = await db.inventory_items.get(id);
     if (updated) {
       await queueSync('inventory_items', 'update', updated as unknown as Record<string, unknown>);
     }
     await flushSyncQueue();
+    const inv = await db.inventory_items.get(id);
+    const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
     void logShopAudit({
       businessId: shopOwnerId,
       actorUserId,
       action: 'inventory.item_updated',
       entityType: 'inventory_item',
       entityId: id,
-      metadata: { keys: Object.keys(changes) },
+      metadata: {
+        item: inv ? `${inv.brand} ${inv.name}`.trim() : undefined,
+        fields_updated: Object.keys(rest).join(', '),
+      },
+      actorLabel,
     });
   }
 
@@ -78,13 +94,19 @@ export function useInventoryActions() {
       await queueSync('inventory_items', 'update', updated as unknown as Record<string, unknown>);
     }
     await flushSyncQueue();
+    const inv2 = await db.inventory_items.get(id);
+    const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
     void logShopAudit({
       businessId: shopOwnerId,
       actorUserId,
       action: 'inventory.status_changed',
       entityType: 'inventory_item',
       entityId: id,
-      metadata: { status },
+      metadata: {
+        item: inv2 ? `${inv2.brand} ${inv2.name}`.trim() : undefined,
+        status,
+      },
+      actorLabel,
     });
   }
 
@@ -98,12 +120,16 @@ export function useInventoryActions() {
     });
     await queueSync('inventory_items', 'delete', { id });
     await flushSyncQueue();
+    const archived = await db.inventory_items.get(id);
+    const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
     void logShopAudit({
       businessId: shopOwnerId,
       actorUserId,
       action: 'inventory.item_archived',
       entityType: 'inventory_item',
       entityId: id,
+      metadata: archived ? { item: `${archived.brand} ${archived.name}`.trim() } : {},
+      actorLabel,
     });
   }
 
@@ -135,15 +161,72 @@ export function useInventoryActions() {
     await db.stock_movements.add(movement);
     await queueSync('stock_movements', 'insert', movement as unknown as Record<string, unknown>);
     await flushSyncQueue();
+    const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
     void logShopAudit({
       businessId: shopOwnerId,
       actorUserId,
       action: 'inventory.stock_adjusted',
       entityType: 'inventory_item',
       entityId: id,
-      metadata: { delta, note },
+      metadata: { item: `${item.brand} ${item.name}`.trim(), delta, note },
+      actorLabel,
     });
   }
 
-  return { addItem, updateItem, updateSerializedStatus, deleteItem, adjustStock };
+  async function transferItemToBranch(itemId: string, targetLocationId: string): Promise<void> {
+    if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+    if (!locationReady) throw new Error('Select a branch first');
+    await assertTrialAllowsMutations(shopOwnerId);
+    const item = await db.inventory_items.get(itemId);
+    if (!item || item.user_id !== shopOwnerId || item.deleted) throw new Error('Item not found');
+    const fromId = item.location_id;
+    if (!fromId) throw new Error('Item has no branch assigned');
+    if (fromId === targetLocationId) return;
+
+    const scope = actorAllowedLocationIds;
+    const unrestricted = actorUserId === shopOwnerId || !scope || scope.length === 0;
+    const canAccess = (loc: string) => unrestricted || scope!.includes(loc);
+    if (!canAccess(fromId) || !canAccess(targetLocationId)) {
+      throw new Error('You cannot move stock to or from that branch.');
+    }
+
+    const now = new Date().toISOString();
+    await db.inventory_items.update(itemId, {
+      location_id: targetLocationId,
+      updated_at: now,
+      sync_status: 'pending',
+    });
+    const updated = await db.inventory_items.get(itemId);
+    if (updated) {
+      await queueSync('inventory_items', 'update', updated as unknown as Record<string, unknown>);
+    }
+    await flushSyncQueue();
+    const [fromLoc, toLoc] = await Promise.all([
+      db.shop_locations.get(fromId),
+      db.shop_locations.get(targetLocationId),
+    ]);
+    const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
+    void logShopAudit({
+      businessId: shopOwnerId,
+      actorUserId,
+      action: 'inventory.item_transferred_branch',
+      entityType: 'inventory_item',
+      entityId: itemId,
+      metadata: {
+        item: `${item.brand} ${item.name}`.trim(),
+        from_branch: fromLoc?.name ?? 'Branch',
+        to_branch: toLoc?.name ?? 'Branch',
+      },
+      actorLabel,
+    });
+  }
+
+  return {
+    addItem,
+    updateItem,
+    updateSerializedStatus,
+    deleteItem,
+    adjustStock,
+    transferItemToBranch,
+  };
 }

@@ -11,8 +11,14 @@ export async function logShopAudit(params: {
   entityType: string;
   entityId?: string | null;
   metadata?: Record<string, unknown>;
+  /** Shown in audit log instead of raw user id */
+  actorLabel?: string;
 }): Promise<void> {
   const now = new Date().toISOString();
+  const meta = { ...(params.metadata ?? {}) };
+  if (params.actorLabel) {
+    meta.actor_name = params.actorLabel;
+  }
   const row: AuditEvent = {
     id: uuidv4(),
     business_id: params.businessId,
@@ -20,7 +26,7 @@ export async function logShopAudit(params: {
     action: params.action,
     entity_type: params.entityType,
     entity_id: params.entityId ?? null,
-    metadata: params.metadata ?? {},
+    metadata: meta,
     created_at: now,
     sync_status: 'pending',
   };

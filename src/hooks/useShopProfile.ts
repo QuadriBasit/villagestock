@@ -5,6 +5,7 @@ import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { logShopAudit } from '@/lib/audit';
+import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import type { ShopProfile, BusinessProfile } from '@/types';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { TRIAL_PLACEHOLDER } from '@/lib/trial';
@@ -72,6 +73,7 @@ export function useShopProfile() {
           await queueSync('business_profiles', 'update', next as unknown as Record<string, unknown>);
           await flushSyncQueue();
           if (actorUserId && shopOwnerId) {
+            const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
             void logShopAudit({
               businessId: shopOwnerId,
               actorUserId,
@@ -83,6 +85,7 @@ export function useShopProfile() {
                 address: updated.address,
                 phone: updated.phone,
               },
+              actorLabel,
             });
           }
         }
