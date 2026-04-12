@@ -52,4 +52,21 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('react-router') || id.includes('@remix-run')) return 'router';
+          if (id.includes('@supabase')) return 'supabase';
+          if (id.includes('recharts')) return 'charts';
+          if (id.includes('html5-qrcode')) return 'scanner';
+          if (id.includes('html2canvas') || id.includes('jspdf')) return 'export';
+          if (id.includes('react-day-picker')) return 'calendar';
+          if (id.includes('@radix-ui')) return 'radix';
+          return 'vendor';
+        },
+      },
+    },
+  },
 })

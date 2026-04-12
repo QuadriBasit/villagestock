@@ -1,32 +1,34 @@
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { clearAllLocalShopData } from '@/lib/db';
-import AppLayout from '@/components/layout/AppLayout';
-import AuthPage from '@/pages/AuthPage';
-import OnboardingPage from '@/pages/OnboardingPage';
+import LandingPage from '@/pages/LandingPage';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { useIsAdminUser } from '@/hooks/useIsAdminUser';
-import AdminLayout from '@/components/admin/AdminLayout';
-import AdminLoginPage from '@/pages/admin/AdminLoginPage';
-import AdminOverviewPage from '@/pages/admin/AdminOverviewPage';
-import AdminBusinessesPage from '@/pages/admin/AdminBusinessesPage';
-import DashboardPage from '@/pages/DashboardPage';
-import InventoryPage from '@/pages/InventoryPage';
-import AddItemPage from '@/pages/AddItemPage';
-import EditItemPage from '@/pages/EditItemPage';
-import AlertsPage from '@/pages/AlertsPage';
-import SalesHistoryPage from '@/pages/SalesHistoryPage';
-import SettingsPage from '@/pages/SettingsPage';
-import ReportsPage from '@/pages/ReportsPage';
-import CloseStockPage from '@/pages/CloseStockPage';
-import StockSessionsPage from '@/pages/StockSessionsPage';
-import StockSessionDetailPage from '@/pages/StockSessionDetailPage';
-import CreditsPage from '@/pages/CreditsPage';
-import RepairPage from '@/pages/RepairPage';
-import AuditLogPage from '@/pages/AuditLogPage';
 import { useShopAccess } from '@/context/ShopAccessContext';
+
+const AppLayout = lazy(() => import('@/components/layout/AppLayout'));
+const AuthPage = lazy(() => import('@/pages/AuthPage'));
+const OnboardingPage = lazy(() => import('@/pages/OnboardingPage'));
+const AdminLayout = lazy(() => import('@/components/admin/AdminLayout'));
+const AdminLoginPage = lazy(() => import('@/pages/admin/AdminLoginPage'));
+const AdminOverviewPage = lazy(() => import('@/pages/admin/AdminOverviewPage'));
+const AdminBusinessesPage = lazy(() => import('@/pages/admin/AdminBusinessesPage'));
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
+const InventoryPage = lazy(() => import('@/pages/InventoryPage'));
+const AddItemPage = lazy(() => import('@/pages/AddItemPage'));
+const EditItemPage = lazy(() => import('@/pages/EditItemPage'));
+const AlertsPage = lazy(() => import('@/pages/AlertsPage'));
+const SalesHistoryPage = lazy(() => import('@/pages/SalesHistoryPage'));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
+const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
+const CloseStockPage = lazy(() => import('@/pages/CloseStockPage'));
+const StockSessionsPage = lazy(() => import('@/pages/StockSessionsPage'));
+const StockSessionDetailPage = lazy(() => import('@/pages/StockSessionDetailPage'));
+const CreditsPage = lazy(() => import('@/pages/CreditsPage'));
+const RepairPage = lazy(() => import('@/pages/RepairPage'));
+const AuditLogPage = lazy(() => import('@/pages/AuditLogPage'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuthStore();
@@ -90,6 +92,14 @@ function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RouteFallback() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-surface text-primary">
+      Loading…
+    </div>
+  );
+}
+
 export default function App() {
   const { setSession, setLoading, user } = useAuthStore();
   const previousUserIdRef = useRef<string | undefined>(undefined);
@@ -120,105 +130,106 @@ export default function App() {
   }, [setSession, setLoading]);
 
   return (
-    <Routes>
-      <Route path="/auth" element={<AuthPage />} />
-      <Route path="/admin/login" element={<AdminLoginPage />} />
-      <Route
-        path="/admin"
-        element={
-          <AdminProtectedRoute>
-            <AdminLayout />
-          </AdminProtectedRoute>
-        }
-      >
-        <Route index element={<AdminOverviewPage />} />
-        <Route path="businesses" element={<AdminBusinessesPage />} />
-      </Route>
-      <Route
-        path="/onboarding"
-        element={
-          <ProtectedRoute>
-            <OnboardingPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <OnboardingGate>
-              <AppLayout />
-            </OnboardingGate>
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="inventory" element={<InventoryPage />} />
-        <Route path="inventory/new" element={<AddItemPage />} />
-        <Route path="inventory/:id/edit" element={<EditItemPage />} />
-        <Route path="alerts" element={<AlertsPage />} />
-        <Route path="sales" element={<SalesHistoryPage />} />
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route
-          path="audit-log"
+          path="/admin"
           element={
-            <StaffRedirect>
-              <AuditLogPage />
-            </StaffRedirect>
+            <AdminProtectedRoute>
+              <AdminLayout />
+            </AdminProtectedRoute>
+          }
+        >
+          <Route index element={<AdminOverviewPage />} />
+          <Route path="businesses" element={<AdminBusinessesPage />} />
+        </Route>
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
           }
         />
         <Route
-          path="credits"
           element={
-            <StaffRedirect>
-              <CreditsPage />
-            </StaffRedirect>
+            <ProtectedRoute>
+              <OnboardingGate>
+                <AppLayout />
+              </OnboardingGate>
+            </ProtectedRoute>
           }
-        />
-        <Route path="repair" element={<RepairPage />} />
-        <Route path="engineers" element={<Navigate to="/repair" replace />} />
-        <Route
-          path="reports"
-          element={
-            <StaffRedirect>
-              <ReportsPage />
-            </StaffRedirect>
-          }
-        />
-        <Route
-          path="reports/stock-sessions"
-          element={
-            <StaffRedirect>
-              <StockSessionsPage />
-            </StaffRedirect>
-          }
-        />
-        <Route
-          path="reports/stock-sessions/:sessionId"
-          element={
-            <StaffRedirect>
-              <StockSessionDetailPage />
-            </StaffRedirect>
-          }
-        />
-        <Route
-          path="stock/close/:sessionId"
-          element={
-            <StaffRedirect>
-              <CloseStockPage />
-            </StaffRedirect>
-          }
-        />
-        <Route
-          path="settings"
-          element={
-            <StaffRedirect>
-              <SettingsPage />
-            </StaffRedirect>
-          }
-        />
-      </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+        >
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="inventory" element={<InventoryPage />} />
+          <Route path="inventory/new" element={<AddItemPage />} />
+          <Route path="inventory/:id/edit" element={<EditItemPage />} />
+          <Route path="alerts" element={<AlertsPage />} />
+          <Route path="sales" element={<SalesHistoryPage />} />
+          <Route
+            path="audit-log"
+            element={
+              <StaffRedirect>
+                <AuditLogPage />
+              </StaffRedirect>
+            }
+          />
+          <Route
+            path="credits"
+            element={
+              <StaffRedirect>
+                <CreditsPage />
+              </StaffRedirect>
+            }
+          />
+          <Route path="repair" element={<RepairPage />} />
+          <Route path="engineers" element={<Navigate to="/repair" replace />} />
+          <Route
+            path="reports"
+            element={
+              <StaffRedirect>
+                <ReportsPage />
+              </StaffRedirect>
+            }
+          />
+          <Route
+            path="reports/stock-sessions"
+            element={
+              <StaffRedirect>
+                <StockSessionsPage />
+              </StaffRedirect>
+            }
+          />
+          <Route
+            path="reports/stock-sessions/:sessionId"
+            element={
+              <StaffRedirect>
+                <StockSessionDetailPage />
+              </StaffRedirect>
+            }
+          />
+          <Route
+            path="stock/close/:sessionId"
+            element={
+              <StaffRedirect>
+                <CloseStockPage />
+              </StaffRedirect>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <StaffRedirect>
+                <SettingsPage />
+              </StaffRedirect>
+            }
+          />
+        </Route>
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
