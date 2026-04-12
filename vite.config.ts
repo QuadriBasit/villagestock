@@ -57,13 +57,22 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
+          if (id.includes('/react/') || id.includes('/react-dom/')) return 'framework';
           if (id.includes('react-router') || id.includes('@remix-run')) return 'router';
           if (id.includes('@supabase')) return 'supabase';
           if (id.includes('recharts')) return 'charts';
           if (id.includes('html5-qrcode')) return 'scanner';
-          if (id.includes('html2canvas') || id.includes('jspdf')) return 'export';
+          if (id.includes('html2canvas')) return 'capture';
+          if (id.includes('jspdf')) return 'pdf';
           if (id.includes('react-day-picker')) return 'calendar';
-          if (id.includes('@radix-ui')) return 'radix';
+          if (id.includes('@radix-ui') || id.includes('cmdk')) return 'ui';
+          if (id.includes('dexie')) return 'data';
+          if (id.includes('zustand')) return 'state';
+          if (id.includes('date-fns')) return 'dates';
+          if (id.includes('lucide-react')) return 'icons';
+          if (id.includes('@tanstack/react-query')) return 'query';
+          if (id.includes('zod') || id.includes('@hookform/resolvers') || id.includes('react-hook-form'))
+            return 'forms';
           return 'vendor';
         },
       },

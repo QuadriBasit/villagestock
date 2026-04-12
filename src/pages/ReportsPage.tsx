@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, isValid, parseISO } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
-import jsPDF from 'jspdf';
 import {
   BarChart3,
   CalendarRange,
@@ -61,6 +60,8 @@ export default function ReportsPage() {
     exportRef.current = true;
 
     try {
+      const jsPdfModule = await import('jspdf');
+      const jsPDF = jsPdfModule.default;
       const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
       let y = 16;
       const left = 14;

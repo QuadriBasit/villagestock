@@ -1,7 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { X, Share2, Download, Loader2, RefreshCw } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import Receipt from './Receipt';
 import {
   modalSheetBackdrop,
@@ -33,8 +31,19 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
   const [capture, setCapture] = useState<CaptureState>({ status: 'loading' });
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const loadCaptureLibs = async () => {
+    const html2canvasModule = await import('html2canvas');
+    return html2canvasModule.default;
+  };
+
+  const loadPdfLib = async () => {
+    const jsPdfModule = await import('jspdf');
+    return jsPdfModule.default;
+  };
+
   const runCapture = useCallback(async (): Promise<CaptureReady> => {
     if (!receiptRef.current) throw new Error('Receipt not mounted');
+    const html2canvas = await loadCaptureLibs();
     const canvas = await html2canvas(receiptRef.current, {
       scale: 2,
       useCORS: true,
@@ -141,10 +150,11 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
   };
 
   /** jsPDF path stays synchronous in the click handler — avoids losing user activation after async work. */
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     setActionError(null);
     if (capture.status !== 'ready') return;
     try {
+      const jsPDF = await loadPdfLib();
       const { dataUrl, pdfHeightMm } = capture;
       const pdfWidthMm = 80;
       const pdf = new jsPDF({ unit: 'mm', format: [pdfWidthMm, pdfHeightMm] });

@@ -1,3 +1,4 @@
+import {lazy, Suspense} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useAuthStore} from '@/store/auth';
 import {useShopAccess} from '@/context/ShopAccessContext';
@@ -35,9 +36,14 @@ import {Card, CardContent} from '@/components/ui/Card';
 import {Button} from '@/components/ui/Button';
 import {Badge} from '@/components/ui/Badge';
 import {Progress} from '@/components/ui/Progress';
-import {DashboardAnalytics} from '@/components/dashboard/DashboardAnalytics';
 import {RecentActivityFeed} from '@/components/dashboard/RecentActivityFeed';
 import {DashboardStockAccountability} from '@/components/dashboard/DashboardStockAccountability';
+
+const DashboardAnalytics = lazy(() =>
+  import('@/components/dashboard/DashboardAnalytics').then(module => ({
+    default: module.DashboardAnalytics,
+  })),
+);
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   phones: <Smartphone size={18} />,
@@ -270,7 +276,9 @@ export default function DashboardPage() {
 
       <div className='grid gap-4 lg:grid-cols-3'>
         <div className='space-y-4 lg:col-span-2'>
-          <DashboardAnalytics byCategory={summary?.by_category} />
+          <Suspense fallback={<AnalyticsFallback />}>
+            <DashboardAnalytics byCategory={summary?.by_category} />
+          </Suspense>
         </div>
         <div className='lg:col-span-1'>
           <RecentActivityFeed />
@@ -505,5 +513,15 @@ export default function DashboardPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+function AnalyticsFallback() {
+  return (
+    <Card className='border-zinc-200/80 dark:border-zinc-800/80'>
+      <CardContent className='flex h-[18rem] items-center justify-center text-sm text-zinc-400 dark:text-zinc-500'>
+        Loading analytics…
+      </CardContent>
+    </Card>
   );
 }
