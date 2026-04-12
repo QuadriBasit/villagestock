@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
-import { Package, Loader2, Mail, Lock } from 'lucide-react';
+import { Package, Loader2, Lock } from 'lucide-react';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { useShopAccess } from '@/context/ShopAccessContext';
@@ -111,6 +111,26 @@ export default function AuthPage() {
     }
     return <Navigate to="/onboarding" replace />;
   }
+
+  const signInWithGoogle = async () => {
+    setError('');
+    setBusy(true);
+    try {
+      const { error: err } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: authCallbackUrl(),
+          queryParams: { prompt: 'select_account' },
+        },
+      });
+      if (err) throw err;
+      /* Browser redirects to Google; session returns to /auth */
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Google sign-in failed';
+      setError(msg);
+      setBusy(false);
+    }
+  };
 
   const signInWithEmail = async () => {
     setError('');
@@ -284,13 +304,38 @@ export default function AuthPage() {
                 </button>
               </div>
 
-              <h2 className="font-heading font-semibold text-lg text-dark mb-1 flex items-center gap-2">
-                <Mail size={18} className="text-primary" />
-                Sign in
-              </h2>
+              <button
+                type="button"
+                onClick={signInWithGoogle}
+                disabled={busy}
+                className="group relative flex w-full items-center justify-center gap-3 rounded-2xl border border-zinc-300/90 bg-white py-4 pl-4 pr-5 text-[15px] font-semibold text-zinc-800 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.12),0_2px_6px_-2px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04] transition hover:bg-zinc-50 hover:shadow-md active:scale-[0.99] disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50 dark:ring-white/10 dark:hover:bg-zinc-800"
+              >
+                {busy ? (
+                  <Loader2 className="size-5 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <GoogleLogo className="size-5 shrink-0" />
+                )}
+                Continue with Google
+              </button>
+              <p className="mt-2 text-center text-[11px] text-muted dark:text-zinc-500">
+                Recommended — fast sign-in with your Google account.
+              </p>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center" aria-hidden>
+                  <span className="w-full border-t border-zinc-200 dark:border-zinc-600" />
+                </div>
+                <div className="relative flex justify-center text-xs font-medium">
+                  <span className="bg-white px-3 text-muted dark:bg-zinc-900/95 dark:text-zinc-400">
+                    Or continue with email
+                  </span>
+                </div>
+              </div>
+
+              <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Email &amp; password</h2>
               <p className="text-xs text-muted mb-4">
-                Use the email and password you used at <strong>Create account</strong>. Password reset only works after an
-                account exists for that email (it is separate from shop data in the database).
+                Use the email and password from <strong>Create account</strong>. Password reset only works after an account
+                exists for that email (separate from shop data in the database).
               </p>
 
               <div className="space-y-3">
@@ -344,10 +389,10 @@ export default function AuthPage() {
                 type="button"
                 onClick={signInWithEmail}
                 disabled={busy}
-                className="mt-5 w-full bg-primary text-white rounded-lg py-2.5 font-medium text-sm hover:bg-primary-dark transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                className="mt-5 w-full rounded-xl border-2 border-primary/35 bg-transparent py-3 text-sm font-semibold text-primary transition hover:bg-primary/[0.06] disabled:opacity-60 flex items-center justify-center gap-2 dark:border-primary/45 dark:hover:bg-primary/10"
               >
                 {busy && <Loader2 size={16} className="animate-spin" />}
-                Sign in
+                Sign in with email
               </button>
             </>
           )}
@@ -373,13 +418,38 @@ export default function AuthPage() {
                 </button>
               </div>
 
-              <h2 className="font-heading font-semibold text-lg text-dark mb-1 flex items-center gap-2">
-                <Mail size={18} className="text-primary" />
-                Create your account
-              </h2>
+              <button
+                type="button"
+                onClick={signInWithGoogle}
+                disabled={busy}
+                className="group relative flex w-full items-center justify-center gap-3 rounded-2xl border border-zinc-300/90 bg-white py-4 pl-4 pr-5 text-[15px] font-semibold text-zinc-800 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.12),0_2px_6px_-2px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04] transition hover:bg-zinc-50 hover:shadow-md active:scale-[0.99] disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50 dark:ring-white/10 dark:hover:bg-zinc-800"
+              >
+                {busy ? (
+                  <Loader2 className="size-5 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <GoogleLogo className="size-5 shrink-0" />
+                )}
+                Continue with Google
+              </button>
+              <p className="mt-2 text-center text-[11px] text-muted dark:text-zinc-500">
+                New accounts are created automatically on first Google sign-in.
+              </p>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center" aria-hidden>
+                  <span className="w-full border-t border-zinc-200 dark:border-zinc-600" />
+                </div>
+                <div className="relative flex justify-center text-xs font-medium">
+                  <span className="bg-white px-3 text-muted dark:bg-zinc-900/95 dark:text-zinc-400">
+                    Or sign up with email
+                  </span>
+                </div>
+              </div>
+
+              <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Email &amp; password</h2>
               <p className="text-xs text-muted mb-4">
-                This creates your <strong>login</strong> in Supabase Auth (needed for sign-in and password reset). After you
-                confirm the email, sign in here and complete shop setup.
+                Creates your <strong>login</strong> in Supabase Auth. If email confirmation is on, check your inbox — then
+                sign in and complete shop setup.
               </p>
 
               {signupMessage === 'sent' ? (
@@ -462,10 +532,10 @@ export default function AuthPage() {
                     type="button"
                     onClick={signUpWithEmail}
                     disabled={busy}
-                    className="mt-4 w-full bg-primary text-white rounded-lg py-2.5 font-medium text-sm hover:bg-primary-dark disabled:opacity-60 flex items-center justify-center gap-2"
+                    className="mt-4 w-full rounded-xl border-2 border-primary/35 bg-transparent py-3 text-sm font-semibold text-primary transition hover:bg-primary/[0.06] disabled:opacity-60 flex items-center justify-center gap-2 dark:border-primary/45 dark:hover:bg-primary/10"
                   >
                     {busy && <Loader2 size={16} className="animate-spin" />}
-                    Create account
+                    Create account with email
                   </button>
                 </>
               )}
@@ -567,6 +637,30 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Google "G" logo (brand colors) for the OAuth button. */
+function GoogleLogo({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+      />
+    </svg>
   );
 }
 
