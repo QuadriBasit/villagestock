@@ -1,12 +1,12 @@
-import { lazy, Suspense, useEffect, useRef } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
-import { clearAllLocalShopData } from '@/lib/db';
 import LandingPage from '@/pages/LandingPage';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { useIsAdminUser } from '@/hooks/useIsAdminUser';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { ShopAccessProvider, ShopSyncEffects } from '@/context/ShopAccessContext';
+import { ShopLocationProvider } from '@/context/ShopLocationContext';
 
 const AppLayout = lazy(() => import('@/components/layout/AppLayout'));
 const AuthPage = lazy(() => import('@/pages/AuthPage'));
@@ -100,37 +100,69 @@ function RouteFallback() {
   );
 }
 
-export default function App() {
+function RetailAppProviders({ children }: { children: ReactNode }) {
+  return (
+    <ShopAccessProvider>
+      <ShopLocationProvider>
+        <ShopSyncEffects />
+        {children}
+      </ShopLocationProvider>
+    </ShopAccessProvider>
+  );
+}
+
+function AuthBootstrap() {
+  const location = useLocation();
   const { setSession, setLoading, user } = useAuthStore();
   const previousUserIdRef = useRef<string | undefined>(undefined);
+  const shouldBootstrapAuth = location.pathname !== '/';
 
-  // If the signed-in account changes without a full reload, drop stale IndexedDB (other shop's rows).
   useEffect(() => {
     const id = user?.id;
     const prev = previousUserIdRef.current;
     if (prev !== undefined && id !== undefined && prev !== id) {
-      void clearAllLocalShopData();
+      void import('@/lib/db').then(({ clearAllLocalShopData }) => clearAllLocalShopData());
     }
     previousUserIdRef.current = id;
   }, [user?.id]);
 
-  // Bootstrap Supabase auth listener
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
+    if (!shouldBootstrapAuth) return;
+
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+
+    void import('@/lib/supabase').then(({ supabase }) => {
+      if (!active) return;
+
+      supabase.auth.getSession().then(({ data }) => {
+        if (!active) return;
+        setSession(data.session);
+        setLoading(false);
+      });
+
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!active) return;
+        setSession(session);
+        setLoading(false);
+      });
+
+      unsubscribe = () => listener.subscription.unsubscribe();
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
-    });
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [setSession, setLoading, shouldBootstrapAuth]);
 
-    return () => listener.subscription.unsubscribe();
-  }, [setSession, setLoading]);
+  return null;
+}
 
+export default function App() {
   return (
     <Suspense fallback={<RouteFallback />}>
+      <AuthBootstrap />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
@@ -157,9 +189,11 @@ export default function App() {
         <Route
           element={
             <ProtectedRoute>
-              <OnboardingGate>
-                <AppLayout />
-              </OnboardingGate>
+              <RetailAppProviders>
+                <OnboardingGate>
+                  <AppLayout />
+                </OnboardingGate>
+              </RetailAppProviders>
             </ProtectedRoute>
           }
         >

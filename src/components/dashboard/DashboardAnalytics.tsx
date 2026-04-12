@@ -1,23 +1,13 @@
 import { useMemo, useState } from 'react';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { useSalesTrend } from '@/hooks/useSalesTrend';
-import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
+import { SimpleAreaChart, SimpleDonutChart } from '@/components/charts/LightCharts';
 
 const PIE_PALETTE = ['#6C5CE7', '#FF6B3D', '#4CAF50', '#3B82F6', '#F59E0B', '#EC4899'];
+const compactNumber = new Intl.NumberFormat('en-NG', { notation: 'compact', maximumFractionDigits: 1 });
+const compactCurrency = (value: number) => `₦${compactNumber.format(value)}`;
 
 type CategorySlice = { name: string; value: number };
 
@@ -38,19 +28,6 @@ export function DashboardAnalytics({
       .filter((d) => d.value > 0)
       .sort((a, b) => b.value - a.value);
   }, [byCategory]);
-
-  const tickMuted = isDark ? '#9CA3AF' : '#6B7280';
-  const grid = isDark ? '#1f2937' : '#e2e8f0';
-
-  const tooltipContentStyle = {
-    backgroundColor: isDark ? '#27272a' : '#FFFFFF',
-    border: `1px solid ${isDark ? '#52525b' : '#e5e7eb'}`,
-    borderRadius: 12,
-    fontSize: 13,
-    boxShadow: isDark ? '0 12px 40px rgba(0,0,0,0.55)' : '0 8px 30px -12px rgba(15,23,42,0.12)',
-  };
-  const tooltipLabelStyle = { color: isDark ? '#fafafa' : '#0f172a', fontWeight: 500 as const };
-  const tooltipItemStyle = { color: isDark ? '#fafafa' : '#0f172a' };
 
   return (
     <div className="grid gap-4 lg:grid-cols-5">
@@ -83,43 +60,11 @@ export function DashboardAnalytics({
             {isLoading ? (
               <div className="flex h-full items-center justify-center text-sm text-zinc-400">Loading chart…</div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#6C5CE7" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#6C5CE7" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={grid} vertical={false} />
-                  <XAxis dataKey="label" tick={{ fill: tickMuted, fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis
-                    tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))}
-                    tick={{ fill: tickMuted, fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={40}
-                  />
-                  <Tooltip
-                    contentStyle={tooltipContentStyle}
-                    labelStyle={tooltipLabelStyle}
-                    itemStyle={tooltipItemStyle}
-                    formatter={(value) => {
-                      const n = typeof value === 'number' ? value : Number(value);
-                      return [formatCurrency(Number.isFinite(n) ? n : 0), 'Revenue'];
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#6C5CE7"
-                    strokeWidth={2}
-                    fill="url(#revFill)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#6C5CE7', stroke: '#fff', strokeWidth: 2 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <SimpleAreaChart
+                data={series.map(point => ({ label: point.label, value: point.revenue }))}
+                isDark={isDark}
+                valueFormatter={compactCurrency}
+              />
             )}
           </div>
         </CardContent>
@@ -135,33 +80,14 @@ export function DashboardAnalytics({
             {pieData.length === 0 ? (
               <p className="text-center text-sm text-zinc-400 dark:text-zinc-500">No inventory value yet</p>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={52}
-                    outerRadius={78}
-                    paddingAngle={2}
-                  >
-                    {pieData.map((entry, i) => (
-                      <Cell key={entry.name} fill={PIE_PALETTE[i % PIE_PALETTE.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={tooltipContentStyle}
-                    labelStyle={tooltipLabelStyle}
-                    itemStyle={tooltipItemStyle}
-                    formatter={(value) => {
-                      const n = typeof value === 'number' ? value : Number(value);
-                      return formatCurrency(Number.isFinite(n) ? n : 0);
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <SimpleDonutChart
+                data={pieData.map((entry, index) => ({
+                  label: entry.name,
+                  value: entry.value,
+                  color: PIE_PALETTE[index % PIE_PALETTE.length],
+                }))}
+                totalLabel={compactNumber.format(pieData.reduce((sum, entry) => sum + entry.value, 0))}
+              />
             )}
           </div>
           {pieData.length > 0 && (

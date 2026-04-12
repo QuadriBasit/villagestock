@@ -1,32 +1,13 @@
 import { RefreshCw } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-  BarChart,
-  Bar,
-  AreaChart,
-  Area,
-  Cell,
-} from 'recharts';
 import { useAdminDashboardSnapshot } from '@/hooks/useAdminDashboardSnapshot';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { formatCurrency } from '@/lib/utils';
+import { SimpleAreaChart, SimpleBarChart } from '@/components/charts/LightCharts';
 
 export default function AdminOverviewPage() {
   const { data, isLoading, isFetching, error, refetch } = useAdminDashboardSnapshot(true);
   const { resolved } = useTheme();
   const isDark = resolved === 'dark';
-  const axisTick = { fontSize: 11, fill: isDark ? '#a1a1aa' : '#94a3b8' };
-  const tooltipContentStyle = {
-    backgroundColor: isDark ? '#27272a' : '#FFFFFF',
-    border: `1px solid ${isDark ? '#52525b' : '#e5e7eb'}`,
-    borderRadius: 12,
-    fontSize: 13,
-    boxShadow: isDark ? '0 12px 40px rgba(0,0,0,0.55)' : '0 8px 30px -12px rgba(15,23,42,0.15)',
-  };
-  const tooltipTextStyle = { color: isDark ? '#fafafa' : '#0f172a', fontWeight: 500 as const };
 
   if (isLoading) {
     return (
@@ -107,31 +88,12 @@ export default function AdminOverviewPage() {
           <h2 className="mb-1 font-heading text-sm font-semibold text-slate-900 dark:text-zinc-50">Signups (last 30 days)</h2>
           <p className="mb-4 text-xs text-slate-500 dark:text-zinc-400">Daily new shop registrations</p>
           <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={lineData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="adminSignupFade" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563eb" stopOpacity={0.38} />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={tooltipContentStyle}
-                  labelStyle={tooltipTextStyle}
-                  itemStyle={{ color: isDark ? '#fafafa' : '#0f172a' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="count"
-                  stroke="#2563eb"
-                  strokeWidth={2.5}
-                  fill="url(#adminSignupFade)"
-                  name="Signups"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <SimpleAreaChart
+              data={lineData.map(point => ({ label: point.label, value: point.count }))}
+              isDark={isDark}
+              color="#2563eb"
+              valueFormatter={value => String(Math.round(value))}
+            />
           </div>
         </div>
 
@@ -139,22 +101,7 @@ export default function AdminOverviewPage() {
           <h2 className="mb-1 font-heading text-sm font-semibold text-slate-900 dark:text-zinc-50">Plan distribution</h2>
           <p className="mb-4 text-xs text-slate-500 dark:text-zinc-400">Shops by plan type</p>
           <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={planBar} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={tooltipContentStyle}
-                  labelStyle={tooltipTextStyle}
-                  itemStyle={{ color: isDark ? '#fafafa' : '#0f172a' }}
-                />
-                <Bar dataKey="count" radius={[10, 10, 4, 4]} name="Shops">
-                  {planBar.map((_, index) => (
-                    <Cell key={index} fill={index === 0 ? '#2563eb' : '#93c5fd'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <SimpleBarChart data={planBar.map(item => ({ label: item.name, value: item.count }))} isDark={isDark} />
           </div>
         </div>
       </div>
