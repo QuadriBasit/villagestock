@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { parseMoneyDigits } from '@/lib/utils';
 import type { SalesRecord } from '@/types';
+import { DEFAULT_RECEIPT_THEME } from '@/hooks/useShopProfile';
 
 interface ReceiptModalProps {
   sale: SalesRecord;
@@ -44,7 +45,7 @@ type ReceiptDraft = {
   paper_color: string;
 };
 
-function createReceiptDraft(sale: SalesRecord): ReceiptDraft {
+function createReceiptDraft(sale: SalesRecord, theme = DEFAULT_RECEIPT_THEME): ReceiptDraft {
   return {
     item_name: sale.item_name ?? '',
     item_brand: sale.item_brand ?? '',
@@ -55,10 +56,10 @@ function createReceiptDraft(sale: SalesRecord): ReceiptDraft {
     balance_owed: String(sale.balance_owed ?? ''),
     trade_in_item_name: sale.trade_in_item_name ?? '',
     trade_in_item_brand: sale.trade_in_item_brand ?? '',
-    header_color: '#6c5ce7',
-    accent_color: '#6c5ce7',
-    text_color: '#0f172a',
-    paper_color: '#ffffff',
+    header_color: theme.header_color,
+    accent_color: theme.accent_color,
+    text_color: theme.text_color,
+    paper_color: theme.paper_color,
   };
 }
 
@@ -68,12 +69,12 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
   const [capture, setCapture] = useState<CaptureState>({ status: 'loading' });
   const [actionError, setActionError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState<ReceiptDraft>(() => createReceiptDraft(sale));
+  const [draft, setDraft] = useState<ReceiptDraft>(() => createReceiptDraft(sale, profile.receipt_theme ?? DEFAULT_RECEIPT_THEME));
 
   useEffect(() => {
-    setDraft(createReceiptDraft(sale));
+    setDraft(createReceiptDraft(sale, profile.receipt_theme ?? DEFAULT_RECEIPT_THEME));
     setIsEditing(false);
-  }, [sale]);
+  }, [sale, profile.receipt_theme]);
 
   const receiptOverrides = useMemo<ReceiptOverrides>(() => ({
     item_name: draft.item_name,
@@ -294,7 +295,7 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setDraft(createReceiptDraft(sale))}
+                    onClick={() => setDraft(createReceiptDraft(sale, profile.receipt_theme ?? DEFAULT_RECEIPT_THEME))}
                     className="shrink-0"
                   >
                     <RotateCcw size={14} />

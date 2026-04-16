@@ -314,6 +314,7 @@ export interface Database {
           phone: string;
           email: string | null;
           address: string;
+          logo_path: string | null;
           trial_start_date: string;
           trial_end_date: string;
           plan: string;
@@ -331,6 +332,7 @@ export interface Database {
           phone: string;
           email?: string | null;
           address: string;
+          logo_path?: string | null;
           trial_start_date: string;
           trial_end_date: string;
           plan?: string;

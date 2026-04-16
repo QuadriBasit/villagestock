@@ -344,6 +344,7 @@ export interface BusinessProfile {
   phone: string;
   email?: string;
   address: string;
+  logo_path?: string;
   trial_start_date: string;
   trial_end_date: string;
   plan: BusinessPlan;
@@ -422,6 +423,15 @@ export interface ShopProfile {
   address: string;
   phone: string;
   logo_data_url?: string;
+  logo_path?: string;
+  receipt_theme?: ReceiptTheme;
+}
+
+export interface ReceiptTheme {
+  header_color: string;
+  accent_color: string;
+  text_color: string;
+  paper_color: string;
 }
 
 export interface AppSetting<T = string> {

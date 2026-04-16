@@ -75,10 +75,10 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(({ sale, shop, override
     overrides?.trade_in_item_name !== undefined ? overrides.trade_in_item_name : sale.trade_in_item_name;
   const tradeInItemBrand =
     overrides?.trade_in_item_brand !== undefined ? overrides.trade_in_item_brand : sale.trade_in_item_brand;
-  const headerColor = overrides?.header_color || RC.primary;
-  const accentColor = overrides?.accent_color || RC.primary;
-  const textColor = overrides?.text_color || RC.dark;
-  const paperColor = overrides?.paper_color || RC.white;
+  const headerColor = overrides?.header_color || shop.receipt_theme?.header_color || RC.primary;
+  const accentColor = overrides?.accent_color || shop.receipt_theme?.accent_color || RC.primary;
+  const textColor = overrides?.text_color || shop.receipt_theme?.text_color || RC.dark;
+  const paperColor = overrides?.paper_color || shop.receipt_theme?.paper_color || RC.white;
   const mutedColor = textColor === RC.dark ? RC.muted : withAlpha(textColor, 0.68);
   const borderColor = textColor === RC.dark ? RC.border : withAlpha(textColor, 0.18);
   const lightOnHeader = withAlpha(RC.white, 0.8);

@@ -29,11 +29,13 @@ import { useShopLocation } from '@/context/ShopLocationContext';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { createShopLocation } from '@/lib/sync';
 import { useTheme, type ThemeMode } from '@/components/theme/ThemeProvider';
-import { useState, useRef, type ReactNode } from 'react';
+import { useEffect, useState, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import type { ShopProfile } from '@/types';
+import type { ShopProfile, ReceiptTheme } from '@/types';
 import { Checkbox } from '@/components/ui/Checkbox';
+import { Input } from '@/components/ui/Input';
+import { DEFAULT_RECEIPT_THEME } from '@/hooks/useShopProfile';
 
 const schema = z.object({
   shop_name: z.string().min(1, 'Shop name is required'),
@@ -92,9 +94,30 @@ export default function SettingsPage() {
   const { profile, isLoading, saveProfile } = useShopProfile();
   const { profile: businessProfile, isLoading: isBizLoading } = useBusinessProfile();
   const { user } = useAuthStore();
-  const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | undefined>(undefined);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [saved, setSaved] = useState(false);
+  const [themeSaved, setThemeSaved] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const [receiptTheme, setReceiptTheme] = useState<ReceiptTheme>(
+    profile.receipt_theme ?? DEFAULT_RECEIPT_THEME
+  );
+  const effectiveReceiptTheme = profile.receipt_theme ?? DEFAULT_RECEIPT_THEME;
+
+  useEffect(() => {
+    setReceiptTheme(effectiveReceiptTheme);
+  }, [
+    effectiveReceiptTheme.header_color,
+    effectiveReceiptTheme.accent_color,
+    effectiveReceiptTheme.text_color,
+    effectiveReceiptTheme.paper_color,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
+    };
+  }, [logoPreviewUrl]);
 
   const {
     register,
@@ -112,9 +135,9 @@ export default function SettingsPage() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => setLogoUrl(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
+    setLogoFile(file);
+    setLogoPreviewUrl(URL.createObjectURL(file));
   };
 
   const onSubmit = async (data: FormData) => {
@@ -122,9 +145,13 @@ export default function SettingsPage() {
       shop_name: data.shop_name,
       address: data.address,
       phone: data.phone,
-      logo_data_url: logoUrl ?? profile.logo_data_url,
+      logo_data_url: profile.logo_data_url,
+      logo_path: profile.logo_path,
+      receipt_theme: receiptTheme,
     };
-    await saveProfile(updated);
+    await saveProfile(updated, { logoFile });
+    setLogoFile(null);
+    setLogoPreviewUrl(undefined);
     setSaved(true);
     toast.success('Shop profile saved');
     setTimeout(() => setSaved(false), 2500);
@@ -156,7 +183,7 @@ export default function SettingsPage() {
   //     })
   //   : null;
 
-  const currentLogo = logoUrl ?? profile.logo_data_url;
+  const currentLogo = logoPreviewUrl ?? profile.logo_data_url;
 
   const themeChoices: { id: ThemeMode; label: string; icon: ReactNode }[] = [
     { id: 'light', label: 'Light', icon: <Sun size={16} /> },
@@ -315,6 +342,102 @@ export default function SettingsPage() {
             )}
           </button>
         </form>
+      </section>
+
+      <section className={`${panelClass} space-y-3`}>
+        <div className="mb-0.5 flex items-center gap-2">
+          <Layers size={18} className="text-primary" />
+          <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Receipt Design</h3>
+        </div>
+        <p className="-mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          Set one receipt style for the whole shop. Every receipt preview, print, and export will use this design.
+        </p>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ReceiptColorField
+            label="Header color"
+            value={receiptTheme.header_color}
+            onChange={value => setReceiptTheme(current => ({ ...current, header_color: value }))}
+          />
+          <ReceiptColorField
+            label="Amount color"
+            value={receiptTheme.accent_color}
+            onChange={value => setReceiptTheme(current => ({ ...current, accent_color: value }))}
+          />
+          <ReceiptColorField
+            label="Text color"
+            value={receiptTheme.text_color}
+            onChange={value => setReceiptTheme(current => ({ ...current, text_color: value }))}
+          />
+          <ReceiptColorField
+            label="Paper color"
+            value={receiptTheme.paper_color}
+            onChange={value => setReceiptTheme(current => ({ ...current, paper_color: value }))}
+          />
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200/80 p-4 dark:border-zinc-700">
+          <div
+            className="overflow-hidden rounded-xl border"
+            style={{
+              borderColor: `${receiptTheme.text_color}22`,
+              backgroundColor: receiptTheme.paper_color,
+              color: receiptTheme.text_color,
+            }}
+          >
+            <div className="px-4 py-3 text-white" style={{ backgroundColor: receiptTheme.header_color }}>
+              <div className="text-sm font-semibold">{profile.shop_name || 'VillageStock Shop'}</div>
+              <div className="text-xs opacity-80">Receipt preview</div>
+            </div>
+            <div className="space-y-2 px-4 py-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span style={{ color: `${receiptTheme.text_color}AA` }}>Item</span>
+                <span>iPhone 14 Pro</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span style={{ color: `${receiptTheme.text_color}AA` }}>Customer</span>
+                <span>Walk-in customer</span>
+              </div>
+              <div className="flex items-center justify-between font-semibold">
+                <span>Amount</span>
+                <span style={{ color: receiptTheme.accent_color }}>₦350,000</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              await saveProfile({
+                ...profile,
+                logo_data_url: profile.logo_data_url,
+                logo_path: profile.logo_path,
+                receipt_theme: receiptTheme,
+              });
+              setThemeSaved(true);
+              toast.success('Receipt design saved');
+              setTimeout(() => setThemeSaved(false), 2500);
+            }}
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+          >
+            Save receipt design
+          </button>
+          <button
+            type="button"
+            onClick={() => setReceiptTheme(DEFAULT_RECEIPT_THEME)}
+            className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 dark:border-zinc-700 dark:bg-zinc-950/60 dark:text-zinc-200"
+          >
+            Reset colors
+          </button>
+          {themeSaved && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-teal/10 px-3 py-2 text-xs font-medium text-teal-dark dark:text-teal-300">
+              <CheckCircle size={14} />
+              Saved
+            </span>
+          )}
+        </div>
       </section>
 
       <section className={`${panelClass} space-y-3`}>
@@ -945,5 +1068,34 @@ export default function SettingsPage() {
         <p>VillageStock · Built for Computer Village retailers</p>
       </div>
     </div>
+  );
+}
+
+function ReceiptColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="space-y-1">
+      <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">{label}</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="h-10 w-12 cursor-pointer rounded-lg border border-border bg-white p-1 dark:border-zinc-600/80 dark:bg-zinc-900/60"
+        />
+        <Input
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="font-mono uppercase"
+        />
+      </div>
+    </label>
   );
 }
