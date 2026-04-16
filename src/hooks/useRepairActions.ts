@@ -94,21 +94,28 @@ export function useRepairActions() {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
     // await assertTrialAllowsMutations(shopOwnerId);
     const now = new Date().toISOString();
+    const existingItem = await db.inventory_items.get(itemId);
     await db.repair_records.update(id, {
       repair_status: 'collected',
       date_returned: now,
       notes,
       sync_status: 'pending',
     });
+    const latestRepair = await db.repair_records.get(id);
+    const repairCost = latestRepair?.repair_cost ?? 0;
+    const nextCostPrice =
+      existingItem && Number.isFinite(repairCost) && repairCost > 0
+        ? (existingItem.cost_price ?? 0) + repairCost
+        : undefined;
     await db.inventory_items.update(itemId, {
       status: 'in_stock',
       condition,
+      ...(nextCostPrice === undefined ? null : { cost_price: nextCostPrice }),
       updated_at: now,
       sync_status: 'pending',
     });
-    const repair = await db.repair_records.get(id);
     const item = await db.inventory_items.get(itemId);
-    if (repair) await queueSync('repair_records', 'update', repair as unknown as Record<string, unknown>);
+    if (latestRepair) await queueSync('repair_records', 'update', latestRepair as unknown as Record<string, unknown>);
     if (item) await queueSync('inventory_items', 'update', item as unknown as Record<string, unknown>);
     await flushSyncQueue();
     if (actorUserId) {
@@ -120,7 +127,10 @@ export function useRepairActions() {
         action: 'repair.collected',
         entityType: 'repair_record',
         entityId: id,
-        metadata: { item: colItem ? `${colItem.brand} ${colItem.name}`.trim() : undefined },
+        metadata: {
+          item: colItem ? `${colItem.brand} ${colItem.name}`.trim() : undefined,
+          ...(repairCost > 0 ? { repairCostAddedToItemCostPrice: repairCost } : null),
+        },
         actorLabel,
       });
     }

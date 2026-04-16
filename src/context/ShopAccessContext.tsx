@@ -290,7 +290,8 @@ export function ShopSyncEffects() {
     if (!actorUserId || status !== 'ready' || !shopOwnerId) return;
 
     const runInitialPull = async () => {
-      if (!tryConsumeShopBootstrap(actorUserId, shopOwnerId)) return;
+      const allowed = tryConsumeShopBootstrap(actorUserId, shopOwnerId);
+      if (!allowed) return;
       try {
         await flushSyncQueue();
       } catch (err) {

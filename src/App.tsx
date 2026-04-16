@@ -135,11 +135,20 @@ function AuthBootstrap() {
     void import('@/lib/supabase').then(({ supabase }) => {
       if (!active) return;
 
-      supabase.auth.getSession().then(({ data }) => {
-        if (!active) return;
-        setSession(data.session);
-        setLoading(false);
-      });
+      supabase.auth
+        .getSession()
+        .then(({ data }) => {
+          if (!active) return;
+          setSession(data.session);
+        })
+        .catch(() => {
+          if (!active) return;
+          setSession(null);
+        })
+        .finally(() => {
+          if (!active) return;
+          setLoading(false);
+        });
 
       const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
         if (!active) return;
@@ -165,7 +174,14 @@ export default function App() {
       <AuthBootstrap />
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<AuthPage />} />
+        <Route
+          path="/auth"
+          element={
+            <ShopAccessProvider>
+              <AuthPage />
+            </ShopAccessProvider>
+          }
+        />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route
           path="/admin"
@@ -182,7 +198,9 @@ export default function App() {
           path="/onboarding"
           element={
             <ProtectedRoute>
-              <OnboardingPage />
+              <RetailAppProviders>
+                <OnboardingPage />
+              </RetailAppProviders>
             </ProtectedRoute>
           }
         />
