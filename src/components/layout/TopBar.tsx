@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, ChevronsLeft, ChevronsRight, LogOut, Moon, Search, Settings, Sun, Wifi, WifiOff } from 'lucide-react';
+import { useLocation, useNavigate, NavLink } from 'react-router-dom';
+import { Bell, ChevronsLeft, ChevronsRight, LogOut, Moon, Search, Settings, Sun, Wifi, WifiOff, Menu, BarChart3, Wrench, ClipboardList } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { getAccountInitial } from '@/lib/userDisplay';
@@ -37,7 +37,7 @@ export default function TopBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { canManageBusinessSettings, status: shopAccessStatus } = useShopAccess();
+  const { canManageBusinessSettings, status: shopAccessStatus, canAccessFinancialNav } = useShopAccess();
   const { locations, activeLocationId, setActiveLocationId, ready: locationReady } = useShopLocation();
   const { profile: businessProfile } = useBusinessProfile();
   const { collapsed: sidebarCollapsed, toggleCollapsed } = useSidebarLayout();
@@ -48,17 +48,22 @@ export default function TopBar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!accountOpen) return;
+    if (!accountOpen && !mobileMenuOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+      if (accountOpen && accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
         setAccountOpen(false);
+      }
+      if (mobileMenuOpen && mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
-  }, [accountOpen]);
+  }, [accountOpen, mobileMenuOpen]);
 
   const isEditPage = location.pathname.includes('/edit');
   const title = isEditPage
@@ -93,7 +98,50 @@ export default function TopBar() {
       className="relative flex h-[3.65rem] items-center overflow-visible border-b border-zinc-200/80 bg-white/90 px-3 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#111827]/90 md:h-[3.85rem] md:px-5 lg:px-6"
     >
       <div className="relative flex min-w-0 flex-1 min-h-0 items-center gap-2.5 md:gap-3">
-        <div className="flex items-center gap-2 lg:hidden">
+        <div className="flex items-center gap-2 lg:hidden" ref={mobileMenuRef}>
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/10"
+            onClick={() => setMobileMenuOpen((o) => !o)}
+            aria-label="Open menu"
+            aria-expanded={mobileMenuOpen}
+          >
+            <Menu size={20} />
+          </button>
+          {mobileMenuOpen && (
+            <div
+              className="absolute left-0 top-[calc(100%+0.35rem)] z-[200] min-w-[12rem] rounded-xl border border-zinc-200/90 bg-white py-1.5 shadow-xl dark:border-zinc-600 dark:bg-zinc-900 dark:shadow-black/40"
+            >
+              {canAccessFinancialNav ? (
+                <>
+                  <NavLink
+                    to="/reports"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <BarChart3 size={18} className="shrink-0 text-zinc-500" />
+                    Reports
+                  </NavLink>
+                  <NavLink
+                    to="/audit-log"
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <ClipboardList size={18} className="shrink-0 text-zinc-500" />
+                    Audit log
+                  </NavLink>
+                </>
+              ) : null}
+              <NavLink
+                to="/repair"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Wrench size={18} className="shrink-0 text-zinc-500" />
+                Repair
+              </NavLink>
+            </div>
+          )}
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-primary to-[#5849c4] shadow-sm shadow-[#6c5ce7]/20">
             <span className="text-[10px] font-extrabold tracking-tight text-white">VS</span>
           </div>
