@@ -36,6 +36,7 @@ import type { ShopProfile, ReceiptTheme } from '@/types';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Input } from '@/components/ui/Input';
 import { DEFAULT_RECEIPT_THEME } from '@/hooks/useShopProfile';
+import { extractDominantColor } from '@/lib/colorUtils';
 
 const schema = z.object({
   shop_name: z.string().min(1, 'Shop name is required'),
@@ -132,12 +133,22 @@ export default function SettingsPage() {
     },
   });
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl);
     setLogoFile(file);
     setLogoPreviewUrl(URL.createObjectURL(file));
+
+    const dominantColor = await extractDominantColor(file);
+    if (dominantColor) {
+      setReceiptTheme(current => ({
+        ...current,
+        header_color: dominantColor,
+        accent_color: dominantColor,
+      }));
+      toast.success('Receipt theme auto-updated to match logo colors!');
+    }
   };
 
   const onSubmit = async (data: FormData) => {

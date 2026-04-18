@@ -5,8 +5,9 @@ import { useInventoryActions } from '@/hooks/useInventoryActions';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import ItemForm from '@/components/inventory/ItemForm';
 import type { InventoryItemInput } from '@/types';
-import { Package, ArrowRightLeft } from 'lucide-react';
+import { Package, ArrowRightLeft, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
+import PromoFlyerModal from '@/components/inventory/PromoFlyerModal';
 
 export default function EditItemPage() {
   const { id } = useParams<{ id: string }>();
@@ -17,6 +18,7 @@ export default function EditItemPage() {
   const [transferTarget, setTransferTarget] = useState('');
   const [transferBusy, setTransferBusy] = useState(false);
   const [transferMsg, setTransferMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [flyerOpen, setFlyerOpen] = useState(false);
 
   const handleSubmit = async (data: InventoryItemInput) => {
     await updateItem(id!, data);
@@ -47,6 +49,27 @@ export default function EditItemPage() {
 
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-zinc-200/80 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/75">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-heading text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <Share2 size={16} className="text-primary" />
+              Promo Flyer
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+              Generate a shareable image for WhatsApp or Instagram.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFlyerOpen(true)}
+            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800 shrink-0"
+          >
+            Create flyer
+          </button>
+        </div>
+      </div>
+
       <ItemForm
         defaultValues={item}
         onSubmit={handleSubmit}
@@ -112,6 +135,10 @@ export default function EditItemPage() {
           ) : null}
         </div>
       ) : null}
+
+      {flyerOpen && (
+        <PromoFlyerModal item={item as any} onClose={() => setFlyerOpen(false)} />
+      )}
     </div>
   );
 }
