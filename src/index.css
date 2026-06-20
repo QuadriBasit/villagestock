@@ -3,21 +3,21 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Design system: fintech-style inventory dashboard */
-  --color-primary: #6c5ce7;
-  --color-primary-dark: #5849c4;
-  --color-primary-light: #897dec;
-  --color-teal: #4caf50;
-  --color-teal-dark: #43a047;
-  --color-accent: #ff6b3d;
-  --color-accent-dark: #e85a32;
-  --color-dark: #0f172a;
+  /* Design system: fintech-style inventory dashboard (Updated to match Landing Page) */
+  --color-primary: #00b398;
+  --color-primary-dark: #009982;
+  --color-primary-light: #33eed1;
+  --color-teal: #00e5c3;
+  --color-teal-dark: #00c6a7;
+  --color-accent: #0af;
+  --color-accent-dark: #008ecc;
+  --color-dark: #080b10;
   --color-muted: #6b7280;
   --color-surface: #f8fafc;
   --color-border: #e2e8f0;
 
-  --font-heading: 'SF Pro Display', 'Segoe UI Variable Display', 'Segoe UI', ui-sans-serif, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'SF Pro Text', 'Segoe UI Variable Text', 'Segoe UI', ui-sans-serif, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Syne', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'DM Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -68,13 +68,13 @@ html {
   0%, 100% {
     box-shadow:
       0 1px 0 rgb(255 255 255 / 0.5) inset,
-      0 -1px 22px rgb(108 92 231 / 0.07),
+      0 -1px 22px rgb(0 229 195 / 0.07),
       0 4px 24px rgb(15 23 42 / 0.06);
   }
   50% {
     box-shadow:
       0 1px 0 rgb(255 255 255 / 0.55) inset,
-      0 -1px 28px rgb(108 92 231 / 0.14),
+      0 -1px 28px rgb(0 229 195 / 0.14),
       0 6px 28px rgb(15 23 42 / 0.07);
   }
 }
@@ -83,13 +83,13 @@ html {
   0%, 100% {
     box-shadow:
       0 1px 0 rgb(255 255 255 / 0.05) inset,
-      0 -1px 24px rgb(108 92 231 / 0.12),
+      0 -1px 24px rgb(0 229 195 / 0.12),
       0 4px 24px rgb(0 0 0 / 0.35);
   }
   50% {
     box-shadow:
       0 1px 0 rgb(255 255 255 / 0.06) inset,
-      0 -1px 32px rgb(167 139 250 / 0.18),
+      0 -1px 32px rgb(0 229 195 / 0.18),
       0 6px 28px rgb(0 0 0 / 0.4);
   }
 }
@@ -116,27 +116,30 @@ body {
   text-rendering: optimizeLegibility;
   background-color: #f8fafc;
   background-image:
-    radial-gradient(ellipse 100% 80% at 0% -25%, rgb(108 92 231 / 0.09), transparent 52%),
-    radial-gradient(ellipse 70% 55% at 100% 0%, rgb(255 107 61 / 0.06), transparent 48%),
-    radial-gradient(ellipse 80% 60% at 50% 100%, rgb(76 175 80 / 0.04), transparent 45%);
+    radial-gradient(ellipse 100% 80% at 0% -25%, rgba(0, 229, 195, 0.06), transparent 52%),
+    radial-gradient(ellipse 70% 55% at 100% 0%, rgba(0, 170, 255, 0.04), transparent 48%),
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0, 229, 195, 0.04), transparent 45%);
   background-size: 100% 100%, 100% 100%, 100% 100%;
 }
 
-/* Semantic tokens: `text-dark` / `bg-surface` / `border-border` stay readable on navy backgrounds */
+/* Semantic tokens: matches Landing Page dark theme */
 .dark {
-  --color-dark: #f4f4f5;
-  --color-surface: rgb(30 41 59 / 0.45);
-  --color-border: rgb(63 63 70 / 0.55);
+  --color-primary: #00e5c3;
+  --color-primary-dark: #00c6a7;
+  --color-primary-light: #33eacc;
+  --color-dark: #f0f4f8;
+  --color-surface: #10151e;
+  --color-border: rgba(255,255,255,0.07);
 }
 
 .dark body {
-  background-color: #0f172a;
+  background-color: #080b10;
   background-image:
-    radial-gradient(ellipse 100% 75% at 15% -15%, rgb(108 92 231 / 0.14), transparent 52%),
-    radial-gradient(ellipse 70% 50% at 100% 100%, rgb(255 107 61 / 0.08), transparent 45%),
-    radial-gradient(ellipse 90% 40% at 50% 110%, rgb(76 175 80 / 0.06), transparent 42%);
+    radial-gradient(ellipse 100% 75% at 15% -15%, rgba(0, 229, 195, 0.08), transparent 52%),
+    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(0, 170, 255, 0.05), transparent 45%),
+    radial-gradient(ellipse 90% 40% at 50% 110%, rgba(0, 229, 195, 0.04), transparent 42%);
   background-size: 100% 100%, 100% 100%, 100% 100%;
-  color: #ffffff;
+  color: #f0f4f8;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -163,7 +166,7 @@ h1, h2, h3, h4, h5, h6 {
 
 @utility ui-card {
   @apply rounded-2xl border border-zinc-200/90 bg-white/95 text-zinc-900 backdrop-blur-sm
-    dark:border-zinc-800/75 dark:bg-[#111827]/92 dark:text-zinc-50;
+    dark:border-white/[0.07] dark:bg-[#10151e]/95 dark:text-zinc-50;
   box-shadow: var(--shadow-card);
 }
 
@@ -211,11 +214,11 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .dark .fab-pulse-host::before {
-    border-color: rgb(167 139 250 / 0.45);
+    border-color: rgba(0, 229, 195, 0.45);
   }
 
   .dark .fab-pulse-host::after {
-    border-color: rgb(255 107 61 / 0.35);
+    border-color: rgba(0, 170, 255, 0.35);
   }
 
   .fab-pulse-host--off::before,
@@ -275,15 +278,15 @@ h1, h2, h3, h4, h5, h6 {
 
 /* react-day-picker — match app primary + dark surfaces */
 .reports-calendar.rdp-root {
-  --rdp-accent-color: #6c5ce7;
-  --rdp-accent-background-color: color-mix(in srgb, #6c5ce7 16%, transparent);
+  --rdp-accent-color: var(--color-primary);
+  --rdp-accent-background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
   --rdp-day_button-border-radius: 0.5rem;
 }
 
 .dark .reports-calendar.rdp-root {
-  --rdp-accent-color: #a78bfa;
-  --rdp-accent-background-color: rgba(108, 92, 231, 0.28);
-  color: #f4f4f5;
+  --rdp-accent-color: #00e5c3;
+  --rdp-accent-background-color: rgba(0, 229, 195, 0.15);
+  color: #f0f4f8;
 }
 
 .dark .reports-calendar .rdp-weekday {
