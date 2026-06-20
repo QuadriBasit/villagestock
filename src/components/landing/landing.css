@@ -172,6 +172,7 @@ html:has(.vs-landing) {
   font-size: 0.875rem;
   color: var(--muted);
   text-decoration: none;
+  white-space: nowrap;
   transition: color 0.2s;
 }
 .landing-nav-links a:hover {
@@ -347,16 +348,16 @@ html:has(.vs-landing) {
   font-size: clamp(1rem, 2vw, 1.2rem);
   color: var(--muted);
   max-width: 600px;
-  margin-bottom: 2.4rem;
+  margin-bottom: 3rem;
   font-weight: 300;
   line-height: 1.7;
 }
 .hero-ctas {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
   justify-content: center;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
 }
 
 .hero-trust {
@@ -1438,7 +1439,32 @@ html:has(.vs-landing) {
 }
 
 /* ── RESPONSIVE ── */
+/* Tablet / small laptop */
+@media (max-width: 1024px) {
+  .landing-section {
+    padding: 84px 6%;
+  }
+  .feat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 900px) {
+  /* Collapse nav to burger early so iPad portrait doesn't wrap the links */
+  .landing-nav {
+    height: 62px;
+    background: rgba(7, 10, 15, 0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border);
+  }
+  .landing-nav-links {
+    display: none;
+  }
+  .nav-burger {
+    display: flex;
+  }
+
   .feat-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1453,24 +1479,40 @@ html:has(.vs-landing) {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Phones / large phones */
 @media (max-width: 768px) {
-  .landing-nav-links {
-    display: none;
+  .landing-nav {
+    height: 62px;
+    padding: 0 20px;
+    background: rgba(7, 10, 15, 0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border);
   }
+  .landing-nav-links,
   .nav-signin {
     display: none;
   }
   .nav-burger {
     display: flex;
   }
-  .landing-nav {
-    height: 62px;
-    background: rgba(7, 10, 15, 0.72);
-    backdrop-filter: blur(18px);
-    border-bottom: 1px solid var(--border);
+
+  .landing-section {
+    padding: 64px 20px;
   }
+  .landing-hero {
+    padding: 104px 20px 56px;
+  }
+  .hero-trust {
+    margin-bottom: 3rem;
+  }
+
   .feat-grid {
     grid-template-columns: 1fr;
+  }
+  .feat-card {
+    padding: 26px 22px;
   }
   .steps {
     grid-template-columns: 1fr 1fr;
@@ -1482,9 +1524,16 @@ html:has(.vs-landing) {
   .who-grid {
     grid-template-columns: 1fr;
   }
+  .who-card {
+    padding: 30px 24px;
+  }
   .compare-grid {
     grid-template-columns: 1fr;
   }
+  .compare-col {
+    padding: 26px 22px;
+  }
+
   .landing-dashboard {
     grid-template-columns: 1fr;
   }
@@ -1497,25 +1546,103 @@ html:has(.vs-landing) {
   .chart-row {
     grid-template-columns: 1fr;
   }
+
+  .stats-band {
+    padding: 40px 20px;
+  }
   .offline-strip {
     flex-direction: column;
     align-items: flex-start;
+    padding: 48px 20px;
+    gap: 28px;
   }
+  .offline-text h3 {
+    font-size: 1.45rem;
+  }
+
+  .price-card {
+    padding: 30px 24px;
+  }
+  .cta-section {
+    padding: 80px 20px;
+  }
+
   .footer-top {
     flex-direction: column;
     gap: 32px;
+  }
+  .footer-cols {
+    gap: 40px;
   }
   .footer-bottom {
     flex-direction: column;
     text-align: center;
   }
 }
-@media (max-width: 460px) {
+
+/* Small phones */
+@media (max-width: 480px) {
+  .landing-nav {
+    padding: 0 16px;
+  }
+  /* CTA lives in the burger menu, keep the bar uncluttered */
+  .nav-actions .landing-btn-primary {
+    display: none;
+  }
+
+  .landing-section {
+    padding: 56px 18px;
+  }
+  .landing-hero {
+    padding: 92px 18px 48px;
+  }
+  .hero-title {
+    font-size: clamp(2.2rem, 9vw, 3rem);
+    letter-spacing: -1px;
+  }
+  .hero-sub {
+    font-size: 1rem;
+    margin-bottom: 2.5rem;
+  }
+  .hero-ctas {
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 2.75rem;
+  }
+  .hero-ctas .landing-btn-lg {
+    padding: 12px 24px;
+    font-size: 0.9rem;
+  }
+  .hero-trust {
+    margin-top: 0.5rem;
+    margin-bottom: 2.5rem;
+  }
+
   .stat-row {
     grid-template-columns: 1fr;
   }
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+  .steps {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .dash-main {
+    padding: 16px;
+  }
+  .stat-val {
+    font-size: 1.1rem;
+  }
+  .price-grid {
+    max-width: 100%;
+  }
+  .marquee-item {
+    font-size: 1rem;
+  }
+  .footer-cols {
+    gap: 28px;
   }
 }
 
