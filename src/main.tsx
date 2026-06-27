@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import './index.css';
+import './styles/vs-shell.css';
 import App from './App';
 
 const queryClient = new QueryClient({

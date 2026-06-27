@@ -100,6 +100,16 @@ export function getDefaultCustomRange(): ReportRange {
   };
 }
 
+export function getLastDaysRange(days: number): ReportRange {
+  const end = endOfDay(new Date());
+  const start = startOfDay(subDays(end, days - 1));
+  return {
+    start,
+    end,
+    label: `Last ${days} days`,
+  };
+}
+
 export function buildCustomRange(start: string, end: string): ReportRange {
   const startDate = startOfDay(new Date(start));
   const endDate = endOfDay(new Date(end));

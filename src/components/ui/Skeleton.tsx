@@ -64,20 +64,28 @@ export function InventorySkeletonList() {
 
 export function AlertsSkeletonList() {
   return (
-    <div className="app-page space-y-3 pt-4 pb-4">
-      <Skeleton className="h-4 w-40 mb-2 rounded-lg" />
-      {[...Array(4)].map((_, i) => (
+    <div className="app-page space-y-4 py-4 md:py-5">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-44 rounded-xl" />
+        <Skeleton className="h-4 w-56 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-[7.5rem] rounded-xl" />
+        ))}
+      </div>
+      {[...Array(3)].map((_, i) => (
         <div
           key={i}
-          className="ui-card flex items-center gap-3 rounded-3xl border-l-4 border-l-zinc-300 px-4 py-3.5 dark:border-l-zinc-600"
+          className="flex items-center gap-3 rounded-xl border border-shell-line bg-shell-surface px-4 py-3.5"
         >
-          <Skeleton className="w-10 h-10 rounded-2xl shrink-0" />
+          <Skeleton className="size-10 shrink-0 rounded-lg" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-2/3" />
             <Skeleton className="h-3 w-1/2" />
             <Skeleton className="h-3 w-1/3" />
           </div>
-          <Skeleton className="w-12 h-4 rounded-lg" />
+          <Skeleton className="h-4 w-12 rounded-lg" />
         </div>
       ))}
     </div>

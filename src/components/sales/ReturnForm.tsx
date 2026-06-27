@@ -1,28 +1,52 @@
-import { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { X, Loader2, RotateCcw, ChevronDown, Search } from 'lucide-react';
-import { useReturnActions } from '@/hooks/useReturnActions';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
-import { useAuthStore } from '@/store/auth';
+import { useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { X, Loader2, RotateCcw, Search } from "lucide-react";
+import { useReturnActions } from "@/hooks/useReturnActions";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import { useAuthStore } from "@/store/auth";
 import {
   modalSheetBackdrop,
-  modalSheetBodyScroll,
   modalSheetFooter,
   modalSheetHandle,
-  modalSheetHeader,
   modalSheetPanelMd,
-} from '@/lib/modalSheet';
-import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
-import { CurrencyInput } from '@/components/ui/CurrencyInput';
-import { formatCurrency } from '@/lib/utils';
-import type { SalesRecord, ReturnReason, ReturnType, InventoryItem } from '@/types';
+} from "@/lib/modalSheet";
+import { ModalSheetPortal } from "@/components/ui/ModalSheetPortal";
+import { CurrencyInput } from "@/components/ui/CurrencyInput";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import {
+  DateTimeField,
+  toLocalDatetimeValue,
+} from "@/components/ui/DateTimeField";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select";
+import { formatCurrency, cn } from "@/lib/utils";
+import {
+  salesField,
+  salesLabel,
+  salesReadonlyField,
+  salesSection,
+  salesModalHeader,
+  salesModalBody,
+} from "./salesModalUi";
+import type {
+  SalesRecord,
+  ReturnReason,
+  ReturnType,
+  InventoryItem,
+} from "@/types";
 
 const schema = z.object({
-  reason: z.enum(['defective', 'changed_mind', 'wrong_item', 'other']),
-  return_type: z.enum(['refund', 'exchange']),
+  reason: z.enum(["defective", "changed_mind", "wrong_item", "other"]),
+  return_type: z.enum(["refund", "exchange"]),
   notes: z.string().optional(),
   refund_amount: z.coerce.number().min(0),
   returned_at: z.string().min(1),
@@ -31,21 +55,16 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 const REASON_LABELS: Record<ReturnReason, string> = {
-  defective: 'Defective / Faulty',
-  changed_mind: 'Changed Mind',
-  wrong_item: 'Wrong Item',
-  other: 'Other',
+  defective: "Defective / Faulty",
+  changed_mind: "Changed Mind",
+  wrong_item: "Wrong Item",
+  other: "Other",
 };
 
 const RETURN_TYPE_LABELS: Record<ReturnType, string> = {
-  refund: 'Refund',
-  exchange: 'Exchange',
+  refund: "Refund",
+  exchange: "Exchange",
 };
-
-function toLocalDatetimeValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
 
 interface ReturnFormProps {
   sale: SalesRecord;
@@ -53,19 +72,24 @@ interface ReturnFormProps {
   onSuccess: () => void;
 }
 
-export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps) {
+export default function ReturnForm({
+  sale,
+  onClose,
+  onSuccess,
+}: ReturnFormProps) {
   const { processReturn } = useReturnActions();
   const { user } = useAuthStore();
-  const [exchangeSearch, setExchangeSearch] = useState('');
-  const [selectedExchangeItem, setSelectedExchangeItem] = useState<InventoryItem | null>(null);
+  const [exchangeSearch, setExchangeSearch] = useState("");
+  const [selectedExchangeItem, setSelectedExchangeItem] =
+    useState<InventoryItem | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const inventoryItems = useLiveQuery(async () => {
     if (!user) return [];
     return db.inventory_items
-      .where('user_id')
+      .where("user_id")
       .equals(user.id)
-      .filter(i => !i.deleted && i.quantity > 0)
+      .filter((i) => !i.deleted && i.quantity > 0)
       .toArray();
   }, [user?.id]);
 
@@ -74,21 +98,20 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
     control,
     handleSubmit,
     watch,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
-      reason: 'defective',
-      return_type: 'refund',
+      reason: "defective",
+      return_type: "refund",
       refund_amount: sale.sale_price,
       returned_at: toLocalDatetimeValue(new Date()),
     },
   });
 
-  const returnType = watch('return_type');
+  const returnType = watch("return_type");
 
-  const filteredItems = (inventoryItems ?? []).filter(item => {
+  const filteredItems = (inventoryItems ?? []).filter((item) => {
     if (!exchangeSearch.trim()) return true;
     const q = exchangeSearch.toLowerCase();
     return (
@@ -101,8 +124,8 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
 
   const onSubmit = async (data: FormData) => {
     setError(null);
-    if (data.return_type === 'exchange' && !selectedExchangeItem) {
-      setError('Please select the exchange item.');
+    if (data.return_type === "exchange" && !selectedExchangeItem) {
+      setError("Please select the exchange item.");
       return;
     }
     try {
@@ -119,219 +142,291 @@ export default function ReturnForm({ sale, onClose, onSuccess }: ReturnFormProps
       });
       onSuccess();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to process return.');
+      setError(e instanceof Error ? e.message : "Failed to process return.");
     }
   };
 
-  const fieldClass =
-    'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100';
-  const labelClass = 'mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200';
-  const readonlyClass =
-    'w-full cursor-not-allowed rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2.5 text-sm text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800/60 dark:text-zinc-400';
-
-  const cardSection =
-    'rounded-2xl bg-white p-4 shadow-sm ring-1 ring-zinc-900/5 dark:bg-zinc-800/50 dark:ring-white/10';
+  const fieldClass = salesField;
+  const labelClass = salesLabel;
+  const readonlyClass = salesReadonlyField;
+  const cardSection = salesSection;
 
   return (
     <ModalSheetPortal>
-    <div className={modalSheetBackdrop} onClick={onClose}>
-      <div className={modalSheetPanelMd} onClick={e => e.stopPropagation()}>
-        <div className={modalSheetHandle}>
-          <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
-        </div>
-
-        <div className={modalSheetHeader}>
-          <div className="flex items-center gap-2">
-            <RotateCcw size={18} className="text-accent" />
-            <h2 className="font-heading text-base font-bold text-zinc-900 dark:text-zinc-50">Process Return</h2>
+      <div className={modalSheetBackdrop} onClick={onClose}>
+        <div
+          className={cn(
+            modalSheetPanelMd,
+            "border-shell-line bg-shell-surface",
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={modalSheetHandle}>
+            <div className="h-1 w-10 rounded-full bg-shell-line" />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          >
-            <X size={18} />
-          </button>
-        </div>
 
-        <div className={`${modalSheetBodyScroll} space-y-5 bg-zinc-50/70 dark:bg-zinc-950/35`}>
-          <section className={`${cardSection} space-y-2`}>
-            <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Original Sale</h3>
-            <div className={readonlyClass}>{sale.item_name}</div>
-            <div className="flex gap-2 text-xs text-muted">
-              <span className="bg-surface border border-border rounded-full px-2 py-0.5">{sale.receipt_number}</span>
-              <span className="bg-surface border border-border rounded-full px-2 py-0.5">
-                {formatCurrency(sale.sale_price)}
-              </span>
-              {sale.serial_number && (
-                <span className="bg-surface border border-border rounded-full px-2 py-0.5 font-mono">
-                  S/N: {sale.serial_number}
+          <div className={salesModalHeader}>
+            <div className="flex items-center gap-2">
+              <RotateCcw size={18} className="text-violet-300" />
+              <h2 className="font-display text-base font-bold text-shell-ink">
+                Process Return
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1.5 text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className={salesModalBody}>
+            <section className={`${cardSection} space-y-2`}>
+              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+                Original Sale
+              </h3>
+              <div className={readonlyClass}>{sale.item_name}</div>
+              <div className="flex gap-2 text-xs text-muted">
+                <span className="bg-surface border border-border rounded-full px-2 py-0.5">
+                  {sale.receipt_number}
                 </span>
-              )}
-            </div>
-          </section>
-
-          {/* Return details */}
-          <section className={`${cardSection} space-y-4`}>
-            <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Return Details</h3>
-
-            <div>
-              <label className={labelClass} htmlFor="reason">Reason *</label>
-              <div className="relative">
-                <select
-                  id="reason"
-                  {...register('reason')}
-                  className={`${fieldClass} appearance-none pr-8`}
-                >
-                  {(Object.entries(REASON_LABELS) as [ReturnReason, string][]).map(([val, label]) => (
-                    <option key={val} value={val}>{label}</option>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-              </div>
-            </div>
-
-            <div>
-              <label className={labelClass} htmlFor="return_type">Return Type *</label>
-              <div className="relative">
-                <select
-                  id="return_type"
-                  {...register('return_type')}
-                  className={`${fieldClass} appearance-none pr-8`}
-                  onChange={e => {
-                    setValue('return_type', e.target.value as ReturnType);
-                    setSelectedExchangeItem(null);
-                    setExchangeSearch('');
-                  }}
-                >
-                  {(Object.entries(RETURN_TYPE_LABELS) as [ReturnType, string][]).map(([val, label]) => (
-                    <option key={val} value={val}>{label}</option>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-              </div>
-            </div>
-
-            {returnType === 'refund' && (
-              <div>
-                <label className={labelClass} htmlFor="refund_amount">Refund Amount (₦) *</label>
-                <Controller
-                  name="refund_amount"
-                  control={control}
-                  render={({ field }) => (
-                    <CurrencyInput
-                      id="refund_amount"
-                      ref={field.ref}
-                      value={field.value ?? 0}
-                      onValueChange={field.onChange}
-                      onBlur={field.onBlur}
-                      className={fieldClass}
-                      aria-invalid={!!errors.refund_amount}
-                    />
-                  )}
-                />
-                {errors.refund_amount && (
-                  <p className="text-red-500 text-xs mt-1">{errors.refund_amount.message}</p>
+                <span className="bg-surface border border-border rounded-full px-2 py-0.5">
+                  {formatCurrency(sale.sale_price)}
+                </span>
+                {sale.serial_number && (
+                  <span className="bg-surface border border-border rounded-full px-2 py-0.5 font-mono">
+                    S/N: {sale.serial_number}
+                  </span>
                 )}
               </div>
-            )}
+            </section>
 
-            <div>
-              <label className={labelClass} htmlFor="returned_at">Date &amp; Time *</label>
-              <input
-                id="returned_at"
-                type="datetime-local"
-                {...register('returned_at')}
-                className={fieldClass}
-              />
-            </div>
+            {/* Return details */}
+            <section className={`${cardSection} space-y-4`}>
+              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+                Return Details
+              </h3>
 
-            <div>
-              <label className={labelClass} htmlFor="notes">Notes (optional)</label>
-              <textarea
-                id="notes"
-                {...register('notes')}
-                rows={2}
-                placeholder="Any additional notes…"
-                className={`${fieldClass} resize-none`}
-              />
-            </div>
-          </section>
+              <div>
+                <label className={labelClass} htmlFor="reason">
+                  Reason *
+                </label>
+                <Controller
+                  name="reason"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="reason" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {(
+                          Object.entries(REASON_LABELS) as [
+                            ReturnReason,
+                            string,
+                          ][]
+                        ).map(([val, label]) => (
+                          <SelectItem key={val} value={val}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
 
-          {/* Exchange item picker */}
-          {returnType === 'exchange' && (
-            <section className={`${cardSection} space-y-3`}>
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Exchange Item</h3>
+              <div>
+                <label className={labelClass} htmlFor="return_type">
+                  Return Type *
+                </label>
+                <Controller
+                  name="return_type"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={(v) => {
+                        field.onChange(v);
+                        setSelectedExchangeItem(null);
+                        setExchangeSearch("");
+                      }}
+                    >
+                      <SelectTrigger id="return_type" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {(
+                          Object.entries(RETURN_TYPE_LABELS) as [
+                            ReturnType,
+                            string,
+                          ][]
+                        ).map(([val, label]) => (
+                          <SelectItem key={val} value={val}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
 
-              {selectedExchangeItem ? (
-                <div className="flex items-center justify-between rounded-xl border border-teal/30 bg-teal/5 px-3 py-2.5 dark:border-teal/40 dark:bg-teal/10">
-                  <div>
-                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{selectedExchangeItem.name}</p>
-                    <p className="text-xs text-muted">{selectedExchangeItem.brand} · {formatCurrency(selectedExchangeItem.price)} · {selectedExchangeItem.quantity} in stock</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedExchangeItem(null)}
-                    className="p-1 rounded-full hover:bg-border text-muted"
-                  >
-                    <X size={14} />
-                  </button>
+              {returnType === "refund" && (
+                <div>
+                  <label className={labelClass} htmlFor="refund_amount">
+                    Refund Amount (₦) *
+                  </label>
+                  <Controller
+                    name="refund_amount"
+                    control={control}
+                    render={({ field }) => (
+                      <CurrencyInput
+                        id="refund_amount"
+                        ref={field.ref}
+                        value={field.value ?? 0}
+                        onValueChange={field.onChange}
+                        onBlur={field.onBlur}
+                        className={fieldClass}
+                        aria-invalid={!!errors.refund_amount}
+                      />
+                    )}
+                  />
+                  {errors.refund_amount && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.refund_amount.message}
+                    </p>
+                  )}
                 </div>
+              )}
+
+              <Controller
+                name="returned_at"
+                control={control}
+                render={({ field }) => (
+                  <DateTimeField
+                    id="returned_at"
+                    label="Date & Time *"
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+
+              <div>
+                <label className={labelClass} htmlFor="notes">
+                  Notes (optional)
+                </label>
+                <Textarea
+                  id="notes"
+                  {...register("notes")}
+                  rows={2}
+                  placeholder="Any additional notes…"
+                  className={`${fieldClass} resize-none`}
+                />
+              </div>
+            </section>
+
+            {/* Exchange item picker */}
+            {returnType === "exchange" && (
+              <section className={`${cardSection} space-y-3`}>
+                <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+                  Exchange Item
+                </h3>
+
+                {selectedExchangeItem ? (
+                  <div className="flex items-center justify-between rounded-xl border border-teal/30 bg-teal/5 px-3 py-2.5 dark:border-teal/40 dark:bg-teal/10">
+                    <div>
+                      <p className="text-sm font-medium text-shell-ink">
+                        {selectedExchangeItem.name}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {selectedExchangeItem.brand} ·{" "}
+                        {formatCurrency(selectedExchangeItem.price)} ·{" "}
+                        {selectedExchangeItem.quantity} in stock
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedExchangeItem(null)}
+                      className="p-1 rounded-full hover:bg-border text-muted"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative">
+                      <Search
+                        size={14}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+                      />
+                      <Input
+                        type="text"
+                        placeholder="Search by name, brand, IMEI…"
+                        value={exchangeSearch}
+                        onChange={(e) => setExchangeSearch(e.target.value)}
+                        className={`${fieldClass} pl-8`}
+                      />
+                    </div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {filteredItems.length === 0 ? (
+                        <p className="text-sm text-muted text-center py-3">
+                          No items found
+                        </p>
+                      ) : (
+                        filteredItems.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setSelectedExchangeItem(item)}
+                            className="w-full rounded-xl border border-shell-line px-3 py-2 text-left transition-colors hover:bg-zinc-100 hover:bg-shell-surface-2/50"
+                          >
+                            <p className="text-sm font-medium text-shell-ink">
+                              {item.name}
+                            </p>
+                            <p className="text-xs text-muted">
+                              {item.brand} · {formatCurrency(item.price)} ·{" "}
+                              {item.quantity} in stock
+                            </p>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+                {error &&
+                  returnType === "exchange" &&
+                  !selectedExchangeItem && (
+                    <p className="text-red-500 text-xs">{error}</p>
+                  )}
+              </section>
+            )}
+          </div>
+
+          <div className={modalSheetFooter}>
+            {error && (returnType !== "exchange" || selectedExchangeItem) && (
+              <p className="text-red-500 text-xs mb-2">{error}</p>
+            )}
+            <button
+              onClick={handleSubmit(onSubmit)}
+              disabled={isSubmitting}
+              className="w-full bg-violet-400 text-[#160a2e] rounded-xl py-3.5 font-display font-semibold text-sm hover:bg-violet-300 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" /> Processing…
+                </>
               ) : (
                 <>
-                  <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                    <input
-                      type="text"
-                      placeholder="Search by name, brand, IMEI…"
-                      value={exchangeSearch}
-                      onChange={e => setExchangeSearch(e.target.value)}
-                      className={`${fieldClass} pl-8`}
-                    />
-                  </div>
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    {filteredItems.length === 0 ? (
-                      <p className="text-sm text-muted text-center py-3">No items found</p>
-                    ) : (
-                      filteredItems.map(item => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setSelectedExchangeItem(item)}
-                          className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-left transition-colors hover:bg-zinc-100 dark:border-zinc-600 dark:hover:bg-zinc-800/80"
-                        >
-                          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{item.name}</p>
-                          <p className="text-xs text-muted">{item.brand} · {formatCurrency(item.price)} · {item.quantity} in stock</p>
-                        </button>
-                      ))
-                    )}
-                  </div>
+                  <RotateCcw size={16} /> Confirm Return
                 </>
               )}
-              {error && returnType === 'exchange' && !selectedExchangeItem && (
-                <p className="text-red-500 text-xs">{error}</p>
-              )}
-            </section>
-          )}
-        </div>
-
-        <div className={modalSheetFooter}>
-          {error && (returnType !== 'exchange' || selectedExchangeItem) && (
-            <p className="text-red-500 text-xs mb-2">{error}</p>
-          )}
-          <button
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-            className="w-full bg-accent text-white rounded-xl py-3.5 font-heading font-semibold text-sm hover:bg-accent-dark transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {isSubmitting
-              ? <><Loader2 size={16} className="animate-spin" /> Processing…</>
-              : <><RotateCcw size={16} /> Confirm Return</>
-            }
-          </button>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
     </ModalSheetPortal>
   );
 }

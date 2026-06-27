@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useIsAdminUser } from '@/hooks/useIsAdminUser';
 import { Shield, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 
 const schema = z.object({
@@ -87,7 +88,7 @@ export default function AdminLoginPage() {
             <label className="block text-xs font-medium text-slate-300 mb-1" htmlFor="admin-email">
               Email
             </label>
-            <input
+            <Input
               id="admin-email"
               type="email"
               autoComplete="email"

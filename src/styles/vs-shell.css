@@ -1,0 +1,166 @@
+/* VsUi component utilities — scoped to app shell (prototype handoff) */
+
+.app-shell .vs-num {
+  font-family: var(--font-mono);
+  font-feature-settings: 'tnum' 1;
+}
+
+.app-shell .vs-card {
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.app-shell .vs-hover:hover {
+  border-color: color-mix(in oklch, var(--accent) 45%, var(--line));
+  transform: translateY(-2px);
+}
+
+.app-shell .vs-btn:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.app-shell .vs-btn:active {
+  transform: translateY(0);
+}
+
+.app-shell .vs-row:hover {
+  background: var(--surface-2);
+}
+
+.app-shell .vs-link:hover {
+  filter: brightness(1.15);
+}
+
+.app-shell .vs-seg:hover {
+  filter: brightness(1.1);
+}
+
+.app-shell .vs-statgrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.app-shell .vs-dash-2col {
+  display: grid;
+  grid-template-columns: 1.65fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.app-shell .vs-dash-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.app-shell .vs-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 14px;
+}
+
+.app-shell .vs-kanban {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.app-shell .vs-thead {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.app-shell .vs-trow {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.app-shell .vs-trow:last-child {
+  border-bottom: none;
+}
+
+.app-shell .vs-inv-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) 1fr 0.95fr 0.95fr 1.1fr 0.7fr 28px;
+  align-items: center;
+  gap: 14px;
+}
+
+.app-shell .vs-sale-grid {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 1.6fr) 1.2fr 0.9fr 1fr 1fr;
+  align-items: center;
+  gap: 14px;
+}
+
+.app-shell .vs-step {
+  width: 40px;
+  height: 42px;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font-size: 19px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+
+.app-shell .vs-step:hover {
+  background: var(--line);
+}
+
+.app-shell .vs-hide-xs {
+  display: inline;
+}
+
+.app-shell .vs-hide-sm {
+  display: inline;
+}
+
+@media (max-width: 1100px) {
+  .app-shell .vs-dash-2col,
+  .app-shell .vs-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .app-shell .vs-dash-3col {
+    grid-template-columns: 1fr;
+  }
+  .app-shell .vs-statgrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 980px) {
+  .app-shell .vs-kanban {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .app-shell .vs-hide-sm {
+    display: none !important;
+  }
+  .app-shell .vs-inv-grid {
+    grid-template-columns: minmax(0, 2fr) auto 1fr 1.1fr 24px;
+  }
+  .app-shell .vs-sale-grid {
+    grid-template-columns: 1fr minmax(0, 1.3fr) 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-shell .vs-statgrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .app-shell .vs-kanban {
+    grid-template-columns: 1fr;
+  }
+  .app-shell .vs-hide-xs {
+    display: none;
+  }
+}

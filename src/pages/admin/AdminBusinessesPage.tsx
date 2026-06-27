@@ -1,8 +1,20 @@
 import { useMemo, useState } from 'react';
 import { Search, RefreshCw, X, Building2 } from 'lucide-react';
 import { useAdminDashboardSnapshot } from '@/hooks/useAdminDashboardSnapshot';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import type { AdminBusinessRow } from '@/types/admin';
+import { Input } from '@/components/ui/Input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { PageHeader } from '@/components/ui/PageHeader';
+import {
+  adminField,
+  adminModalOverlay,
+  adminModalPanel,
+  adminRefreshBtn,
+  adminTableHead,
+  adminTableRow,
+  adminTableWrap,
+} from '@/pages/admin/adminUi';
 
 export default function AdminBusinessesPage() {
   const { data, isLoading, isFetching, error, refetch } = useAdminDashboardSnapshot(true);
@@ -28,7 +40,7 @@ export default function AdminBusinessesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-24 text-slate-500">
+      <div className="flex justify-center py-24 text-shell-muted">
         <RefreshCw className="animate-spin" size={28} />
       </div>
     );
@@ -36,67 +48,65 @@ export default function AdminBusinessesPage() {
 
   if (error || !data) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 text-red-800 px-4 py-3 text-sm">
+      <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
         {error instanceof Error ? error.message : 'Could not load businesses.'}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-7xl">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-heading font-bold text-slate-900">Businesses</h1>
-          <p className="text-sm text-slate-500 mt-1">{rows.length} shops matching filters</p>
-        </div>
+    <div className="max-w-7xl space-y-6">
+      <PageHeader title="Businesses" subtitle={`${rows.length} shops matching filters`}>
         <button
           type="button"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+          className={adminRefreshBtn}
         >
           <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
           Refresh
         </button>
-      </div>
+      </PageHeader>
 
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[200px] max-w-md flex-1">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-shell-muted" />
+          <Input
             type="search"
             placeholder="Search shop, owner, phone…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full rounded-full border border-slate-200/90 bg-white pl-10 pr-4 py-2.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/30"
+            className={cn(adminField, 'pl-10')}
           />
         </div>
-        <select
-          value={plan}
-          onChange={e => setPlan(e.target.value)}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium shadow-sm"
-        >
-          <option value="all">All plans</option>
-          <option value="trial">Trial</option>
-          <option value="starter">Starter</option>
-          <option value="pro">Pro</option>
-          <option value="business">Business</option>
-        </select>
-        <select
-          value={status}
-          onChange={e => setStatus(e.target.value)}
-          className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium shadow-sm"
-        >
-          <option value="all">All statuses</option>
-          <option value="active">Active</option>
-          <option value="expired">Expired</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
+        <Select value={plan} onValueChange={setPlan}>
+          <SelectTrigger className="rounded-xl border-shell-line bg-shell-surface px-4 py-2.5 text-sm font-medium text-shell-ink shadow-none">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All plans</SelectItem>
+            <SelectItem value="trial">Trial</SelectItem>
+            <SelectItem value="starter">Starter</SelectItem>
+            <SelectItem value="pro">Pro</SelectItem>
+            <SelectItem value="business">Business</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger className="rounded-xl border-shell-line bg-shell-surface px-4 py-2.5 text-sm font-medium text-shell-ink shadow-none">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="expired">Expired</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <div className="rounded-3xl border border-slate-900/[0.06] bg-white shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] ring-1 ring-slate-900/[0.04] overflow-hidden overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-slate-50/90 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+      <div className={adminTableWrap}>
+        <table className="w-full text-left text-sm">
+          <thead className={adminTableHead}>
             <tr>
               <th className="px-4 py-3">Shop</th>
               <th className="px-4 py-3">Owner</th>
@@ -108,62 +118,51 @@ export default function AdminBusinessesPage() {
               <th className="px-4 py-3 text-right">Sales</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {rows.map(b => (
-              <tr
-                key={b.id}
-                className="hover:bg-slate-50/80 cursor-pointer"
-                onClick={() => setSelected(b)}
-              >
-                <td className="px-4 py-3 font-medium text-slate-900">{b.shop_name || '—'}</td>
-                <td className="px-4 py-3 text-slate-700">{b.owner_name || '—'}</td>
-                <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{b.phone || '—'}</td>
-                <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+              <tr key={b.id} className={adminTableRow} onClick={() => setSelected(b)}>
+                <td className="px-4 py-3 font-medium text-shell-ink">{b.shop_name || '—'}</td>
+                <td className="px-4 py-3 text-shell-ink/90">{b.owner_name || '—'}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-shell-muted">{b.phone || '—'}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-shell-muted">
                   {b.created_at ? formatDate(b.created_at) : '—'}
                 </td>
-                <td className="px-4 py-3 capitalize">{b.plan}</td>
-                <td className="px-4 py-3 capitalize">{b.plan_status}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{b.inventory_count}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{b.sales_count}</td>
+                <td className="px-4 py-3 capitalize text-shell-ink">{b.plan}</td>
+                <td className="px-4 py-3 capitalize text-shell-muted">{b.plan_status}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-shell-ink">{b.inventory_count}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-shell-ink">{b.sales_count}</td>
               </tr>
             ))}
           </tbody>
         </table>
         {rows.length === 0 && (
-          <p className="text-center text-slate-500 py-12 text-sm">No businesses match your filters.</p>
+          <p className="py-12 text-center text-sm text-shell-muted">No businesses match your filters.</p>
         )}
       </div>
 
-      {selected && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          onClick={() => setSelected(null)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-3 p-5 border-b border-slate-100">
+      {selected ? (
+        <div className={adminModalOverlay} role="dialog" onClick={() => setSelected(null)}>
+          <div className={adminModalPanel} onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 border-b border-shell-line p-5">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-teal-100 flex items-center justify-center">
-                  <Building2 className="text-teal-700" size={22} />
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/30 bg-violet-400/10">
+                  <Building2 className="text-violet-300" size={22} />
                 </div>
                 <div>
-                  <h2 className="font-heading font-bold text-slate-900">{selected.shop_name || 'Shop'}</h2>
-                  <p className="text-xs text-slate-500 font-mono mt-0.5">{selected.id}</p>
+                  <h2 className="font-display font-bold text-shell-ink">{selected.shop_name || 'Shop'}</h2>
+                  <p className="mt-0.5 font-mono text-xs text-shell-muted">{selected.id}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"
+                className="rounded-lg p-2 text-shell-muted transition-colors hover:bg-shell-surface-2 hover:text-shell-ink"
                 aria-label="Close"
               >
                 <X size={20} />
               </button>
             </div>
-            <div className="p-5 space-y-3 text-sm">
+            <div className="space-y-3 p-5 text-sm">
               <DetailRow label="Owner" value={selected.owner_name} />
               <DetailRow label="Phone" value={selected.phone} />
               <DetailRow label="Email" value={selected.email ?? '—'} />
@@ -177,16 +176,16 @@ export default function AdminBusinessesPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4 py-1.5 border-b border-slate-50 last:border-0">
-      <span className="text-slate-500 shrink-0">{label}</span>
-      <span className="text-slate-900 text-right break-all">{value}</span>
+    <div className="flex justify-between gap-4 border-b border-shell-line/70 py-1.5 last:border-0">
+      <span className="shrink-0 text-shell-muted">{label}</span>
+      <span className="break-all text-right text-shell-ink">{value}</span>
     </div>
   );
 }

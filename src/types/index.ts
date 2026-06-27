@@ -237,6 +237,8 @@ export interface SalesRecord {
   trade_in_item_brand?: string;
   trade_in_value?: number;
   balance_paid?: number;
+  /** Months of shop warranty included with this sale (0 = none). */
+  warranty_months?: number;
   // Return tracking
   returned?: boolean;
   return_id?: string;
@@ -415,6 +417,97 @@ export interface StockSession {
   audit_log: StockSessionAuditEntry[];
   sync_status: SyncStatus;
 }
+
+// ─── Contacts, expenses, purchasing (local-first) ───────────────────────────
+
+export type ContactType = 'supplier' | 'customer';
+
+/** Supplier or customer contact (local Dexie; not synced to Supabase yet). */
+export interface ContactRecord {
+  id: string;
+  user_id: string;
+  location_id?: string;
+  type: ContactType;
+  name: string;
+  phone?: string;
+  note?: string;
+  location_text?: string;
+  /** Supplier: amount still owed to them (positive). Customer: outstanding credit (positive). */
+  balance_owed: number;
+  deal_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ExpenseCategory =
+  | 'generator'
+  | 'nepa'
+  | 'transport'
+  | 'feeding'
+  | 'rent'
+  | 'supplies'
+  | 'other';
+
+export interface ExpenseRecord {
+  id: string;
+  user_id: string;
+  location_id: string;
+  category: ExpenseCategory;
+  label: string;
+  amount: number;
+  payment_method: PaymentMethod;
+  recorded_at: string;
+  created_at: string;
+}
+
+/** End-of-day cash drawer count for a branch. */
+export interface CashSessionRecord {
+  id: string;
+  user_id: string;
+  location_id: string;
+  opening_float: number;
+  cash_sales: number;
+  cash_collected: number;
+  cash_expenses: number;
+  expected: number;
+  counted: number;
+  variance: number;
+  closed_at: string;
+  closed_by_label?: string;
+}
+
+export interface PurchaseLine {
+  name: string;
+  qty: number;
+  unit_cost: number;
+}
+
+export type PurchaseTerms = 'paid' | 'credit' | 'partial';
+
+export interface PurchaseRecord {
+  id: string;
+  user_id: string;
+  location_id: string;
+  supplier_contact_id?: string;
+  supplier_name: string;
+  items: PurchaseLine[];
+  total: number;
+  paid: number;
+  payment_method?: PaymentMethod;
+  terms: PurchaseTerms;
+  purchased_at: string;
+  created_at: string;
+}
+
+export type ContactRecordInput = Omit<ContactRecord, 'id' | 'user_id' | 'deal_count' | 'created_at' | 'updated_at'>;
+export type ExpenseRecordInput = Omit<ExpenseRecord, 'id' | 'user_id' | 'created_at'>;
+export type CashSessionInput = Omit<
+  CashSessionRecord,
+  'id' | 'user_id' | 'location_id' | 'closed_at' | 'closed_by_label'
+> & {
+  closed_by_label?: string;
+};
+export type PurchaseRecordInput = Omit<PurchaseRecord, 'id' | 'user_id' | 'created_at'>;
 
 // ─── Shop Profile ─────────────────────────────────────────────────────────────
 

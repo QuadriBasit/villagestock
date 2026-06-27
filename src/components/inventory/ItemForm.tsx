@@ -1,4 +1,4 @@
-import {useState, lazy, Suspense, useMemo} from 'react';
+import {useState, lazy, Suspense, useMemo, type ComponentProps} from 'react';
 import {useShopAccess} from '@/context/ShopAccessContext';
 import {useForm, Controller, type Control} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
@@ -19,6 +19,7 @@ import {
   isPlausibleImei,
   normalizeImeiDigits,
 } from '@/lib/serializedIdentifiers';
+import {cn} from '@/lib/utils';
 import {ComboboxField} from '@/components/ui/ComboboxField';
 import {
   Select,
@@ -28,6 +29,8 @@ import {
   SelectValue,
 } from '@/components/ui/Select';
 import {Label} from '@/components/ui/Label';
+import {Input} from '@/components/ui/Input';
+import {Checkbox} from '@/components/ui/Checkbox';
 import {Textarea} from '@/components/ui/Textarea';
 import {CurrencyInput} from '@/components/ui/CurrencyInput';
 import type {
@@ -257,6 +260,9 @@ interface ItemFormProps {
   submitLabel?: string;
   /** When set, shows "Add Another" button after successful save */
   onAddAnother?: (baseValues: Partial<FormData>) => void;
+  /** Called after a normal save (not "Add Another") */
+  onSaved?: () => void;
+  variant?: 'page' | 'modal';
 }
 
 export default function ItemForm({
@@ -264,7 +270,10 @@ export default function ItemForm({
   onSubmit,
   submitLabel = 'Save Item',
   onAddAnother,
+  onSaved,
+  variant = 'page',
 }: ItemFormProps) {
+  const isModal = variant === 'modal';
   const {canViewProfit} = useShopAccess();
   const [scanTarget, setScanTarget] = useState<ScanTarget | null>(null);
   const [savedCount, setSavedCount] = useState(0);
@@ -376,7 +385,7 @@ export default function ItemForm({
     setScanTarget(null);
   };
 
-  const submit = async (data: FormData) => {
+  const submit = async (data: FormData, options?: {fromAddAnother?: boolean}) => {
     const input: InventoryItemInput = {
       name: data.name,
       category: data.category as Category,
@@ -443,10 +452,13 @@ export default function ItemForm({
     };
     await onSubmit(input);
     setSavedCount(c => c + 1);
+    if (!options?.fromAddAnother) {
+      onSaved?.();
+    }
   };
 
   const handleAddAnother = handleSubmit(async data => {
-    await submit(data);
+    await submit(data, {fromAddAnother: true});
     // Keep brand/name/price/cost_price/category — clear identifiers
     const base: Partial<FormData> = {
       name: data.name,
@@ -483,15 +495,28 @@ export default function ItemForm({
     }
   });
 
-  const fieldClass = formFieldClass;
-  const labelClass = formLabelClass;
+  const fieldClass = isModal
+    ? 'shell-inset-field w-full rounded-lg border border-shell-line bg-shell-surface-2/40 px-3 py-2.5 text-sm text-shell-ink outline-none placeholder:text-shell-muted focus:border-shell-muted/60'
+    : formFieldClass;
+  const labelClass = isModal
+    ? 'mb-1 block text-sm font-medium text-shell-ink'
+    : formLabelClass;
+  const sectionClass = isModal
+    ? 'space-y-4 rounded-lg border border-shell-line bg-shell-surface/80 p-4'
+    : 'space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4';
+  const sectionHeadingClass = isModal
+    ? 'font-display text-sm font-semibold uppercase tracking-wide text-shell-ink'
+    : sectionTitleClass;
   const errorClass = 'text-red-500 text-xs mt-1';
 
   return (
     <>
       <form
         onSubmit={handleSubmit(submit as never)}
-        className='app-page py-4 md:py-6 space-y-4 pb-28 max-lg:pb-36 lg:pb-32'>
+        className={cn(
+          'space-y-4',
+          isModal ? 'pb-2' : 'app-page py-4 md:py-6 pb-28 max-lg:pb-36 lg:pb-32',
+        )}>
         {/* Saved count banner */}
         {savedCount > 0 && onAddAnother && (
           <div className='flex items-center gap-2 bg-teal/10 border border-teal/30 text-teal rounded-xl px-4 py-2.5 text-sm font-medium'>
@@ -501,8 +526,8 @@ export default function ItemForm({
         )}
 
         {/* Basic info */}
-        <section className='space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4'>
-          <h3 className={sectionTitleClass}>Basic Info</h3>
+        <section className={sectionClass}>
+          <h3 className={sectionHeadingClass}>Basic Info</h3>
 
           <p className='text-[11px] leading-snug text-zinc-500 dark:text-zinc-400'>
             Choose{' '}
@@ -581,7 +606,7 @@ export default function ItemForm({
               <Label className={labelClass} htmlFor='name'>
                 Item Name *
               </Label>
-              <input
+              <Input
                 id='name'
                 {...register('name')}
                 placeholder='e.g. USB-C Cable 2m'
@@ -622,8 +647,8 @@ export default function ItemForm({
         </section>
 
         {/* Pricing */}
-        <section className='space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4'>
-          <h3 className={sectionTitleClass}>Pricing</h3>
+        <section className={sectionClass}>
+          <h3 className={sectionHeadingClass}>Pricing</h3>
           <div
             className={`grid gap-3 ${canViewProfit ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <div>
@@ -682,14 +707,14 @@ export default function ItemForm({
 
         {/* Stock — only for non-serialized */}
         {!isSerialized && (
-          <section className='space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4'>
-            <h3 className={sectionTitleClass}>Stock</h3>
+          <section className={sectionClass}>
+            <h3 className={sectionHeadingClass}>Stock</h3>
             <div className='grid grid-cols-2 gap-3'>
               <div>
                 <Label className={labelClass} htmlFor='quantity'>
                   Quantity *
                 </Label>
-                <input
+                <Input
                   id='quantity'
                   type='number'
                   inputMode='numeric'
@@ -704,7 +729,7 @@ export default function ItemForm({
                 <Label className={labelClass} htmlFor='low_stock_threshold'>
                   Low Stock Alert
                 </Label>
-                <input
+                <Input
                   id='low_stock_threshold'
                   type='number'
                   inputMode='numeric'
@@ -717,8 +742,8 @@ export default function ItemForm({
         )}
 
         {/* Identifiers */}
-        <section className='space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4'>
-          <h3 className={sectionTitleClass}>
+        <section className={sectionClass}>
+          <h3 className={sectionHeadingClass}>
             {isSerialized ? 'Identifiers *' : 'Identifiers'}
           </h3>
 
@@ -793,8 +818,8 @@ export default function ItemForm({
         </section>
 
         {showAppleMobileFields && (
-          <section className='space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4'>
-            <h3 className={sectionTitleClass}>Apple Device Details</h3>
+          <section className={sectionClass}>
+            <h3 className={sectionHeadingClass}>Apple Device Details</h3>
             <div className='grid grid-cols-2 gap-3'>
               <NumberField
                 id='battery_health'
@@ -953,7 +978,7 @@ export default function ItemForm({
                 <Label className={labelClass} htmlFor='color'>
                   Color
                 </Label>
-                <input
+                <Input
                   id='color'
                   {...register('color')}
                   className={fieldClass}
@@ -965,8 +990,8 @@ export default function ItemForm({
         )}
 
         {showAppleLaptopFields && (
-          <section className='space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4'>
-            <h3 className={sectionTitleClass}>MacBook Details</h3>
+          <section className={sectionClass}>
+            <h3 className={sectionHeadingClass}>MacBook Details</h3>
             <div className='grid grid-cols-2 gap-3'>
               <NumberField
                 id='battery_cycle_count'
@@ -1020,7 +1045,7 @@ export default function ItemForm({
                 <Label className={labelClass} htmlFor='chip'>
                   Chip
                 </Label>
-                <input
+                <Input
                   id='chip'
                   {...register('chip')}
                   className={fieldClass}
@@ -1082,7 +1107,7 @@ export default function ItemForm({
               <Label className={labelClass} htmlFor='color'>
                 Color
               </Label>
-              <input
+              <Input
                 id='color'
                 {...register('color')}
                 className={fieldClass}
@@ -1093,13 +1118,27 @@ export default function ItemForm({
         )}
 
         {/* Submit buttons */}
-        <div className='fixed z-30 max-lg:bottom-[0] lg:bottom-0 left-0 right-0 px-3 md:px-5 pb-[max(0.35rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[#f0f0f3] via-[#f0f0f3]/96 to-transparent pt-3 dark:from-zinc-950 dark:via-zinc-950/96 pb-4'>
+        <div
+          className={cn(
+            isModal
+              ? 'sticky bottom-0 -mx-1 border-t border-shell-line bg-shell-surface pt-3 pb-1'
+              : 'fixed z-30 max-lg:bottom-[0] lg:bottom-0 left-0 right-0 px-3 md:px-5 pb-[max(0.35rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[#f0f0f3] via-[#f0f0f3]/96 to-transparent pt-3 dark:from-zinc-950 dark:via-zinc-950/96 pb-4',
+          )}>
           <div
-            className={`max-w-lg mx-auto lg:max-w-3xl xl:max-w-4xl w-full grid gap-2 ${isSerialized && onAddAnother ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+            className={cn(
+              'w-full grid gap-2',
+              isSerialized && onAddAnother ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1',
+              !isModal && 'max-w-lg mx-auto lg:max-w-3xl xl:max-w-4xl',
+            )}>
             <button
               type='submit'
               disabled={isSubmitting}
-              className='bg-primary text-white rounded-xl py-3.5 font-heading font-semibold text-sm hover:bg-primary-dark transition-colors disabled:opacity-60 flex items-center justify-center gap-2'>
+              className={cn(
+                'rounded-xl py-3.5 font-heading font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2',
+                isModal
+                  ? 'bg-violet-400 text-[#160a2e] hover:bg-violet-300'
+                  : 'bg-primary text-white hover:bg-primary-dark',
+              )}>
               {isSubmitting && <Loader2 size={16} className='animate-spin' />}
               {submitLabel}
             </button>
@@ -1109,7 +1148,12 @@ export default function ItemForm({
                 type='button'
                 disabled={isSubmitting}
                 onClick={handleAddAnother}
-                className='bg-teal text-white rounded-xl py-3.5 font-heading font-semibold text-sm hover:bg-teal-dark transition-colors disabled:opacity-60 flex items-center justify-center gap-2'>
+                className={cn(
+                  'rounded-xl py-3.5 font-heading font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2',
+                  isModal
+                    ? 'border border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2'
+                    : 'bg-teal text-white hover:bg-teal-dark',
+                )}>
                 {isSubmitting ? (
                   <Loader2 size={16} className='animate-spin' />
                 ) : (
@@ -1161,12 +1205,11 @@ function AppleDetailCheckbox({
         <label
           htmlFor={id}
           className='flex cursor-pointer gap-2.5 rounded-lg border border-zinc-200/90 bg-white px-2.5 py-2 text-left dark:border-zinc-600 dark:bg-zinc-900/60'>
-          <input
+          <Checkbox
             id={id}
-            type='checkbox'
-            className='mt-0.5 size-4 shrink-0 rounded border-zinc-300 text-primary focus:ring-primary/30'
+            className='mt-0.5'
             checked={field.value ?? false}
-            onChange={e => field.onChange(e.target.checked)}
+            onCheckedChange={checked => field.onChange(checked === true)}
           />
           <span className='min-w-0'>
             <span className='block text-sm font-medium text-zinc-900 dark:text-zinc-100'>
@@ -1184,19 +1227,19 @@ function AppleDetailCheckbox({
 
 // ─── Scan field component ─────────────────────────────────────────────────────
 
-interface ScanFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface ScanFieldProps extends ComponentProps<typeof Input> {
   id: string;
   label: string;
   onScan: () => void;
 }
 
-const ScanField = ({id, label, onScan, ...props}: ScanFieldProps) => (
+const ScanField = ({id, label, onScan, className, ...props}: ScanFieldProps) => (
   <div>
     <Label className={formLabelClass} htmlFor={id}>
       {label}
     </Label>
     <div className='flex gap-2'>
-      <input id={id} className={`${formFieldClass} flex-1`} {...props} />
+      <Input id={id} className={cn(formFieldClass, 'flex-1', className)} {...props} />
       <button
         type='button'
         onClick={onScan}
@@ -1229,12 +1272,12 @@ function NumberField({
         {label}
       </Label>
       <div className='relative'>
-        <input
+        <Input
           id={id}
           type='number'
           inputMode='numeric'
           {...register}
-          className={`${formFieldClass} pr-8`}
+          className={cn(formFieldClass, 'pr-8')}
         />
         {suffix && (
           <span className='absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 dark:text-zinc-400'>

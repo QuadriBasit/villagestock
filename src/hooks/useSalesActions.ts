@@ -9,6 +9,7 @@ import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import { saleBlockedMissingIdentifiers } from '@/lib/serializedIdentifiers';
+import { defaultWarrantyMonths } from '@/lib/warranty';
 import type { SalesRecord, SalesRecordInput } from '@/types';
 
 export function useSalesActions() {
@@ -37,6 +38,7 @@ export function useSalesActions() {
       sale_type: input.sale_type ?? 'sale',
       payment_status: input.payment_status ?? 'paid',
       device_details: input.device_details,
+      warranty_months: input.warranty_months ?? defaultWarrantyMonths(input.item_category),
       receipt_number,
       sync_status: 'pending',
     };

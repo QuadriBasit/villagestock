@@ -1,22 +1,19 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingCart, Plus, HandCoins } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Plus, Zap } from 'lucide-react';
 import { useTrialAccess } from '@/hooks/useTrialAccess';
-import { useShopAccess } from '@/context/ShopAccessContext';
 
 const LEFT_NAV = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
   { to: '/inventory', icon: Package, label: 'Stock' },
 ];
-const RIGHT_NAV_BASE = [
+const RIGHT_NAV = [
+  { to: '/till', icon: Zap, label: 'Till' },
   { to: '/sales', icon: ShoppingCart, label: 'Sales' },
-  { to: '/credits', icon: HandCoins, label: 'Credits' },
 ];
 
 export default function BottomNav() {
   const navigate = useNavigate();
   const { mutationsBlocked } = useTrialAccess();
-  const { canAccessFinancialNav } = useShopAccess();
-  const RIGHT_NAV = canAccessFinancialNav ? RIGHT_NAV_BASE : RIGHT_NAV_BASE.filter(i => i.to !== '/credits');
 
   return (
     <nav
@@ -30,7 +27,7 @@ export default function BottomNav() {
       <span className={`fab-pulse-host -mt-7 ${mutationsBlocked ? 'fab-pulse-host--off' : ''}`}>
         <button
           type="button"
-          onClick={() => !mutationsBlocked && navigate('/inventory/new')}
+          onClick={() => !mutationsBlocked && navigate('/inventory?add=1')}
           disabled={mutationsBlocked}
           className={`relative z-[1] flex h-[3.1rem] w-[3.1rem] items-center justify-center rounded-full text-white shadow-md shadow-primary/30 ring-4 ring-white transition-transform active:scale-95 dark:ring-[#0f172a] ${
             mutationsBlocked

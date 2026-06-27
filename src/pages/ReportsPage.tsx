@@ -5,6 +5,7 @@ import type { DateRange } from 'react-day-picker';
 import {
   BarChart3,
   CalendarRange,
+  ChevronRight,
   FileDown,
   Laptop,
   PiggyBank,
@@ -14,17 +15,31 @@ import {
   TrendingUp,
   Warehouse,
 } from 'lucide-react';
-import { useReportMetrics, buildCustomRange, getDefaultCustomRange, getPresetRange, type ReportBreakdownPoint, type ReportPreset } from '@/hooks/useReports';
+import {
+  useReportMetrics,
+  buildCustomRange,
+  getDefaultCustomRange,
+  getPresetRange,
+  type ReportBreakdownPoint,
+  type ReportPreset,
+} from '@/hooks/useReports';
 import { useShopProfile } from '@/hooks/useShopProfile';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { StatCard, StatGrid } from '@/components/ui/StatCard';
 import { AlertsSkeletonList } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Calendar } from '@/components/ui/Calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 
 type ActiveView = Exclude<ReportPreset, 'custom'> | 'custom';
+
+const PERIOD_TABS: { value: ActiveView; label: string }[] = [
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'This week' },
+  { value: 'custom', label: 'Custom' },
+];
 
 const todayRange = getPresetRange('today');
 const weekRange = getPresetRange('week');
@@ -104,8 +119,18 @@ export default function ReportsPage() {
       y += 3;
 
       writeLine('Highlights', { size: 13, bold: true });
-      writeMetric('Best selling model', metrics.bestSellingModel ? `${metrics.bestSellingModel.label} (${metrics.bestSellingModel.units})` : 'No data');
-      writeMetric('Highest profit item', metrics.highestProfitItem ? `${metrics.highestProfitItem.label} (${formatCurrency(metrics.highestProfitItem.profit)})` : 'No data');
+      writeMetric(
+        'Best selling model',
+        metrics.bestSellingModel
+          ? `${metrics.bestSellingModel.label} (${metrics.bestSellingModel.units})`
+          : 'No data',
+      );
+      writeMetric(
+        'Highest profit item',
+        metrics.highestProfitItem
+          ? `${metrics.highestProfitItem.label} (${formatCurrency(metrics.highestProfitItem.profit)})`
+          : 'No data',
+      );
       y += 3;
 
       writeLine('Swap Summary', { size: 13, bold: true });
@@ -118,7 +143,7 @@ export default function ReportsPage() {
       if (metrics.categoryBreakdown.length === 0) {
         writeMetric('Category breakdown', 'No data');
       } else {
-        metrics.categoryBreakdown.forEach((entry) => writeMetric(entry.label, `${entry.value} sold`));
+        metrics.categoryBreakdown.forEach(entry => writeMetric(entry.label, `${entry.value} sold`));
       }
       y += 3;
 
@@ -126,7 +151,7 @@ export default function ReportsPage() {
       if (metrics.paymentBreakdown.length === 0) {
         writeMetric('Payment breakdown', 'No data');
       } else {
-        metrics.paymentBreakdown.forEach((entry) => writeMetric(entry.label, formatCurrency(entry.value)));
+        metrics.paymentBreakdown.forEach(entry => writeMetric(entry.label, formatCurrency(entry.value)));
       }
 
       const fileName = `${(profile.shop_name || 'villagestock').replace(/\s+/g, '-').toLowerCase()}-report-${format(new Date(), 'yyyyMMdd-HHmm')}.pdf`;
@@ -139,61 +164,82 @@ export default function ReportsPage() {
   if (isLoading || isProfileLoading) return <AlertsSkeletonList />;
 
   return (
-    <div className="app-page space-y-4 py-5 md:py-8">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Reports</h2>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {profile.shop_name || 'Your shop'} · {metrics.range.label}
-          </p>
-        </div>
-        <Button onClick={handleExport} className="shrink-0">
+    <div className="app-page space-y-4 py-4 md:py-5">
+      <PageHeader
+        title="Reports"
+        subtitle={`${profile.shop_name || 'Your shop'} · ${metrics.range.label}`}
+      >
+        <Button
+          size="sm"
+          className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          onClick={handleExport}
+        >
           <FileDown size={16} />
-          Export
+          Export PDF
         </Button>
-      </div>
+      </PageHeader>
 
       <button
         type="button"
         onClick={() => navigate('/reports/stock-sessions')}
-        className="ui-card-interactive flex w-full items-center gap-3 p-4 text-left md:p-5"
+        className="flex w-full items-center gap-3 rounded-xl border border-shell-line bg-shell-surface p-4 text-left transition-colors hover:bg-shell-surface-2/40 md:p-5"
       >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary ring-1 ring-primary/15">
+        <span className="grid size-11 shrink-0 place-items-center rounded-[10px] bg-violet-400/15 text-violet-300">
           <Warehouse size={20} strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-zinc-900 dark:text-zinc-100">Stock sessions</p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="font-display font-semibold text-shell-ink">Stock sessions</p>
+          <p className="text-xs text-shell-muted">
             Calendar of daily opening &amp; closing stock (Business plan history)
           </p>
         </div>
+        <ChevronRight size={18} className="shrink-0 text-shell-muted" />
       </button>
 
-      <Card>
+      <Card className="border-shell-line bg-shell-surface shadow-none">
         <CardHeader className="gap-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <CardTitle>Period</CardTitle>
-              <CardDescription>Switch between quick views or apply a custom range.</CardDescription>
+              <CardTitle className="font-display text-shell-ink">Period</CardTitle>
+              <CardDescription className="text-shell-muted">
+                Switch between quick views or apply a custom range.
+              </CardDescription>
             </div>
-            <div className="rounded-full bg-primary/10 p-2 text-primary">
+            <span className="grid size-9 place-items-center rounded-[10px] bg-violet-400/15 text-violet-300">
               <CalendarRange size={18} />
+            </span>
+          </div>
+          <div className="overflow-hidden rounded-lg border border-shell-line bg-shell-surface-2/30">
+            <div className="flex gap-0 overflow-x-auto px-1" role="tablist" aria-label="Report period">
+              {PERIOD_TABS.map(tab => {
+                const active = activeView === tab.value;
+                return (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setActiveView(tab.value)}
+                    className={cn(
+                      'relative shrink-0 px-3.5 py-2.5 text-xs font-medium transition-colors',
+                      active
+                        ? 'text-shell-ink after:absolute after:inset-x-3.5 after:bottom-0 after:h-px after:bg-violet-400/70'
+                        : 'text-shell-muted hover:text-shell-ink',
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
-          <Tabs value={activeView} onValueChange={(value) => setActiveView(value as ActiveView)}>
-            <TabsList className="w-full min-w-0 justify-start overflow-x-auto sm:w-auto">
-              <TabsTrigger value="today">Today</TabsTrigger>
-              <TabsTrigger value="week">This week</TabsTrigger>
-              <TabsTrigger value="custom">Custom</TabsTrigger>
-            </TabsList>
-          </Tabs>
         </CardHeader>
         <CardContent className="space-y-3">
           {activeView === 'custom' ? (
             <div className="flex flex-col gap-3">
               <Popover
                 open={rangeOpen}
-                onOpenChange={(open) => {
+                onOpenChange={open => {
                   setRangeOpen(open);
                   if (open) {
                     setRangeDraft({ from: ymdParse(customStart), to: ymdParse(customEnd) });
@@ -201,14 +247,21 @@ export default function ReportsPage() {
                 }}
               >
                 <PopoverTrigger asChild>
-                  <Button type="button" variant="outline" className="w-full justify-start gap-2 sm:w-auto">
-                    <CalendarRange size={16} className="shrink-0" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start gap-2 border-shell-line bg-shell-surface-2/40 text-shell-ink hover:bg-shell-surface-2 sm:w-auto"
+                  >
+                    <CalendarRange size={16} className="shrink-0 text-violet-300" />
                     <span className="tabular-nums">
                       {format(ymdParse(customStart), 'd MMM yyyy')} – {format(ymdParse(customEnd), 'd MMM yyyy')}
                     </span>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto max-w-[calc(100vw-1.5rem)] p-0" align="start">
+                <PopoverContent
+                  className="w-auto max-w-[calc(100vw-1.5rem)] border-shell-line bg-shell-surface p-0"
+                  align="start"
+                >
                   <div className="p-2">
                     <Calendar
                       mode="range"
@@ -218,13 +271,14 @@ export default function ReportsPage() {
                       numberOfMonths={1}
                     />
                   </div>
-                  <div className="flex justify-end gap-2 border-t border-zinc-200 p-2 dark:border-zinc-700">
+                  <div className="flex justify-end gap-2 border-t border-shell-line p-2">
                     <Button type="button" size="sm" variant="ghost" onClick={() => setRangeOpen(false)}>
                       Cancel
                     </Button>
                     <Button
                       type="button"
                       size="sm"
+                      className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
                       onClick={() => {
                         if (rangeDraft?.from) {
                           setCustomStart(format(rangeDraft.from, 'yyyy-MM-dd'));
@@ -244,12 +298,12 @@ export default function ReportsPage() {
                   </div>
                 </PopoverContent>
               </Popover>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-shell-muted">
                 Tap the date range to open the calendar. Choose two days for a period, or one day twice.
               </p>
             </div>
           ) : (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="text-sm text-shell-muted">
               {activeView === 'today'
                 ? 'Showing figures for today only.'
                 : 'Showing figures for the current calendar week (Mon–Sun).'}
@@ -258,36 +312,62 @@ export default function ReportsPage() {
         </CardContent>
       </Card>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <MetricCard label="Items sold" value={String(metrics.salesCount)} icon={<TrendingUp size={18} />} />
-        <MetricCard label="Revenue" value={formatCurrency(metrics.revenue)} icon={<BarChart3 size={18} />} />
-        <MetricCard label="Profit" value={formatCurrency(metrics.profit)} icon={<PiggyBank size={18} />} />
-        <MetricCard label="Returns" value={String(metrics.returnsCount)} icon={<RotateCcw size={18} />} />
-        <MetricCard label="Refund value" value={formatCurrency(metrics.refundValue)} icon={<RotateCcw size={18} />} />
-        <MetricCard label="Net profit" value={formatCurrency(metrics.netProfit)} icon={<TrendingUp size={18} />} highlight />
-      </section>
+      <ReportSection title="Sales summary">
+        <StatGrid className="sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard label="Items sold" value={String(metrics.salesCount)} icon={TrendingUp} />
+          <StatCard label="Revenue" value={formatCurrency(metrics.revenue)} icon={BarChart3} />
+          <StatCard
+            label="Profit"
+            value={formatCurrency(metrics.profit)}
+            icon={PiggyBank}
+            iconClassName="bg-emerald-500/10 text-emerald-400"
+          />
+          <StatCard label="Returns" value={String(metrics.returnsCount)} icon={RotateCcw} />
+          <StatCard
+            label="Refund value"
+            value={formatCurrency(metrics.refundValue)}
+            icon={RotateCcw}
+            iconClassName="bg-red-500/10 text-red-400"
+          />
+          <StatCard
+            label="Net profit"
+            value={formatCurrency(metrics.netProfit)}
+            icon={TrendingUp}
+            iconClassName="bg-violet-400/15 text-violet-300"
+            hint="After returns"
+          />
+        </StatGrid>
+      </ReportSection>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <MetricCard label="Total swaps" value={String(metrics.totalSwaps)} icon={<CalendarRange size={18} />} />
-        <MetricCard label="Trade-in value" value={formatCurrency(metrics.totalTradeInValue)} icon={<BarChart3 size={18} />} />
-        <MetricCard label="Avg balance" value={formatCurrency(metrics.averageBalanceCollected)} icon={<PiggyBank size={18} />} />
-      </section>
+      <ReportSection title="Swaps">
+        <StatGrid className="sm:grid-cols-3">
+          <StatCard label="Total swaps" value={String(metrics.totalSwaps)} icon={CalendarRange} />
+          <StatCard label="Trade-in value" value={formatCurrency(metrics.totalTradeInValue)} icon={BarChart3} />
+          <StatCard label="Avg balance" value={formatCurrency(metrics.averageBalanceCollected)} icon={PiggyBank} />
+        </StatGrid>
+      </ReportSection>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        <MetricCard label="Phones sold" value={String(metrics.serializedCounts.phones)} icon={<Smartphone size={18} />} />
-        <MetricCard label="Laptops sold" value={String(metrics.serializedCounts.laptops)} icon={<Laptop size={18} />} />
-        <MetricCard label="Tablets sold" value={String(metrics.serializedCounts.tablets)} icon={<Tablet size={18} />} />
-      </section>
+      <ReportSection title="Serialized sales">
+        <StatGrid className="sm:grid-cols-3">
+          <StatCard label="Phones sold" value={String(metrics.serializedCounts.phones)} icon={Smartphone} />
+          <StatCard label="Laptops sold" value={String(metrics.serializedCounts.laptops)} icon={Laptop} />
+          <StatCard label="Tablets sold" value={String(metrics.serializedCounts.tablets)} icon={Tablet} />
+        </StatGrid>
+      </ReportSection>
 
       <section className="grid gap-3 lg:grid-cols-2">
         <HighlightCard
-          title="Best Selling Model"
+          title="Best selling model"
           description="Most units sold across serialized devices."
           value={metrics.bestSellingModel?.label ?? 'No sales yet'}
-          subvalue={metrics.bestSellingModel ? `${metrics.bestSellingModel.units} unit${metrics.bestSellingModel.units !== 1 ? 's' : ''}` : undefined}
+          subvalue={
+            metrics.bestSellingModel
+              ? `${metrics.bestSellingModel.units} unit${metrics.bestSellingModel.units !== 1 ? 's' : ''}`
+              : undefined
+          }
         />
         <HighlightCard
-          title="Highest Profit Item"
+          title="Highest profit item"
           description="Top profit contributor in this period."
           value={metrics.highestProfitItem?.label ?? 'No sales yet'}
           subvalue={metrics.highestProfitItem ? formatCurrency(metrics.highestProfitItem.profit) : undefined}
@@ -296,45 +376,30 @@ export default function ReportsPage() {
 
       <section className="grid gap-3 lg:grid-cols-2">
         <BreakdownCard
-          title="Sales by Category"
+          title="Sales by category"
           description="Units sold per category"
           emptyLabel="No category sales for this period."
           data={metrics.categoryBreakdown}
-          valueFormatter={(value) => `${value} sold`}
+          valueFormatter={value => `${value} sold`}
         />
         <BreakdownCard
-          title="Payment Method Mix"
+          title="Payment method mix"
           description="Revenue by payment method"
           emptyLabel="No payment data for this period."
           data={metrics.paymentBreakdown}
-          valueFormatter={(value) => formatCurrency(value)}
+          valueFormatter={value => formatCurrency(value)}
         />
       </section>
     </div>
   );
 }
 
-function MetricCard({
-  label,
-  value,
-  icon,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  highlight?: boolean;
-}) {
+function ReportSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Card className={highlight ? 'border-primary/20 bg-primary text-white' : undefined}>
-      <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className={highlight ? 'text-white/80' : 'text-zinc-500 dark:text-zinc-400'}>{label}</CardTitle>
-        <span className={highlight ? 'text-white' : 'text-primary'}>{icon}</span>
-      </CardHeader>
-      <CardContent>
-        <div className={`text-2xl font-bold ${highlight ? 'text-white' : 'text-zinc-900 dark:text-zinc-50'}`}>{value}</div>
-      </CardContent>
-    </Card>
+    <section className="space-y-3">
+      <h3 className="font-display text-sm font-semibold text-shell-ink">{title}</h3>
+      {children}
+    </section>
   );
 }
 
@@ -350,14 +415,14 @@ function HighlightCard({
   subvalue?: string;
 }) {
   return (
-    <Card>
+    <Card className="border-shell-line bg-shell-surface shadow-none">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardTitle className="font-display text-shell-ink">{title}</CardTitle>
+        <CardDescription className="text-shell-muted">{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-1">
-        <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">{value}</div>
-        {subvalue && <div className="text-sm text-primary">{subvalue}</div>}
+        <div className="text-lg font-semibold text-shell-ink">{value}</div>
+        {subvalue ? <div className="text-sm font-medium text-violet-300">{subvalue}</div> : null}
       </CardContent>
     </Card>
   );
@@ -376,28 +441,28 @@ function BreakdownCard({
   emptyLabel: string;
   valueFormatter: (value: number) => string;
 }) {
-  const maxValue = Math.max(...data.map((entry) => entry.value), 0);
+  const maxValue = Math.max(...data.map(entry => entry.value), 0);
 
   return (
-    <Card>
+    <Card className="border-shell-line bg-shell-surface shadow-none">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardTitle className="font-display text-shell-ink">{title}</CardTitle>
+        <CardDescription className="text-shell-muted">{description}</CardDescription>
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-zinc-200 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+          <div className="rounded-xl border border-dashed border-shell-line px-4 py-8 text-center text-sm text-shell-muted">
             {emptyLabel}
           </div>
         ) : (
           <div className="space-y-4">
-            {data.map((entry) => (
+            {data.map(entry => (
               <div key={entry.label} className="space-y-1.5">
                 <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium text-zinc-900 dark:text-zinc-100">{entry.label}</span>
-                  <span className="text-zinc-500 dark:text-zinc-400">{valueFormatter(entry.value)}</span>
+                  <span className="font-medium text-shell-ink">{entry.label}</span>
+                  <span className="tabular-nums text-shell-muted">{valueFormatter(entry.value)}</span>
                 </div>
-                <div className="h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <div className="h-2 rounded-full bg-shell-surface-2">
                   <div
                     className="h-2 rounded-full transition-[width]"
                     style={{

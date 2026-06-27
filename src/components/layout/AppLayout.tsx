@@ -1,17 +1,9 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import BottomNav from './BottomNav';
 import DesktopSidebar from './DesktopSidebar';
 import TopBar from './TopBar';
-import { SidebarLayoutProvider, useSidebarLayout } from './SidebarLayoutContext';
-// import TrialBanner from '@/components/billing/TrialBanner';
+import { SidebarLayoutProvider } from './SidebarLayoutContext';
 import TrialExpiredOverlay from '@/components/billing/TrialExpiredOverlay';
 import { useTrialAccess } from '@/hooks/useTrialAccess';
-
-function isItemFormRoute(pathname: string): boolean {
-  return (
-    pathname === '/inventory/new' || /^\/inventory\/[^/]+\/edit$/.test(pathname)
-  );
-}
 
 export default function AppLayout() {
   return (
@@ -23,39 +15,20 @@ export default function AppLayout() {
 
 function AppLayoutInner() {
   const location = useLocation();
-  const { collapsed } = useSidebarLayout();
-  // Trial banner & trial-ended overlay disabled (full access). Restore: businessProfile, banner, showExpiredOverlay.
-  const { /* businessProfile, banner, showExpiredOverlay, */ accountSuspended } = useTrialAccess();
-  // const mainTopClass = banner.visible ? 'pt-[7.25rem]' : 'pt-16';
-  const mainTopClass = 'pt-16';
-  const mainBottomLg = isItemFormRoute(location.pathname) ? 'lg:pb-0' : 'lg:pb-8';
-  const sidebarPad = collapsed ? 'lg:pl-[4.5rem]' : 'lg:pl-64';
-  const headerFixedLeft = collapsed ? 'lg:left-[4.5rem]' : 'lg:left-64';
+  const { accountSuspended } = useTrialAccess();
 
   return (
-    <div className="min-h-svh">
+    <div className="app-shell dark flex min-h-svh bg-shell-bg font-body text-sm text-shell-ink antialiased">
       <DesktopSidebar />
-      <div className={`${sidebarPad} flex flex-col min-h-svh transition-[padding] duration-200 ease-out`}>
-        <div className={`fixed top-0 left-0 right-0 z-40 flex flex-col ${headerFixedLeft} transition-[left] duration-200 ease-out`}>
-          {/* TopBar must stack above TrialBanner so the account menu is not covered when it drops below the header row */}
-          <div className="relative z-50 isolate">
-            <TopBar />
-          </div>
-          {/* <div className="relative z-10">
-            <TrialBanner profile={businessProfile} />
-          </div> */}
-        </div>
-        <main
-          className={`flex-1 overflow-y-auto max-lg:pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] ${mainBottomLg} ${mainTopClass}`}
-        >
-          <div key={location.pathname} className="route-enter min-h-full">
+      <div className="flex min-h-svh min-w-0 flex-1 flex-col lg:ml-[252px]">
+        <TopBar />
+        <main className="flex-1 overflow-y-auto">
+          <div key={location.pathname} className="route-enter w-full px-4 py-0 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
             <Outlet />
           </div>
         </main>
-        <BottomNav />
       </div>
-      {accountSuspended && <TrialExpiredOverlay variant="account_suspended" />}
-      {/* {showExpiredOverlay && <TrialExpiredOverlay />} */}
+      {accountSuspended ? <TrialExpiredOverlay variant="account_suspended" /> : null}
     </div>
   );
 }

@@ -1,0 +1,39 @@
+---
+description: Use shadcn/ui components — never raw HTML form controls
+alwaysApply: true
+---
+
+# No raw HTML form controls
+
+Do **not** use native HTML form elements in app UI. Use the project's shadcn/ui wrappers from `@/components/ui/` (and existing field composites).
+
+## Banned in JSX (use the replacement)
+
+| Do not use | Use instead |
+|------------|-------------|
+| `<input>` (text, email, tel, number, search, password, …) | `Input`, `PasswordInput`, `CurrencyInput` |
+| `<input type="date">` | `DatePickerField` |
+| `<input type="datetime-local">` / date + time | `DateTimeField` |
+| `<input type="time">` | `TimePickerField` or `DateTimeField` — never native time picker |
+| `<input type="color">` | `ColorPickerField` |
+| `<select>` / `<option>` | `Select` (+ `SelectTrigger`, `SelectContent`, `SelectItem`, …) or `ComboboxField` for searchable lists |
+| `<textarea>` | `Textarea` |
+| `<input type="checkbox">` | `Checkbox` (+ `Label`) |
+| `<button>` for actions | `Button` |
+| Native calendar / browser date UI | `Calendar` inside `Popover` via `DatePickerField` |
+
+## Also avoid
+
+- Raw `<input>` styled with `settingsField`, `adminField`, or ad-hoc `className` — wrap with `Input` / field components and apply shell tokens on the component.
+- Re-introducing patterns we already replaced (e.g. inline `<input type="date">` on Quick Till, sales forms, settings).
+
+## Allowed exceptions
+
+- `type="hidden"` for non-visible form plumbing
+- `type="file"` when no project file-picker component exists yet (prefer adding one if the UI is user-facing)
+- Third-party libs that render their own DOM and cannot be swapped without a wrapper
+
+## When adding new fields
+
+1. Check `src/components/ui/` first.
+2. If nothing fits, add a reusable component under `src/components/ui/` (shadcn pattern), then use it — do not drop a raw element into a page.

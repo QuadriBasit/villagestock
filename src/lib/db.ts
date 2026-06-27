@@ -13,6 +13,10 @@ import type {
   BusinessProfile,
   StockSession,
   ShopLocation,
+  ContactRecord,
+  ExpenseRecord,
+  PurchaseRecord,
+  CashSessionRecord,
 } from '@/types';
 
 export class VillageStockDB extends Dexie {
@@ -29,6 +33,10 @@ export class VillageStockDB extends Dexie {
   shop_locations!: Table<ShopLocation>;
   sync_queue!: Table<SyncQueueItem>;
   settings!: Table<AppSetting>;
+  contacts!: Table<ContactRecord>;
+  expense_records!: Table<ExpenseRecord>;
+  purchase_records!: Table<PurchaseRecord>;
+  cash_sessions!: Table<CashSessionRecord>;
 
   constructor() {
     super('VillageStockDB');
@@ -223,6 +231,59 @@ export class VillageStockDB extends Dexie {
       settings: 'key',
     });
     // Legacy rows may lack `location_id` until `ensureDefaultShopLocation` / remote pull backfill runs.
+
+    this.version(13).stores({
+      inventory_items: [
+        'id', 'user_id', 'location_id', 'category', 'name', 'brand', 'quantity',
+        'mode', 'status', 'condition', 'sync_status', 'updated_at',
+        '[user_id+category]', '[user_id+mode]', '[user_id+status]', '[user_id+sync_status]',
+        '[user_id+location_id]',
+      ].join(', '),
+      stock_movements: 'id, item_id, user_id, type, created_at',
+      sales_records:
+        'id, user_id, location_id, item_id, sold_at, receipt_number, payment_method, payment_status, sale_type, [user_id+sold_at], [user_id+location_id]',
+      return_records: 'id, user_id, location_id, sale_id, item_id, returned_at, [user_id+returned_at]',
+      swap_records: 'id, user_id, location_id, sale_id, outgoing_item_id, incoming_item_id, date, payment_method, [user_id+date]',
+      credit_records: 'id, user_id, location_id, sale_id, customer_name, due_date, status, [user_id+due_date]',
+      repair_records: 'id, user_id, location_id, item_id, engineer_name, date_sent, repair_status, expected_return_date, [user_id+engineer_name]',
+      business_profiles: 'id, plan, plan_status, updated_at, onboarding_complete',
+      stock_sessions:
+        'id, user_id, location_id, date, status, opened_at, closed_at, [user_id+date], [user_id+status], [user_id+location_id+date]',
+      audit_events: 'id, business_id, actor_user_id, created_at, [business_id+created_at]',
+      shop_locations: 'id, business_id, sort_order, updated_at, [business_id+sort_order]',
+      contacts: 'id, user_id, location_id, type, name, updated_at, [user_id+type]',
+      expense_records: 'id, user_id, location_id, category, recorded_at, [user_id+recorded_at], [user_id+location_id]',
+      purchase_records: 'id, user_id, location_id, supplier_contact_id, purchased_at, [user_id+purchased_at]',
+      sync_queue: 'id, table, operation, created_at',
+      settings: 'key',
+    });
+
+    this.version(14).stores({
+      inventory_items: [
+        'id', 'user_id', 'location_id', 'category', 'name', 'brand', 'quantity',
+        'mode', 'status', 'condition', 'sync_status', 'updated_at',
+        '[user_id+category]', '[user_id+mode]', '[user_id+status]', '[user_id+sync_status]',
+        '[user_id+location_id]',
+      ].join(', '),
+      stock_movements: 'id, item_id, user_id, type, created_at',
+      sales_records:
+        'id, user_id, location_id, item_id, sold_at, receipt_number, payment_method, payment_status, sale_type, [user_id+sold_at], [user_id+location_id]',
+      return_records: 'id, user_id, location_id, sale_id, item_id, returned_at, [user_id+returned_at]',
+      swap_records: 'id, user_id, location_id, sale_id, outgoing_item_id, incoming_item_id, date, payment_method, [user_id+date]',
+      credit_records: 'id, user_id, location_id, sale_id, customer_name, due_date, status, [user_id+due_date]',
+      repair_records: 'id, user_id, location_id, item_id, engineer_name, date_sent, repair_status, expected_return_date, [user_id+engineer_name]',
+      business_profiles: 'id, plan, plan_status, updated_at, onboarding_complete',
+      stock_sessions:
+        'id, user_id, location_id, date, status, opened_at, closed_at, [user_id+date], [user_id+status], [user_id+location_id+date]',
+      audit_events: 'id, business_id, actor_user_id, created_at, [business_id+created_at]',
+      shop_locations: 'id, business_id, sort_order, updated_at, [business_id+sort_order]',
+      contacts: 'id, user_id, location_id, type, name, updated_at, [user_id+type]',
+      expense_records: 'id, user_id, location_id, category, recorded_at, [user_id+recorded_at], [user_id+location_id]',
+      purchase_records: 'id, user_id, location_id, supplier_contact_id, purchased_at, [user_id+purchased_at]',
+      cash_sessions: 'id, user_id, location_id, closed_at, [user_id+closed_at], [user_id+location_id]',
+      sync_queue: 'id, table, operation, created_at',
+      settings: 'key',
+    });
   }
 }
 

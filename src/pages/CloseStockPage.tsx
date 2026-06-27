@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Check, Loader2, Warehouse, X } from 'lucide-react';
+import { Check, ChevronLeft, Loader2, ScanLine, X } from 'lucide-react';
 import { useStockSessionActions } from '@/hooks/useStockSessionActions';
 import type { InventoryItem, StockSessionSummary } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
+import { Textarea } from '@/components/ui/Textarea';
+import { cn } from '@/lib/utils';
 
 export default function CloseStockPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -44,12 +46,12 @@ export default function CloseStockPage() {
   }, [refresh]);
 
   const missingIds = useMemo(
-    () => expectedIds.filter((id) => !checked.has(id)),
+    () => expectedIds.filter(id => !checked.has(id)),
     [expectedIds, checked]
   );
 
   const toggle = (id: string) => {
-    setChecked((prev) => {
+    setChecked(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -62,13 +64,13 @@ export default function CloseStockPage() {
     setClosing(true);
     setError(null);
     try {
-      const present = expectedIds.filter((id) => checked.has(id));
+      const present = expectedIds.filter(id => checked.has(id));
       await confirmCloseSession(sessionId, present, { ...missingNotes });
       const m = missingIds.length;
       setDoneMessage(
         m === 0
-          ? 'Stock closed. All devices accounted for!'
-          : `WARNING: ${m} device(s) unaccounted for — marked as Missing in inventory.`
+          ? 'Stock-take posted. Everything matched the system.'
+          : `Stock-take posted with ${m} discrepanc${m === 1 ? 'y' : 'ies'} — devices marked missing in inventory.`
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Close failed');
@@ -78,103 +80,107 @@ export default function CloseStockPage() {
   };
 
   if (!sessionId) {
-    return (
-      <div className="app-page py-8">
-        <p className="text-sm text-muted">Invalid session.</p>
-      </div>
-    );
+    return <div className="app-page py-8 text-sm text-shell-muted">Invalid session.</div>;
   }
 
   if (loading) {
     return (
       <div className="app-page flex min-h-[40vh] items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="size-8 animate-spin text-violet-300" />
       </div>
     );
   }
 
   if (doneMessage) {
-    const isWarn = doneMessage.startsWith('WARNING');
+    const isWarn = doneMessage.includes('discrepanc');
     return (
-      <div className="app-page space-y-4 py-6">
-        <Card className={isWarn ? 'border-red-300 bg-red-50/80 dark:border-red-900/40 dark:bg-red-950/25' : ''}>
-          <CardContent className="py-6">
-            <p className={`text-center text-sm font-semibold ${isWarn ? 'text-red-700 dark:text-red-200' : 'text-teal dark:text-teal-300'}`}>
-              {doneMessage}
-            </p>
-          </CardContent>
-        </Card>
-        <Button type="button" className="w-full rounded-xl" onClick={() => navigate('/dashboard')}>
-          Back to dashboard
+      <div className="app-page flex flex-col items-center px-4 py-16 text-center">
+        <div
+          className={cn(
+            'mb-4 grid size-14 place-items-center rounded-full',
+            isWarn ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-400'
+          )}
+        >
+          <Check size={28} strokeWidth={2.4} />
+        </div>
+        <h2 className="font-display text-lg font-semibold text-shell-ink">Stock-take posted</h2>
+        <p className="mt-2 max-w-md text-sm leading-relaxed text-shell-muted">{doneMessage}</p>
+        <Button
+          className="mt-6 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          onClick={() => navigate('/reports/stock-sessions')}
+        >
+          Done
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="app-page space-y-4 py-4 md:py-6">
-      <div className="flex items-center gap-2">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-          <Warehouse size={20} />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Close stock</h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Confirm each device still on hand</p>
-        </div>
+    <div className="app-page space-y-4 py-4 md:py-5">
+      <button
+        type="button"
+        onClick={() => navigate('/reports/stock-sessions')}
+        className="inline-flex items-center gap-1 text-xs font-semibold text-shell-muted transition-colors hover:text-shell-ink"
+      >
+        <ChevronLeft size={14} />
+        Cancel count
+      </button>
+
+      <div>
+        <h2 className="font-display text-lg font-semibold text-shell-ink">Counting stock</h2>
+        <p className="text-xs text-shell-muted">Confirm each device physically on the shelf</p>
       </div>
 
-      {error && (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-200">
-          {error}
-        </p>
-      )}
+      {error ? (
+        <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>
+      ) : null}
 
-      {summary && (
-        <Card>
-          <CardContent className="space-y-2 py-4 text-sm">
+      {summary ? (
+        <Card className="border-shell-line bg-shell-surface shadow-none">
+          <CardContent className="divide-y divide-shell-line py-0 text-sm">
             <SummaryRow label="Opening count" value={summary.opening_count} />
             <SummaryRow label="Sold" value={summary.sold_count} />
             <SummaryRow label="Credit sales" value={summary.credit_sales_count} />
             <SummaryRow label="Out for repair" value={summary.sent_engineer_count} />
             <SummaryRow label="Returns received" value={summary.returns_received_count} />
             <SummaryRow label="New stock added" value={summary.new_stock_count} />
-            <div className="border-t border-zinc-200 pt-2 dark:border-zinc-700">
-              <SummaryRow label="Expected remaining" value={summary.expected_remaining} highlight />
-            </div>
+            <SummaryRow label="Expected remaining" value={summary.expected_remaining} highlight />
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       <div>
-        <p className="label-caps mb-2 text-zinc-500">On-hand checklist</p>
-        <p className="mb-3 text-xs text-zinc-500">Tap each row when the device is physically present.</p>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-shell-muted">On-hand checklist</p>
+        <p className="mb-3 text-xs text-shell-muted">Tap each row when the device is present.</p>
         <div className="space-y-2">
-          {checklistItems.map((item) => {
+          {checklistItems.map(item => {
             const ok = checked.has(item.id);
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => toggle(item.id)}
-                className={`flex w-full items-start gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+                className={cn(
+                  'flex w-full items-start gap-3 rounded-lg border px-3 py-3 text-left transition-colors',
                   ok
-                    ? 'border-teal/30 bg-teal/5 dark:border-teal/25 dark:bg-teal/10'
-                    : 'border-red-200 bg-red-50/40 dark:border-red-900/35 dark:bg-red-950/20'
-                }`}
+                    ? 'border-emerald-500/25 bg-emerald-500/10'
+                    : 'border-shell-line bg-shell-surface-2/30'
+                )}
               >
                 <span
-                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
-                    ok ? 'bg-teal text-white' : 'bg-white text-red-500 ring-1 ring-red-200 dark:bg-zinc-900 dark:ring-red-900/50'
-                  }`}
+                  className={cn(
+                    'mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg',
+                    ok ? 'bg-emerald-400 text-[#160a2e]' : 'bg-shell-surface text-shell-muted ring-1 ring-shell-line'
+                  )}
                 >
                   {ok ? <Check size={16} strokeWidth={3} /> : <X size={16} />}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{item.name}</p>
-                  <p className="text-[11px] text-zinc-500 capitalize">{item.brand}</p>
-                  <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] font-mono text-zinc-500">
-                    {item.imei && <span>IMEI: {item.imei}</span>}
-                    {item.serial_number && <span>S/N: {item.serial_number}</span>}
+                  <p className="text-sm font-semibold text-shell-ink">{item.name}</p>
+                  <p className="text-[11px] capitalize text-shell-muted">{item.brand}</p>
+                  <div className="mt-1 flex flex-wrap gap-x-2 font-mono text-[10px] text-shell-muted">
+                    {item.imei ? <span>IMEI: {item.imei}</span> : null}
+                    {item.serial_number ? <span>S/N: {item.serial_number}</span> : null}
                   </div>
                 </div>
               </button>
@@ -183,73 +189,88 @@ export default function CloseStockPage() {
         </div>
       </div>
 
-      {missingIds.length > 0 && (
-        <Card className="border-red-200 dark:border-red-900/40">
+      {missingIds.length > 0 ? (
+        <Card className="border-red-500/30 bg-red-500/[0.06] shadow-none">
           <CardContent className="space-y-3 py-4">
-            <p className="text-sm font-semibold text-red-700 dark:text-red-200">
-              {missingIds.length} device(s) not confirmed — add a note for each before closing
+            <p className="text-sm font-semibold text-red-300">
+              {missingIds.length} device(s) not confirmed — add a note for each
             </p>
-            {missingIds.map((id) => {
-              const item = checklistItems.find((i) => i.id === id);
+            {missingIds.map(id => {
+              const item = checklistItems.find(i => i.id === id);
               return (
-                <div key={id} className="space-y-1 rounded-xl bg-white/80 p-3 dark:bg-zinc-900/60">
-                  <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100">
-                    {item?.name ?? id}
-                  </p>
+                <div key={id} className="space-y-1 rounded-lg border border-shell-line bg-shell-surface/80 p-3">
+                  <p className="text-xs font-medium text-shell-ink">{item?.name ?? id}</p>
                   {(item?.imei || item?.serial_number) && (
-                    <p className="text-[10px] font-mono text-zinc-500">
+                    <p className="font-mono text-[10px] text-shell-muted">
                       {[item?.imei && `IMEI ${item.imei}`, item?.serial_number && `S/N ${item.serial_number}`]
                         .filter(Boolean)
                         .join(' · ')}
                     </p>
                   )}
-                  <textarea
+                  <Textarea
                     value={missingNotes[id] ?? ''}
-                    onChange={(e) => setMissingNotes((m) => ({ ...m, [id]: e.target.value }))}
+                    onChange={e => setMissingNotes(m => ({ ...m, [id]: e.target.value }))}
                     placeholder="What happened?"
                     rows={2}
-                    className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-xs dark:border-zinc-700 dark:bg-zinc-950"
+                    className="shell-inset-field mt-1 min-h-0 w-full rounded-lg border border-shell-line bg-shell-surface-2/40 px-2 py-1.5 text-xs text-shell-ink outline-none placeholder:text-shell-muted"
                   />
                 </div>
               );
             })}
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
-      <Button
-        type="button"
-        className="h-12 w-full rounded-xl text-base font-semibold"
-        disabled={closing || missingIds.some((id) => !(missingNotes[id]?.trim()))}
-        onClick={() => void onConfirmClose()}
-      >
-        {closing ? (
-          <>
-            <Loader2 size={18} className="animate-spin" /> Closing…
-          </>
-        ) : (
-          'Confirm & close stock'
-        )}
-      </Button>
+      <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-shell-line bg-shell-surface/95 px-4 py-3 backdrop-blur">
+        <div className="flex flex-wrap gap-5">
+          <Stat label="Lines" value={checklistItems.length} />
+          <Stat label="Discrepancies" value={missingIds.length} warn={missingIds.length > 0} />
+          <Stat label="Confirmed" value={checked.size} />
+        </div>
+        <Button
+          className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          disabled={closing || missingIds.some(id => !(missingNotes[id]?.trim()))}
+          onClick={() => void onConfirmClose()}
+        >
+          {closing ? (
+            <>
+              <Loader2 size={16} className="animate-spin" /> Posting…
+            </>
+          ) : (
+            <>
+              <ScanLine size={16} />
+              Post {missingIds.length || 'no'} adjustment{missingIds.length === 1 ? '' : 's'}
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
 
-function SummaryRow({
-  label,
-  value,
-  highlight,
-}: {
-  label: string;
-  value: number;
-  highlight?: boolean;
-}) {
+function SummaryRow({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-zinc-600 dark:text-zinc-400">{label}</span>
-      <span className={`tabular-nums font-semibold ${highlight ? 'text-primary' : 'text-zinc-900 dark:text-zinc-100'}`}>
+    <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <span className="text-shell-muted">{label}</span>
+      <span
+        className={cn(
+          'font-mono tabular-nums font-semibold',
+          highlight ? 'text-violet-300' : 'text-shell-ink'
+        )}
+      >
         {value}
       </span>
+    </div>
+  );
+}
+
+function Stat({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
+  return (
+    <div>
+      <p className="text-[11px] text-shell-muted">{label}</p>
+      <p className={cn('font-mono text-base font-bold tabular-nums', warn ? 'text-amber-300' : 'text-shell-ink')}>
+        {value}
+      </p>
     </div>
   );
 }

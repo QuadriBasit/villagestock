@@ -19,6 +19,7 @@ const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const InventoryPage = lazy(() => import('@/pages/InventoryPage'));
 const AddItemPage = lazy(() => import('@/pages/AddItemPage'));
 const EditItemPage = lazy(() => import('@/pages/EditItemPage'));
+const ItemDetailPage = lazy(() => import('@/pages/ItemDetailPage'));
 const AlertsPage = lazy(() => import('@/pages/AlertsPage'));
 const SalesHistoryPage = lazy(() => import('@/pages/SalesHistoryPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
@@ -29,6 +30,12 @@ const StockSessionDetailPage = lazy(() => import('@/pages/StockSessionDetailPage
 const CreditsPage = lazy(() => import('@/pages/CreditsPage'));
 const RepairPage = lazy(() => import('@/pages/RepairPage'));
 const AuditLogPage = lazy(() => import('@/pages/AuditLogPage'));
+const QuickTillPage = lazy(() => import('@/pages/QuickTillPage'));
+const PriceListPage = lazy(() => import('@/pages/PriceListPage'));
+const CashUpPage = lazy(() => import('@/pages/CashUpPage'));
+const ContactsPage = lazy(() => import('@/pages/ContactsPage'));
+const PurchasingPage = lazy(() => import('@/pages/PurchasingPage'));
+const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuthStore();
@@ -216,11 +223,39 @@ export default function App() {
           }
         >
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="till" element={<QuickTillPage />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="inventory/new" element={<AddItemPage />} />
           <Route path="inventory/:id/edit" element={<EditItemPage />} />
+          <Route path="inventory/:id" element={<ItemDetailPage />} />
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="sales" element={<SalesHistoryPage />} />
+          <Route path="share" element={<PriceListPage />} />
+          <Route
+            path="cashup"
+            element={
+              <StaffRedirect>
+                <CashUpPage />
+              </StaffRedirect>
+            }
+          />
+          <Route path="contacts" element={<ContactsPage />} />
+          <Route
+            path="purchasing"
+            element={
+              <StaffRedirect>
+                <PurchasingPage />
+              </StaffRedirect>
+            }
+          />
+          <Route
+            path="analytics"
+            element={
+              <StaffRedirect>
+                <AnalyticsPage />
+              </StaffRedirect>
+            }
+          />
           <Route
             path="audit-log"
             element={
@@ -238,6 +273,7 @@ export default function App() {
             }
           />
           <Route path="repair" element={<RepairPage />} />
+          <Route path="repairs" element={<Navigate to="/repair" replace />} />
           <Route path="engineers" element={<Navigate to="/repair" replace />} />
           <Route
             path="reports"

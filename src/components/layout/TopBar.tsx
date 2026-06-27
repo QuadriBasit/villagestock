@@ -1,287 +1,171 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useLocation, useNavigate, NavLink } from 'react-router-dom';
-import { Bell, ChevronsLeft, ChevronsRight, LogOut, Moon, Search, Settings, Sun, Wifi, WifiOff, Menu, BarChart3, Wrench, ClipboardList } from 'lucide-react';
-import { useAuthStore } from '@/store/auth';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Bell, Menu, Search, ShoppingCart, Truck } from 'lucide-react';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
-import { getAccountInitial } from '@/lib/userDisplay';
-import { useSidebarLayout } from './SidebarLayoutContext';
-import { useSyncStatus } from '@/hooks/useSyncStatus';
-import { useTheme } from '@/components/theme/ThemeProvider';
-import { useInventoryStore } from '@/store/inventory';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
+import { useAuthStore } from '@/store/auth';
 import { signOutApp } from '@/lib/signOutApp';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/Select';
+import { PAGE_TITLES } from '@/config/navigation';
+import { useSidebarLayout } from './SidebarLayoutContext';
+import { CommandPalette } from './CommandPalette';
+import { AppBrand } from './AppBrand';
+import { Button } from '@/components/ui/Button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
+import { cn } from '@/lib/utils';
 
-const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/inventory': 'Inventory',
-  '/inventory/new': 'Add Item',
-  '/alerts': 'Low Stock Alerts',
-  '/sales': 'Sales History',
-  '/credits': 'Credits',
-  '/repair': 'Repair',
-  '/reports': 'Reports',
-  '/reports/stock-sessions': 'Stock sessions',
-  '/settings': 'Settings',
-  '/audit-log': 'Audit log',
-};
+function ShellIconButton({
+  children,
+  className,
+  badge,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { badge?: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        'relative grid size-[38px] shrink-0 place-items-center rounded-[10px] border border-shell-line bg-shell-surface text-shell-muted transition-colors hover:border-violet-400/40 hover:text-shell-ink',
+        className
+      )}
+      {...props}
+    >
+      {children}
+      {badge}
+    </button>
+  );
+}
 
 export default function TopBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { canManageBusinessSettings, status: shopAccessStatus, canAccessFinancialNav } = useShopAccess();
+  const { canManageBusinessSettings, status: shopAccessStatus } = useShopAccess();
   const { locations, activeLocationId, setActiveLocationId, ready: locationReady } = useShopLocation();
-  const { profile: businessProfile } = useBusinessProfile();
-  const { collapsed: sidebarCollapsed, toggleCollapsed } = useSidebarLayout();
+  const { profile } = useBusinessProfile();
+  const { setMobileOpen } = useSidebarLayout();
   const { isOnline, pendingCount } = useSyncStatus();
-  const { resolved, toggle } = useTheme();
-  const filtersSearch = useInventoryStore((s) => s.filters.search);
-  const setInventoryFilters = useInventoryStore((s) => s.setFilters);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [accountOpen, setAccountOpen] = useState(false);
-  const accountMenuRef = useRef<HTMLDivElement>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const mobileMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!accountOpen && !mobileMenuOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (accountOpen && accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
-        setAccountOpen(false);
-      }
-      if (mobileMenuOpen && mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
-        setMobileMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [accountOpen, mobileMenuOpen]);
+  const [commandOpen, setCommandOpen] = useState(false);
 
   const isEditPage = location.pathname.includes('/edit');
   const title = isEditPage
-    ? 'Edit Item'
+    ? 'Edit item'
     : location.pathname.startsWith('/stock/close/')
       ? 'Close stock'
       : /^\/reports\/stock-sessions\/.+/.test(location.pathname)
         ? 'Stock session'
-        : (PAGE_TITLES[location.pathname] ?? 'VillageStock');
-  const avatarLetter = getAccountInitial({
-    ownerName: businessProfile?.owner_name,
-    email: user?.email,
-    phone: user?.phone,
-  });
-  const accountTitle = [businessProfile?.owner_name?.trim(), user?.email ?? user?.phone]
-    .filter(Boolean)
-    .join(' · ') || 'Account';
+        : (PAGE_TITLES[location.pathname] ?? 'Village Stock');
 
   useEffect(() => {
-    if (location.pathname === '/inventory') setSearchQuery(filtersSearch);
-  }, [location.pathname, filtersSearch]);
+    const h = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandOpen(o => !o);
+      }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
 
-  const onSearchSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    setInventoryFilters({ search: q });
-    navigate('/inventory');
-  };
+  const accountInitial = (profile?.owner_name?.[0] ?? user?.email?.[0] ?? 'A').toUpperCase();
+  const showBadge = !isOnline || pendingCount > 0;
 
   return (
-    <header
-      className="relative flex h-[3.65rem] items-center overflow-visible border-b border-zinc-200/80 bg-white/90 px-3 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#111827]/90 md:h-[3.85rem] md:px-5 lg:px-6"
-    >
-      <div className="relative flex min-w-0 flex-1 min-h-0 items-center gap-2.5 md:gap-3">
-        <div className="flex items-center gap-2 lg:hidden" ref={mobileMenuRef}>
-          <button
-            type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/10"
-            onClick={() => setMobileMenuOpen((o) => !o)}
-            aria-label="Open menu"
-            aria-expanded={mobileMenuOpen}
-          >
+    <>
+      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-shell-line bg-[#0b0f1a]/82 px-3 py-3 backdrop-blur-md sm:gap-4 sm:px-[26px] max-lg:gap-2">
+        <div className="flex min-w-0 items-center gap-3">
+          <ShellIconButton className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
             <Menu size={20} />
-          </button>
-          {mobileMenuOpen && (
-            <div
-              className="absolute left-0 top-[calc(100%+0.35rem)] z-[200] min-w-[12rem] rounded-xl border border-zinc-200/90 bg-white py-1.5 shadow-xl dark:border-zinc-600 dark:bg-zinc-900 dark:shadow-black/40"
-            >
-              {canAccessFinancialNav ? (
-                <>
-                  <NavLink
-                    to="/reports"
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <BarChart3 size={18} className="shrink-0 text-zinc-500" />
-                    Reports
-                  </NavLink>
-                  <NavLink
-                    to="/audit-log"
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <ClipboardList size={18} className="shrink-0 text-zinc-500" />
-                    Audit log
-                  </NavLink>
-                </>
-              ) : null}
-              <NavLink
-                to="/repair"
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Wrench size={18} className="shrink-0 text-zinc-500" />
-                Repair
-              </NavLink>
-            </div>
-          )}
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-br from-primary to-[#5849c4] shadow-sm shadow-[#6c5ce7]/20">
-            <span className="text-[10px] font-extrabold tracking-tight text-white">VS</span>
+          </ShellIconButton>
+
+          <div className="lg:hidden">
+            <AppBrand compact />
           </div>
+
+          <span className="hidden font-display text-sm font-semibold text-shell-ink lg:inline">{title}</span>
+
+          {shopAccessStatus === 'ready' && locationReady && locations.length > 0 ? (
+            <div className="flex h-[38px] min-w-0 shrink items-center gap-2 rounded-[10px] border border-shell-line bg-shell-surface px-2.5 pl-3 text-shell-muted sm:gap-2">
+              <Truck size={15} className="shrink-0" />
+              <Select
+                value={activeLocationId ?? undefined}
+                onValueChange={setActiveLocationId}
+              >
+                <SelectTrigger
+                  aria-label="Branch"
+                  className="h-auto min-w-0 max-w-[96px] gap-1 border-none bg-transparent px-0 py-0 font-semibold text-[13.5px] text-shell-ink shadow-none focus:ring-0 sm:max-w-[140px] [&>svg]:size-3.5 [&>svg]:opacity-50"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map(loc => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
         </div>
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          className="hidden shrink-0 rounded-xl p-2 text-zinc-600 transition-colors hover:bg-zinc-100 lg:inline-flex dark:text-zinc-300 dark:hover:bg-white/10"
-          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {sidebarCollapsed ? <ChevronsRight size={20} strokeWidth={2} /> : <ChevronsLeft size={20} strokeWidth={2} />}
-        </button>
-        <h1 className="truncate text-[1.05rem] font-semibold leading-none tracking-tight text-[#0f172a] dark:text-white md:text-lg">
-          {title}
-        </h1>
-        {shopAccessStatus === 'ready' && locationReady && locations.length > 0 ? (
-          <Select value={activeLocationId ?? undefined} onValueChange={setActiveLocationId}>
-            <SelectTrigger
-              aria-label="Active branch"
-              className="h-8 w-auto max-w-[9.5rem] shrink-0 gap-1 rounded-lg border-zinc-200/90 bg-zinc-50/95 px-2 py-0 text-[11px] font-semibold text-zinc-800 shadow-none ring-offset-0 focus:ring-primary/25 dark:border-zinc-600 dark:bg-zinc-900/80 dark:text-zinc-100 md:h-9 md:max-w-[11rem] md:text-xs [&_svg]:size-3.5 [&_svg]:opacity-70"
-            >
-              <SelectValue placeholder="Branch" />
-            </SelectTrigger>
-            <SelectContent align="start" sideOffset={4}>
-              {locations.map(loc => (
-                <SelectItem key={loc.id} value={loc.id} className="text-xs md:text-sm">
-                  {loc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : null}
-      </div>
 
-      <form
-        onSubmit={onSearchSubmit}
-        className="mx-2 hidden min-w-0 max-w-xl flex-1 md:block"
-        role="search"
-      >
-        <label className="relative block w-full">
-          <span className="sr-only">Search inventory</span>
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500"
-            aria-hidden
-          />
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search inventory…"
-            className="w-full rounded-xl border border-zinc-200/90 bg-zinc-50/95 py-2 pl-9 pr-3 text-sm text-[#0f172a] outline-none transition placeholder:text-zinc-400 focus:border-primary/35 focus:ring-2 focus:ring-primary/15 dark:border-zinc-700/90 dark:bg-zinc-900/70 dark:text-white dark:placeholder:text-zinc-500"
-          />
-        </label>
-      </form>
-
-      <div className="relative flex shrink-0 items-center gap-0.5 sm:gap-1">
-        <span
-          className="hidden items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400 sm:flex"
-          title={isOnline ? 'Online' : 'Offline'}
-        >
-          {isOnline ? (
-            <Wifi size={15} className="shrink-0 text-teal-600 dark:text-teal-400" />
-          ) : (
-            <WifiOff size={15} className="shrink-0 text-amber-600 dark:text-amber-400" />
-          )}
-          {!isOnline && <span>Offline</span>}
-          {pendingCount > 0 && (
-            <span className="ml-0.5 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
-              {pendingCount}
-            </span>
-          )}
-        </span>
-
-        <button
-          type="button"
-          onClick={toggle}
-          className="rounded-xl p-2.5 text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/10"
-          aria-label={resolved === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {resolved === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
-        </button>
-
-        <button
-          onClick={() => navigate('/alerts')}
-          className="relative rounded-xl p-2.5 text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/10"
-          aria-label="Alerts"
-        >
-          <Bell size={20} />
-        </button>
-
-        <div className="relative" ref={accountMenuRef}>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
           <button
             type="button"
-            onClick={() => setAccountOpen(o => !o)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/12 text-sm font-semibold text-primary transition-colors hover:bg-primary/18 dark:bg-primary/20 dark:text-violet-200 dark:hover:bg-primary/28"
-            title={accountTitle}
-            aria-expanded={accountOpen}
-            aria-haspopup="menu"
-            aria-label="Account menu"
+            onClick={() => setCommandOpen(true)}
+            className="hidden h-[38px] w-60 items-center gap-2 rounded-[10px] border border-shell-line bg-shell-surface px-3 text-left text-shell-muted transition-colors hover:border-violet-400/40 hover:text-shell-ink md:flex"
           >
-            {avatarLetter}
+            <Search size={16} className="shrink-0" />
+            <span className="flex-1 text-[13.5px]">Search anything…</span>
+            <kbd className="rounded-md border border-shell-line bg-shell-surface-2 px-1.5 py-0.5 font-mono text-[10.5px] text-shell-muted">
+              ⌘K
+            </kbd>
           </button>
-          {accountOpen ? (
-            <div
-              role="menu"
-              className="absolute right-0 top-[calc(100%+0.35rem)] z-[200] min-w-[12.5rem] rounded-xl border border-zinc-200/90 bg-white py-1 shadow-xl dark:border-zinc-600 dark:bg-zinc-900 dark:shadow-black/40"
-            >
-              <p className="truncate px-3 py-2 text-[11px] text-zinc-500 dark:text-zinc-400" title={user?.email ?? ''}>
-                {user?.email ?? 'Signed in'}
-              </p>
-              {shopAccessStatus === 'ready' && canManageBusinessSettings ? (
+
+          <ShellIconButton onClick={() => navigate('/alerts')} aria-label="Alerts" badge={
+            showBadge ? (
+              <span className="absolute -right-1 -top-1 grid min-h-[17px] min-w-[17px] place-items-center rounded-full border-2 border-[#0b0f1a] bg-violet-400 px-1 font-mono text-[10.5px] font-bold text-[#160a2e]">
+                {pendingCount > 9 ? '9+' : pendingCount || '!'}
+              </span>
+            ) : undefined
+          }>
+            <Bell size={19} />
+          </ShellIconButton>
+
+          <Button size="sm" className="h-9 shrink-0 bg-violet-400 text-[#160a2e] hover:bg-violet-300" onClick={() => navigate('/till')}>
+            <ShoppingCart size={16} />
+            <span className="hidden min-[561px]:inline">New sale</span>
+          </Button>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <ShellIconButton aria-label="Account">{accountInitial}</ShellIconButton>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-48 border-shell-line bg-shell-surface p-1 text-shell-ink">
+              <p className="px-2.5 py-2 text-[11px] text-shell-muted">{user?.email}</p>
+              {canManageBusinessSettings ? (
                 <button
                   type="button"
-                  role="menuitem"
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
-                  onClick={() => {
-                    setAccountOpen(false);
-                    navigate('/settings');
-                  }}
+                  className="flex w-full rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-shell-ink hover:bg-shell-surface-2"
+                  onClick={() => navigate('/settings')}
                 >
-                  <Settings size={16} className="shrink-0 text-zinc-500" />
-                  Shop settings
+                  Settings
                 </button>
               ) : null}
               <button
                 type="button"
-                role="menuitem"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/10"
-                onClick={() => {
-                  setAccountOpen(false);
-                  void signOutApp();
-                }}
+                className="flex w-full rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-shell-ink hover:bg-shell-surface-2"
+                onClick={() => void signOutApp()}
               >
-                <LogOut size={16} className="shrink-0 text-zinc-500" />
                 Sign out
               </button>
-            </div>
-          ) : null}
+            </PopoverContent>
+          </Popover>
         </div>
-      </div>
-    </header>
+      </header>
+
+      <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} />
+    </>
   );
 }

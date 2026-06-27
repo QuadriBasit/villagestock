@@ -4,8 +4,15 @@ import { db } from '@/lib/db';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
-import { AlertTriangle, XCircle, Package, ChevronRight, Pencil } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Package, XCircle, ChevronRight, Pencil } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { StatCard, StatGrid } from '@/components/ui/StatCard';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
+import { CategoryThumb } from '@/components/inventory/CategoryThumb';
+import { DashboardSectionHead } from '@/components/dashboard/DashboardSectionHead';
 import { AlertsSkeletonList } from '@/components/ui/Skeleton';
 import type { InventoryItem } from '@/types';
 
@@ -25,15 +32,12 @@ export default function AlertsPage() {
       .filter(i => !i.deleted && i.location_id === activeLocationId)
       .toArray();
 
-    // ── Non-serialized qty alerts ─────────────────────────────────────────────
     const nonSerialized = items.filter(i => i.mode === 'non_serialized');
     const outOfStock = nonSerialized.filter(i => i.quantity === 0);
     const lowStock = nonSerialized.filter(
-      i => i.quantity > 0 && i.quantity <= Math.max(i.low_stock_threshold, CRITICAL_FLOOR)
+      i => i.quantity > 0 && i.quantity <= Math.max(i.low_stock_threshold, CRITICAL_FLOOR),
     );
 
-    // ── Serialized: "last unit" warnings ──────────────────────────────────────
-    // Group in_stock serialized items by model (brand + name)
     const serializedInStock = items.filter(i => i.mode === 'serialized' && i.status === 'in_stock');
     const modelMap = new Map<string, InventoryItem[]>();
     for (const item of serializedInStock) {
@@ -41,7 +45,6 @@ export default function AlertsPage() {
       if (!modelMap.has(key)) modelMap.set(key, []);
       modelMap.get(key)!.push(item);
     }
-    // Models with exactly 1 unit remaining — use that unit as the representative item
     const lastUnits = [...modelMap.values()]
       .filter(units => units.length === 1)
       .map(units => units[0]);
@@ -54,165 +57,183 @@ export default function AlertsPage() {
   const { lowStock = [], outOfStock = [], lastUnits = [] } = alerts ?? {};
   const total = lowStock.length + outOfStock.length + lastUnits.length;
 
-  return (
-    <div className="app-page py-5 md:py-8 space-y-5">
-      {total === 0 ? (
-        <div className="flex flex-col items-center py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-950/45 flex items-center justify-center mb-3">
-            <Package size={28} className="text-green-500 dark:text-green-400" />
-          </div>
-          <h2 className="font-heading font-semibold text-dark dark:text-zinc-100 text-lg">All good!</h2>
-          <p className="text-muted text-sm mt-1">No stock alerts at the moment</p>
+  if (total === 0) {
+    return (
+      <div className="app-page flex flex-col items-center px-4 py-20 text-center">
+        <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-emerald-500/10">
+          <CheckCircle2 size={28} className="text-emerald-400" />
         </div>
-      ) : (
-        <>
-          <p className="text-muted text-sm">
-            {total} alert{total !== 1 ? 's' : ''} need{total === 1 ? 's' : ''} your attention
-          </p>
+        <h2 className="font-display text-lg font-semibold text-shell-ink">All good</h2>
+        <p className="mt-1 text-sm text-shell-muted">No stock alerts at the moment.</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-4 border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
+          onClick={() => navigate('/inventory')}
+        >
+          <Package size={16} />
+          View inventory
+        </Button>
+      </div>
+    );
+  }
 
-          {/* Out of stock (non-serialized) */}
-          {outOfStock.length > 0 && (
-            <AlertSection
-              title="Out of Stock"
-              count={outOfStock.length}
-              icon={<XCircle size={16} className="text-red-500" />}
-              items={outOfStock}
-              variant="error"
-              onEdit={id => navigate(`/inventory/${id}/edit`)}
-            />
-          )}
+  return (
+    <div className="app-page space-y-4 py-4 md:py-5">
+      <PageHeader
+        title="Stock alerts"
+        subtitle={`${total} alert${total !== 1 ? 's' : ''} need${total === 1 ? 's' : ''} your attention`}
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
+          onClick={() => navigate('/inventory')}
+        >
+          <Package size={16} />
+          Inventory
+        </Button>
+      </PageHeader>
 
-          {/* Last unit — serialized */}
-          {lastUnits.length > 0 && (
-            <AlertSection
-              title="Last Unit"
-              count={lastUnits.length}
-              icon={<AlertTriangle size={16} className="text-orange-500" />}
-              items={lastUnits}
-              variant="last_unit"
-              onEdit={id => navigate(`/inventory/${id}/edit`)}
-            />
-          )}
+      <StatGrid className="lg:grid-cols-3">
+        <StatCard
+          label="Out of stock"
+          value={String(outOfStock.length)}
+          icon={XCircle}
+          iconClassName="bg-red-500/10 text-red-400"
+        />
+        <StatCard
+          label="Low stock"
+          value={String(lowStock.length)}
+          icon={AlertTriangle}
+          iconClassName="bg-amber-500/10 text-amber-400"
+        />
+        <StatCard
+          label="Last unit"
+          value={String(lastUnits.length)}
+          icon={Package}
+          iconClassName="bg-orange-500/10 text-orange-400"
+        />
+      </StatGrid>
 
-          {/* Low stock (non-serialized) */}
-          {lowStock.length > 0 && (
-            <AlertSection
-              title="Low Stock"
-              count={lowStock.length}
-              icon={<AlertTriangle size={16} className="text-accent" />}
-              items={lowStock}
-              variant="warning"
-              onEdit={id => navigate(`/inventory/${id}/edit`)}
-            />
-          )}
-        </>
-      )}
+      <div className="space-y-4">
+        {outOfStock.length > 0 ? (
+          <AlertSection
+            title="Out of stock"
+            count={outOfStock.length}
+            tone="error"
+            items={outOfStock}
+            onEdit={id => navigate(`/inventory?edit=${id}`)}
+          />
+        ) : null}
+
+        {lastUnits.length > 0 ? (
+          <AlertSection
+            title="Last unit"
+            count={lastUnits.length}
+            tone="last_unit"
+            items={lastUnits}
+            onEdit={id => navigate(`/inventory?edit=${id}`)}
+          />
+        ) : null}
+
+        {lowStock.length > 0 ? (
+          <AlertSection
+            title="Low stock"
+            count={lowStock.length}
+            tone="warning"
+            items={lowStock}
+            onEdit={id => navigate(`/inventory?edit=${id}`)}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+type AlertTone = 'error' | 'warning' | 'last_unit';
 
-type AlertVariant = 'error' | 'warning' | 'last_unit';
-
-interface AlertSectionProps {
+function AlertSection({
+  title,
+  count,
+  tone,
+  items,
+  onEdit,
+}: {
   title: string;
   count: number;
-  icon: React.ReactNode;
+  tone: AlertTone;
   items: InventoryItem[];
-  variant: AlertVariant;
   onEdit: (id: string) => void;
-}
+}) {
+  const borderAccent =
+    tone === 'error' ? 'border-red-500/30' : tone === 'last_unit' ? 'border-orange-500/30' : 'border-amber-500/30';
 
-function AlertSection({ title, count, icon, items, variant, onEdit }: AlertSectionProps) {
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-2">
-        {icon}
-        <h3 className="font-heading font-semibold text-dark dark:text-zinc-100 text-sm">
-          {title} ({count})
-        </h3>
-      </div>
-      <div className="space-y-2">
-        {items.map(item => (
-          <AlertCard key={item.id} item={item} variant={variant} onEdit={() => onEdit(item.id)} />
-        ))}
-      </div>
-    </div>
+    <Card className={cn('overflow-hidden border-shell-line bg-shell-surface p-0 shadow-none', borderAccent, 'border-l-4')}>
+      <CardContent className="p-4 md:p-5">
+        <DashboardSectionHead title={`${title} (${count})`} />
+        <div className="flex flex-col gap-2">
+          {items.map(item => (
+            <AlertRow key={item.id} item={item} tone={tone} onEdit={() => onEdit(item.id)} />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
-interface AlertCardProps {
-  item: InventoryItem;
-  variant: AlertVariant;
-  onEdit: () => void;
-}
-
-function AlertCard({ item, variant, onEdit }: AlertCardProps) {
+function AlertRow({ item, tone, onEdit }: { item: InventoryItem; tone: AlertTone; onEdit: () => void }) {
   const isSerialized = item.mode === 'serialized';
-
-  const borderColor =
-    variant === 'error' ? 'border-l-red-500' :
-    variant === 'last_unit' ? 'border-l-orange-500' :
-    item.quantity < CRITICAL_FLOOR ? 'border-l-orange-500' : 'border-l-accent';
-
-  const iconBg =
-    variant === 'error' ? 'bg-red-50 dark:bg-red-950/45' : 'bg-orange-50 dark:bg-orange-950/40';
-
-  const badge = (() => {
-    if (variant === 'last_unit') {
-      return {
-        text: 'Last unit in stock!',
-        className: 'bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300',
-      };
-    }
-    if (variant === 'error') {
-      return { text: 'Out of stock', className: 'bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400' };
-    }
-    const isCritical = item.quantity < CRITICAL_FLOOR;
-    return {
-      text: isCritical ? `Only ${item.quantity} left!` : `${item.quantity} left (min: ${item.low_stock_threshold})`,
-      className: isCritical
-        ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300'
-        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/45 dark:text-yellow-300',
-    };
-  })();
+  const badge = alertBadge(item, tone);
 
   return (
-    <div
-      className={cn(
-        'ui-card flex items-center gap-3 rounded-xl px-4 py-3 border-l-4',
-        borderColor,
-      )}
+    <button
+      type="button"
+      onClick={onEdit}
+      className="flex w-full items-center gap-3 rounded-lg border border-shell-line/80 bg-shell-surface-2/20 px-3 py-3 text-left transition-colors hover:bg-shell-surface-2/50"
     >
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border border-slate-100 dark:border-zinc-700/80 ${iconBg}`}>
-        {variant === 'error'
-          ? <XCircle size={20} className="text-red-500" />
-          : <AlertTriangle size={20} className="text-orange-500" />
-        }
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="font-medium text-dark dark:text-zinc-100 text-sm truncate">{item.name}</div>
-        <div className="text-xs text-muted dark:text-zinc-400 capitalize">
+      <CategoryThumb category={item.category} size="sm" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13.5px] font-semibold text-shell-ink">{item.name}</p>
+        <p className="truncate text-xs capitalize text-shell-muted">
           {item.brand} · {item.category}
           {isSerialized && item.serial_number ? ` · S/N ${item.serial_number}` : ''}
-        </div>
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <span className="text-sm font-semibold text-primary">{formatCurrency(item.price)}</span>
-          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badge.className}`}>
-            {badge.text}
-          </span>
+        </p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold tabular-nums text-violet-200">{formatCurrency(item.price)}</span>
+          <Badge className={badge.className}>{badge.text}</Badge>
         </div>
       </div>
-
-      <button
-        onClick={onEdit}
-        className="flex items-center gap-1 text-primary dark:text-primary-light text-xs font-medium shrink-0 hover:underline"
-      >
-        <Pencil size={12} /> Edit
+      <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-violet-400">
+        <Pencil size={12} />
+        Edit
         <ChevronRight size={14} />
-      </button>
-    </div>
+      </span>
+    </button>
   );
+}
+
+function alertBadge(item: InventoryItem, tone: AlertTone) {
+  if (tone === 'last_unit') {
+    return {
+      text: 'Last unit',
+      className: 'border-orange-500/25 bg-orange-500/10 text-orange-300',
+    };
+  }
+  if (tone === 'error') {
+    return {
+      text: 'Empty',
+      className: 'border-red-500/25 bg-red-500/10 text-red-300',
+    };
+  }
+  const isCritical = item.quantity < CRITICAL_FLOOR;
+  return {
+    text: isCritical
+      ? `Only ${item.quantity} left`
+      : `${item.quantity} left · min ${item.low_stock_threshold}`,
+    className: isCritical
+      ? 'border-orange-500/25 bg-orange-500/10 text-orange-300'
+      : 'border-amber-500/25 bg-amber-500/10 text-amber-300',
+  };
 }

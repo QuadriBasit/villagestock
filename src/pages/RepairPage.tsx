@@ -1,24 +1,39 @@
-import { useMemo, useState } from 'react';
-import { Phone, Wrench, X } from 'lucide-react';
-import { useActiveRepairs } from '@/hooks/useRepairs';
-import { useRepairActions } from '@/hooks/useRepairActions';
-import { db } from '@/lib/db';
+import { lazy, Suspense, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Wrench } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useActiveRepairs } from '@/hooks/useRepairs';
+import { db } from '@/lib/db';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import type { DeviceCondition, InventoryItem, RepairRecord } from '@/types';
-import {
-  modalSheetBackdrop,
-  modalSheetBodyScroll,
-  modalSheetHandle,
-  modalSheetHeader,
-  modalSheetPanelMd,
-} from '@/lib/modalSheet';
-import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/components/ui/Card';
+import { cn, formatCurrency } from '@/lib/utils';
+import { daysOut, isRepairOverdue, REPAIR_STATUS_LABEL } from '@/lib/repair';
+import { formatIdentifier, identifierKindForItem, primaryIdentifier } from '@/lib/inventoryDisplay';
+import type { InventoryItem, RepairRecord, RepairStatus } from '@/types';
+
+const RepairDetailModal = lazy(() => import('@/components/repair/RepairDetailModal'));
+
+type ViewMode = 'board' | 'engineer';
+
+const VIEW_TABS: { value: ViewMode; label: string }[] = [
+  { value: 'board', label: 'Board' },
+  { value: 'engineer', label: 'By engineer' },
+];
+
+const KANBAN_COLS: { key: RepairStatus; label: string; dot: string }[] = [
+  { key: 'sent', label: 'Diagnosing', dot: 'bg-violet-400' },
+  { key: 'in_progress', label: 'In progress', dot: 'bg-blue-400' },
+  { key: 'completed', label: 'Ready for pickup', dot: 'bg-emerald-400' },
+];
 
 export default function RepairPage() {
+  const navigate = useNavigate();
   const { repairs, isLoading } = useActiveRepairs();
+  const [view, setView] = useState<ViewMode>('board');
   const [selected, setSelected] = useState<RepairRecord | null>(null);
+
   const itemIds = useMemo(() => repairs.map(record => record.item_id), [repairs]);
   const items = useLiveQuery(async (): Promise<InventoryItem[]> => {
     if (!itemIds.length) return [];
@@ -26,190 +41,230 @@ export default function RepairPage() {
     return rows.filter((item): item is InventoryItem => !!item);
   }, [itemIds.join('|')]);
   const itemMap = new Map((items ?? []).map(item => [item.id, item]));
+
   const groups = useMemo(() => {
     const map = new Map<string, RepairRecord[]>();
     for (const record of repairs) {
       if (!map.has(record.engineer_name)) map.set(record.engineer_name, []);
       map.get(record.engineer_name)!.push(record);
     }
-    return [...map.entries()];
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [repairs]);
 
-  if (isLoading) return <div className="px-4 py-8 text-sm text-muted dark:text-zinc-400">Loading repairs…</div>;
+  if (isLoading) {
+    return <div className="app-page py-8 text-sm text-shell-muted">Loading repairs…</div>;
+  }
+
+  if (repairs.length === 0) {
+    return (
+      <div className="app-page flex flex-col items-center px-4 py-20 text-center">
+        <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-violet-400/10">
+          <Wrench size={28} className="text-violet-300" />
+        </div>
+        <h2 className="font-display text-lg font-semibold text-shell-ink">No items out for repair</h2>
+        <p className="mt-1 max-w-sm text-sm text-shell-muted">
+          Send a device from inventory to a repair shop or technician to track it here.
+        </p>
+        <Button
+          className="mt-4 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          onClick={() => navigate('/inventory')}
+        >
+          <Plus size={16} />
+          Send item
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="app-page space-y-4 py-5 md:py-8">
-      <div>
-        <h2 className="font-heading text-xl font-bold text-dark dark:text-zinc-100">Repair</h2>
-        <p className="text-sm text-muted dark:text-zinc-400">
-          Items out for repair, grouped by repair shop or technician.
-        </p>
+    <div className="app-page space-y-4 py-4 md:py-5">
+      <PageHeader
+        title="Repairs & refurb"
+        subtitle={`${repairs.length} active ticket${repairs.length === 1 ? '' : 's'}`}
+      >
+        <Button
+          size="sm"
+          className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          onClick={() => navigate('/inventory')}
+        >
+          <Plus size={16} />
+          Send item
+        </Button>
+      </PageHeader>
+
+      <div className="overflow-hidden rounded-lg border border-shell-line bg-shell-surface">
+        <div className="flex gap-0 overflow-x-auto px-1" role="tablist" aria-label="Repairs view">
+          {VIEW_TABS.map(t => {
+            const active = view === t.value;
+            return (
+              <button
+                key={t.value}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setView(t.value)}
+                className={cn(
+                  'relative shrink-0 px-3.5 py-2.5 text-xs font-medium transition-colors',
+                  active
+                    ? 'text-shell-ink after:absolute after:inset-x-3.5 after:bottom-0 after:h-px after:bg-shell-ink/70'
+                    : 'text-shell-muted hover:text-shell-ink'
+                )}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      {groups.length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted dark:text-zinc-400">
-            No items currently out for repair.
-          </CardContent>
-        </Card>
+
+      {view === 'board' ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          {KANBAN_COLS.map(col => {
+            const records = repairs.filter(r => r.repair_status === col.key);
+            return (
+              <div key={col.key} className="flex min-w-0 flex-col gap-3">
+                <div className="flex items-center gap-2 px-1">
+                  <span className={cn('size-2 rounded-full', col.dot)} />
+                  <span className="text-sm font-semibold text-shell-ink">{col.label}</span>
+                  <span className="ml-auto font-mono text-xs tabular-nums text-shell-muted">{records.length}</span>
+                </div>
+                {records.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-shell-line px-3 py-8 text-center text-xs text-shell-muted">
+                    No tickets
+                  </div>
+                ) : (
+                  records.map(record => (
+                    <RepairCard
+                      key={record.id}
+                      record={record}
+                      item={itemMap.get(record.item_id)}
+                      onOpen={() => setSelected(record)}
+                    />
+                  ))
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
-        groups.map(([repairContactName, records]) => (
-          <Card key={repairContactName}>
-            <CardHeader>
-              <CardTitle>{repairContactName}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {records.map(record => {
-                const item = itemMap.get(record.item_id);
-                const overdue = !!record.expected_return_date && new Date(record.expected_return_date) < new Date();
-                return (
-                  <button
-                    key={record.id}
-                    type="button"
-                    onClick={() => setSelected(record)}
-                    className={`w-full rounded-xl border px-4 py-3 text-left shadow-sm ring-1 ring-slate-900/[0.04] transition-colors dark:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)] dark:ring-white/[0.06] ${
-                      overdue
-                        ? 'border-red-200 bg-red-50/40 dark:border-red-900/55 dark:bg-red-950/40'
-                        : 'border-slate-900/[0.06] bg-white dark:border-zinc-700/80 dark:bg-zinc-900/90'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-medium text-dark dark:text-zinc-100">
-                          {item ? `${item.brand} ${item.name}` : 'Unknown item'}
-                        </div>
-                        <div className="text-xs text-muted dark:text-zinc-400">
-                          {item?.imei || item?.serial_number || 'No IMEI / serial'}
-                        </div>
-                      </div>
-                      <div className={`text-xs ${overdue ? 'text-red-500 dark:text-red-400' : 'text-muted dark:text-zinc-500'}`}>
-                        {daysOut(record.date_sent)} out
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </CardContent>
-          </Card>
-        ))
+        <div className="space-y-4">
+          {groups.map(([engineerName, records]) => (
+            <Card key={engineerName} className="border-shell-line bg-shell-surface p-0 shadow-none">
+              <div className="border-b border-shell-line px-4 py-3">
+                <h3 className="font-display text-sm font-semibold text-shell-ink">{engineerName}</h3>
+                <p className="text-xs text-shell-muted">
+                  {records.length} item{records.length === 1 ? '' : 's'}
+                </p>
+              </div>
+              <div className="divide-y divide-shell-line">
+                {records.map(record => {
+                  const overdue = isRepairOverdue(record);
+                  return (
+                    <button
+                      key={record.id}
+                      type="button"
+                      onClick={() => setSelected(record)}
+                      className={cn(
+                        'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-shell-surface-2/50',
+                        overdue && 'bg-red-500/[0.06]'
+                      )}
+                    >
+                      <RepairCardContent record={record} item={itemMap.get(record.item_id)} compact />
+                      <span
+                        className={cn(
+                          'shrink-0 font-mono text-xs tabular-nums',
+                          overdue ? 'text-red-400' : 'text-shell-muted'
+                        )}
+                      >
+                        {daysOut(record.date_sent)}d
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+          ))}
+        </div>
       )}
-      {selected && (
-        <RepairDetailsModal
-          record={selected}
-          itemName={itemMap.get(selected.item_id)?.name}
-          onClose={() => setSelected(null)}
-        />
-      )}
+
+      {selected ? (
+        <Suspense fallback={null}>
+          <RepairDetailModal
+            record={selected}
+            item={itemMap.get(selected.item_id)}
+            onClose={() => setSelected(null)}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }
 
-function RepairDetailsModal({
+function RepairCard({
   record,
-  itemName,
-  onClose,
+  item,
+  onOpen,
 }: {
   record: RepairRecord;
-  itemName?: string;
-  onClose: () => void;
+  item?: InventoryItem;
+  onOpen: () => void;
 }) {
-  const { updateRepairStatus, markCollected } = useRepairActions();
-  const [condition, setCondition] = useState<DeviceCondition>('working');
-  const [notes, setNotes] = useState('');
-
+  const overdue = isRepairOverdue(record);
   return (
-    <ModalSheetPortal>
-      <div className={modalSheetBackdrop} onClick={onClose}>
-        <div className={modalSheetPanelMd} onClick={e => e.stopPropagation()}>
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
-          </div>
-          <div className={modalSheetHeader}>
-            <div>
-              <h3 className="font-heading text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                {itemName || 'Repair job'}
-              </h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">{record.engineer_name}</p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              <X size={18} />
-            </button>
-          </div>
-          <div className={`${modalSheetBodyScroll} space-y-4 bg-zinc-50/70 dark:bg-zinc-950/35`}>
-            <Card>
-              <CardContent className="space-y-2 p-4">
-                <div className="text-sm text-dark dark:text-zinc-100">{record.issue_description}</div>
-                <div className="text-xs text-muted dark:text-zinc-400">
-                  Sent {new Date(record.date_sent).toLocaleDateString('en-NG')}
-                </div>
-                {record.expected_return_date && (
-                  <div className="text-xs text-muted dark:text-zinc-400">
-                    Expected {new Date(record.expected_return_date).toLocaleDateString('en-NG')}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" onClick={() => updateRepairStatus(record.id, 'completed')}>
-                Mark completed
-              </Button>
-              <a
-                href={record.engineer_phone ? `tel:${record.engineer_phone}` : undefined}
-                className={!record.engineer_phone ? 'pointer-events-none opacity-50' : ''}
-              >
-                <Button variant="outline" className="w-full">
-                  <Phone size={16} /> Call repair shop
-                </Button>
-              </a>
-            </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Mark collected</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200">Updated condition</label>
-                  <select
-                    value={condition}
-                    onChange={e => setCondition(e.target.value as DeviceCondition)}
-                    className="flex h-10 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-dark outline-none dark:border-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-100"
-                  >
-                    <option value="working">Working</option>
-                    <option value="minor_faults">Minor faults</option>
-                    <option value="major_faults">Major faults</option>
-                    <option value="not_working">Not working</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-dark dark:text-zinc-200">Notes</label>
-                  <textarea
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                    rows={2}
-                    className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-dark outline-none dark:border-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-100"
-                  />
-                </div>
-                <Button
-                  className="w-full"
-                  onClick={async () => {
-                    await markCollected(record.id, record.item_id, condition, notes || undefined);
-                    onClose();
-                  }}
-                >
-                  <Wrench size={16} /> Mark collected
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    </ModalSheetPortal>
+    <button
+      type="button"
+      onClick={onOpen}
+      className={cn(
+        'rounded-lg border border-shell-line bg-shell-surface p-3.5 text-left transition-colors hover:border-shell-muted/40 hover:bg-shell-surface-2/30',
+        overdue && 'border-red-500/30'
+      )}
+    >
+      <RepairCardContent record={record} item={item} />
+    </button>
   );
 }
 
-function daysOut(dateSent: string) {
-  return `${Math.max(1, Math.ceil((Date.now() - new Date(dateSent).getTime()) / 86400000))} days`;
+function RepairCardContent({
+  record,
+  item,
+  compact,
+}: {
+  record: RepairRecord;
+  item?: InventoryItem;
+  compact?: boolean;
+}) {
+  const title = item ? `${item.brand} ${item.name}`.trim() : 'Unknown item';
+  const idCode = item ? primaryIdentifier(item) : undefined;
+  const idKind = item ? identifierKindForItem(item) : null;
+
+  return (
+    <div className={cn('min-w-0 flex-1', compact && 'flex flex-col gap-0.5')}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-semibold text-shell-ink">{title}</p>
+        {!compact ? (
+          <span className="shrink-0 font-mono text-[10px] tabular-nums text-shell-muted">
+            {daysOut(record.date_sent)}d
+          </span>
+        ) : null}
+      </div>
+      <p className={cn('line-clamp-2 text-xs text-shell-muted', !compact && 'mt-1')}>{record.issue_description}</p>
+      <div className={cn('flex items-center justify-between gap-2', !compact ? 'mt-2.5 border-t border-shell-line pt-2.5' : 'mt-1')}>
+        <span className="text-xs text-shell-muted">{record.engineer_name}</span>
+        <div className="flex items-center gap-2">
+          {idCode && idKind ? (
+            <span className="font-mono text-[10px] text-shell-muted">{formatIdentifier(idCode, idKind)}</span>
+          ) : null}
+          {(record.repair_cost ?? 0) > 0 ? (
+            <span className="font-mono text-xs font-semibold tabular-nums text-shell-ink">
+              {formatCurrency(record.repair_cost!)}
+            </span>
+          ) : (
+            <Badge variant="secondary" className="border-shell-line bg-shell-surface-2 text-[10px] text-shell-muted">
+              {REPAIR_STATUS_LABEL[record.repair_status]}
+            </Badge>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -35,8 +35,21 @@ import { toast } from 'sonner';
 import type { ShopProfile, ReceiptTheme } from '@/types';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Input } from '@/components/ui/Input';
+import { ColorPickerField } from '@/components/ui/ColorPickerField';
 import { DEFAULT_RECEIPT_THEME } from '@/hooks/useShopProfile';
 import { extractDominantColor } from '@/lib/colorUtils';
+import { PageHeader } from '@/components/ui/PageHeader';
+import {
+  settingsPanel,
+  settingsField,
+  settingsLabel,
+  settingsInset,
+  settingsBtnPrimary,
+  settingsBtnOutline,
+  settingsBtnDanger,
+  settingsRoleChip,
+} from '@/components/settings/settingsUi';
+import { cn } from '@/lib/utils';
 
 const schema = z.object({
   shop_name: z.string().min(1, 'Shop name is required'),
@@ -59,8 +72,7 @@ type FormData = z.infer<typeof schema>;
 //   return status.charAt(0).toUpperCase() + status.slice(1);
 // }
 
-const panelClass =
-  'rounded-2xl border border-zinc-200/80 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/75';
+const panelClass = settingsPanel;
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -170,14 +182,13 @@ export default function SettingsPage() {
 
   const handleSignOut = () => void signOutApp();
 
-  const fieldClass =
-    'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-zinc-700 dark:bg-zinc-950/60 dark:text-zinc-100';
-  const labelClass = 'mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200';
+  const fieldClass = settingsField;
+  const labelClass = settingsLabel;
 
   if (isLoading || isBizLoading) {
     return (
-      <div className="flex justify-center py-20">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="app-page flex justify-center py-20">
+        <Loader2 className="size-8 animate-spin text-violet-400" />
       </div>
     );
   }
@@ -228,21 +239,28 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="app-page space-y-4 py-4 md:space-y-4 md:py-6">
-      <section className={`${panelClass} space-y-3`}>
-        <h3 className="font-heading text-sm font-semibold text-zinc-900 dark:text-zinc-100">Appearance</h3>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">Uses the header toggle for a quick switch; set default here.</p>
-        <div className="grid grid-cols-3 gap-2">
+    <div className="app-page space-y-5 py-4 md:py-6">
+      <PageHeader
+        title="Settings"
+        subtitle="Shop profile, team and how Village Stock runs day to day"
+      />
+
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
+      <section className={`${panelClass} space-y-3 lg:col-span-2 xl:col-span-full`}>
+        <h3 className="font-display text-sm font-semibold text-shell-ink">Appearance</h3>
+        <p className="text-xs text-shell-muted">Uses the header toggle for a quick switch; set default here.</p>
+        <div className="grid max-w-md grid-cols-3 gap-2">
           {themeChoices.map(({ id, label, icon }) => (
             <button
               key={id}
               type="button"
               onClick={() => setMode(id)}
-              className={`flex flex-col items-center gap-1 rounded-xl border py-2.5 text-xs font-semibold transition-colors ${
+              className={cn(
+                'flex flex-col items-center gap-1 rounded-xl border py-2.5 text-xs font-semibold transition-colors',
                 mode === id
-                  ? 'border-primary bg-primary/10 text-primary dark:bg-primary/15 dark:text-blue-300'
-                  : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-950/50 dark:text-zinc-300'
-              }`}
+                  ? 'border-violet-400/40 bg-violet-400/10 text-violet-200'
+                  : 'border-shell-line bg-shell-surface-2/40 text-shell-muted hover:text-shell-ink',
+              )}
             >
               {icon}
               {label}
@@ -254,10 +272,10 @@ export default function SettingsPage() {
       {/* Shop Profile */}
       <section className={`${panelClass} space-y-3`}>
         <div className="mb-0.5 flex items-center gap-2">
-          <Store size={18} className="text-primary" />
-          <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Shop Profile</h3>
+          <Store size={18} className="text-violet-300" />
+          <h3 className="font-display font-semibold text-shell-ink">Shop Profile</h3>
         </div>
-        <p className="-mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="-mt-1 text-xs text-shell-muted">
           This information appears on every receipt you generate.
         </p>
 
@@ -266,21 +284,21 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => logoInputRef.current?.click()}
-            className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 transition-colors hover:border-primary dark:border-zinc-600 dark:bg-zinc-950/50"
+            className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-shell-line bg-shell-surface-2/40 transition-colors hover:border-violet-400/45"
           >
             {currentLogo ? (
               <img src={currentLogo} alt="Shop logo" className="w-full h-full object-cover rounded-xl" />
             ) : (
-              <Camera size={22} className="text-zinc-400" />
+              <Camera size={22} className="text-shell-muted" />
             )}
           </button>
           <div>
-            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Shop Logo</p>
-            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Tap to upload (optional)</p>
+            <p className="text-sm font-medium text-shell-ink">Shop Logo</p>
+            <p className="mt-0.5 text-xs text-shell-muted">Tap to upload (optional)</p>
             <button
               type="button"
               onClick={() => logoInputRef.current?.click()}
-              className="text-xs text-primary mt-1 hover:underline"
+              className="text-xs text-violet-300 mt-1 hover:underline"
             >
               {currentLogo ? 'Change logo' : 'Upload logo'}
             </button>
@@ -297,10 +315,10 @@ export default function SettingsPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className={labelClass} htmlFor="shop_name">
-              <Store size={13} className="mr-1 inline text-zinc-400" />
+              <Store size={13} className="mr-1 inline text-shell-muted" />
               Shop Name *
             </label>
-            <input
+            <Input
               id="shop_name"
               {...register('shop_name')}
               placeholder="e.g. Basit Electronics"
@@ -313,10 +331,10 @@ export default function SettingsPage() {
 
           <div>
             <label className={labelClass} htmlFor="address">
-              <MapPin size={13} className="mr-1 inline text-zinc-400" />
+              <MapPin size={13} className="mr-1 inline text-shell-muted" />
               Shop Address
             </label>
-            <input
+            <Input
               id="address"
               {...register('address')}
               placeholder="e.g. Shop 14, Computer Village, Ikeja"
@@ -326,10 +344,10 @@ export default function SettingsPage() {
 
           <div>
             <label className={labelClass} htmlFor="phone">
-              <Phone size={13} className="mr-1 inline text-zinc-400" />
+              <Phone size={13} className="mr-1 inline text-shell-muted" />
               Phone Number
             </label>
-            <input
+            <Input
               id="phone"
               type="tel"
               inputMode="tel"
@@ -342,7 +360,7 @@ export default function SettingsPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-primary text-white rounded-xl py-3 font-heading font-semibold text-sm hover:bg-primary-dark transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            className={cn(settingsBtnPrimary, 'w-full py-3')}
           >
             {isSubmitting ? (
               <Loader2 size={16} className="animate-spin" />
@@ -357,37 +375,37 @@ export default function SettingsPage() {
 
       <section className={`${panelClass} space-y-3`}>
         <div className="mb-0.5 flex items-center gap-2">
-          <Layers size={18} className="text-primary" />
-          <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Receipt Design</h3>
+          <Layers size={18} className="text-violet-300" />
+          <h3 className="font-display font-semibold text-shell-ink">Receipt Design</h3>
         </div>
-        <p className="-mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="-mt-1 text-xs text-shell-muted">
           Set one receipt style for the whole shop. Every receipt preview, print, and export will use this design.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <ReceiptColorField
+          <ColorPickerField
             label="Header color"
             value={receiptTheme.header_color}
             onChange={value => setReceiptTheme(current => ({ ...current, header_color: value }))}
           />
-          <ReceiptColorField
+          <ColorPickerField
             label="Amount color"
             value={receiptTheme.accent_color}
             onChange={value => setReceiptTheme(current => ({ ...current, accent_color: value }))}
           />
-          <ReceiptColorField
+          <ColorPickerField
             label="Text color"
             value={receiptTheme.text_color}
             onChange={value => setReceiptTheme(current => ({ ...current, text_color: value }))}
           />
-          <ReceiptColorField
+          <ColorPickerField
             label="Paper color"
             value={receiptTheme.paper_color}
             onChange={value => setReceiptTheme(current => ({ ...current, paper_color: value }))}
           />
         </div>
 
-        <div className="rounded-2xl border border-zinc-200/80 p-4 dark:border-zinc-700">
+        <div className={cn(settingsInset, 'rounded-2xl p-4')}>
           <div
             className="overflow-hidden rounded-xl border"
             style={{
@@ -431,14 +449,14 @@ export default function SettingsPage() {
               toast.success('Receipt design saved');
               setTimeout(() => setThemeSaved(false), 2500);
             }}
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+            className={settingsBtnPrimary}
           >
             Save receipt design
           </button>
           <button
             type="button"
             onClick={() => setReceiptTheme(DEFAULT_RECEIPT_THEME)}
-            className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 dark:border-zinc-700 dark:bg-zinc-950/60 dark:text-zinc-200"
+            className={settingsBtnOutline}
           >
             Reset colors
           </button>
@@ -453,22 +471,22 @@ export default function SettingsPage() {
 
       <section className={`${panelClass} space-y-3`}>
         <div className="flex items-center gap-2">
-          <Layers size={18} className="text-primary" />
-          <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Branches</h3>
+          <Layers size={18} className="text-violet-300" />
+          <h3 className="font-display font-semibold text-shell-ink">Branches</h3>
         </div>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="text-xs text-shell-muted">
           Inventory, sales, and stock sessions are scoped to the branch you select in the header. Each branch has its own stock.
         </p>
         <div className="space-y-2">
-          <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">Your locations</p>
+          <p className="text-xs font-medium text-shell-ink">Your locations</p>
           {locations.length === 0 ? (
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">No branches loaded yet. Sync online once, or add a branch below.</p>
+            <p className="text-xs text-shell-muted">No branches loaded yet. Sync online once, or add a branch below.</p>
           ) : (
             <ul className="space-y-1.5">
               {locations.map(loc => (
                 <li
                   key={loc.id}
-                  className="rounded-lg border border-zinc-200 bg-zinc-50/80 px-3 py-2 text-xs font-medium text-zinc-900 dark:border-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-100"
+                  className="rounded-lg border border-shell-line bg-shell-surface-2/40 px-3 py-2 text-xs font-medium text-shell-ink"
                 >
                   {loc.name}
                 </li>
@@ -477,12 +495,12 @@ export default function SettingsPage() {
           )}
         </div>
         {canManageBusinessSettings && shopOwnerId ? (
-          <div className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
-            <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">Add a branch</p>
+          <div className="space-y-2 rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-3">
+            <p className="text-xs font-medium text-shell-ink">Add a branch</p>
             <label className={labelClass} htmlFor="new-branch-name">
               Branch name
             </label>
-            <input
+            <Input
               id="new-branch-name"
               type="text"
               value={newBranchName}
@@ -517,13 +535,13 @@ export default function SettingsPage() {
                   setBranchSubmitting(false);
                 }
               }}
-              className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+              className={cn(settingsBtnPrimary, 'w-full py-2.5')}
             >
               {branchSubmitting ? 'Saving…' : 'Add branch'}
             </button>
           </div>
         ) : (
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="text-xs text-shell-muted">
             Only the owner or a manager with access to all branches can add or rename branches.
           </p>
         )}
@@ -531,20 +549,20 @@ export default function SettingsPage() {
 
       <section className={`${panelClass} space-y-3`}>
         <div className="flex items-center gap-2">
-          <Users size={18} className="text-primary" />
-          <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Team &amp; roles</h3>
+          <Users size={18} className="text-violet-300" />
+          <h3 className="font-display font-semibold text-shell-ink">Team &amp; roles</h3>
         </div>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-shell-muted">
           Your role:{' '}
-          <span className="font-semibold capitalize text-zinc-900 dark:text-zinc-100">{role}</span>
+          <span className="font-semibold capitalize text-shell-ink">{role}</span>
         </p>
-        <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-          <strong className="text-zinc-700 dark:text-zinc-300">Staff</strong> can sell and manage stock but not profit,
-          credits, reports, or billing. <strong className="text-zinc-700 dark:text-zinc-300">Managers</strong> have
+        <p className="text-xs leading-relaxed text-shell-muted">
+          <strong className="text-shell-muted">Staff</strong> can sell and manage stock but not profit,
+          credits, reports, or billing. <strong className="text-shell-muted">Managers</strong> have
           wider access. You can limit each person to specific branches or give them the whole shop. Only the{' '}
-          <strong className="text-zinc-700 dark:text-zinc-300">Owner</strong> can remove people.{' '}
-          <strong className="text-zinc-700 dark:text-zinc-300">Owner</strong> or a{' '}
-          <strong className="text-zinc-700 dark:text-zinc-300">manager with all branches</strong> can edit branch access
+          <strong className="text-shell-muted">Owner</strong> can remove people.{' '}
+          <strong className="text-shell-muted">Owner</strong> or a{' '}
+          <strong className="text-shell-muted">manager with all branches</strong> can edit branch access
           after someone joins.
         </p>
 
@@ -557,19 +575,19 @@ export default function SettingsPage() {
               </p>
             ) : null}
 
-            <div className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+            <div className="space-y-3 rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-3">
               <div>
-                <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">Email invite (recommended)</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-                  We email them a secure link to <strong className="text-zinc-600 dark:text-zinc-300">choose a password</strong>
-                  . After they sign in with that email, they are attached to <strong className="text-zinc-600 dark:text-zinc-300">this shop</strong> automatically — they do not go through owner onboarding.
+                <p className="text-xs font-medium text-shell-ink">Email invite (recommended)</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-shell-muted">
+                  We email them a secure link to <strong className="text-shell-muted">choose a password</strong>
+                  . After they sign in with that email, they are attached to <strong className="text-shell-muted">this shop</strong> automatically — they do not go through owner onboarding.
                 </p>
               </div>
               <div>
                 <label className={labelClass} htmlFor="invite-email">
                   Their email
                 </label>
-                <input
+                <Input
                   id="invite-email"
                   type="email"
                   inputMode="email"
@@ -584,7 +602,7 @@ export default function SettingsPage() {
                 <label className={labelClass} htmlFor="invite-display">
                   Name on receipts *
                 </label>
-                <input
+                <Input
                   id="invite-display"
                   type="text"
                   value={inviteDisplayName}
@@ -607,27 +625,23 @@ export default function SettingsPage() {
                       key={opt.id}
                       type="button"
                       onClick={() => setMemberRole(opt.id)}
-                      className={`rounded-xl border px-3 py-2.5 text-left text-xs transition-colors ${
-                        memberRole === opt.id
-                          ? 'border-primary bg-primary/10 text-primary dark:bg-primary/15 dark:text-blue-300'
-                          : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950/50 dark:text-zinc-200 dark:hover:bg-zinc-900'
-                      }`}
+                      className={settingsRoleChip(memberRole === opt.id)}
                     >
                       <span className="block font-semibold">{opt.title}</span>
-                      <span className="mt-0.5 block text-[10px] text-zinc-500 dark:text-zinc-400">{opt.hint}</span>
+                      <span className="mt-0.5 block text-[10px] text-shell-muted">{opt.hint}</span>
                     </button>
                   ))}
                 </div>
               </div>
               {locations.length > 1 ? (
-                <div className="space-y-2 rounded-lg border border-zinc-200 bg-white/70 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-950/30">
+                <div className="space-y-2 rounded-lg border border-shell-line bg-shell-surface-2/30 px-3 py-2">
                   <p className={`${labelClass} mb-0`}>Branch access</p>
                   {inviterRestricted ? (
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    <p className="text-[11px] text-shell-muted">
                       Pick one or more branches they may use (you are limited to your own branches).
                     </p>
                   ) : (
-                    <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-800 dark:text-zinc-200">
+                    <label className="flex cursor-pointer items-center gap-2 text-xs text-shell-ink">
                       <Checkbox
                         checked={inviteAllBranches}
                         onCheckedChange={c => {
@@ -644,7 +658,7 @@ export default function SettingsPage() {
                       {locations.map(loc => (
                         <label
                           key={loc.id}
-                          className="flex cursor-pointer items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"
+                          className="flex cursor-pointer items-center gap-2 text-xs text-shell-muted"
                         >
                           <Checkbox
                             checked={inviteBranchIds.includes(loc.id)}
@@ -696,20 +710,20 @@ export default function SettingsPage() {
                     setTeamSubmitting(false);
                   }
                 }}
-                className="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
+                className={cn(settingsBtnPrimary, 'w-full py-2.5')}
               >
                 {teamSubmitting ? 'Sending…' : 'Send invitation email'}
               </button>
 
-              <details className="rounded-lg border border-zinc-200 bg-white/60 dark:border-zinc-700 dark:bg-zinc-950/30">
-                <summary className="cursor-pointer select-none px-3 py-2 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+              <details className="rounded-lg border border-shell-line bg-shell-surface-2/30">
+                <summary className="cursor-pointer select-none px-3 py-2 text-[11px] font-medium text-shell-muted">
                   They already have a VillageStock account?
                 </summary>
-                <div className="space-y-2 border-t border-zinc-200 px-3 py-3 dark:border-zinc-700">
-                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">
+                <div className="space-y-2 border-t border-shell-line px-3 py-3">
+                  <p className="text-[10px] text-shell-muted">
                     Add them by the email they use to sign in, or paste their Auth user UUID if they have no email on file.
                   </p>
-                  <input
+                  <Input
                     type="email"
                     value={addExistingEmail}
                     onChange={e => setAddExistingEmail(e.target.value)}
@@ -717,7 +731,7 @@ export default function SettingsPage() {
                     className={fieldClass}
                     autoComplete="off"
                   />
-                  <input
+                  <Input
                     type="text"
                     value={addExistingUserId}
                     onChange={e => setAddExistingUserId(e.target.value)}
@@ -728,7 +742,7 @@ export default function SettingsPage() {
                   <label className={labelClass} htmlFor="add-existing-display">
                     Name on receipts *
                   </label>
-                  <input
+                  <Input
                     id="add-existing-display"
                     type="text"
                     value={addExistingDisplayName}
@@ -743,23 +757,19 @@ export default function SettingsPage() {
                         key={r}
                         type="button"
                         onClick={() => setAddExistingRole(r)}
-                        className={`rounded-lg border px-2 py-1.5 text-[11px] font-medium capitalize ${
-                          addExistingRole === r
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-zinc-200 bg-white dark:border-zinc-600 dark:bg-zinc-900'
-                        }`}
+                        className={cn(settingsRoleChip(addExistingRole === r), 'rounded-lg px-2 py-1.5 text-[11px] font-medium capitalize')}
                       >
                         {r}
                       </button>
                     ))}
                   </div>
                   {locations.length > 1 ? (
-                    <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50/80 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-950/40">
-                      <p className="text-[11px] font-medium text-zinc-800 dark:text-zinc-200">Branch access</p>
+                    <div className="space-y-2 rounded-lg border border-shell-line bg-shell-surface-2/40 px-2 py-2">
+                      <p className="text-[11px] font-medium text-shell-ink">Branch access</p>
                       {inviterRestricted ? (
-                        <p className="text-[10px] text-zinc-500">Select at least one branch.</p>
+                        <p className="text-[10px] text-shell-muted">Select at least one branch.</p>
                       ) : (
-                        <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-800 dark:text-zinc-200">
+                        <label className="flex cursor-pointer items-center gap-2 text-[11px] text-shell-ink">
                           <Checkbox
                             checked={addExistingAllBranches}
                             onCheckedChange={c => {
@@ -776,7 +786,7 @@ export default function SettingsPage() {
                           {locations.map(loc => (
                             <label
                               key={loc.id}
-                              className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-700 dark:text-zinc-300"
+                              className="flex cursor-pointer items-center gap-2 text-[11px] text-shell-muted"
                             >
                               <Checkbox
                                 checked={addExistingBranchIds.includes(loc.id)}
@@ -830,7 +840,7 @@ export default function SettingsPage() {
                         setTeamSubmitting(false);
                       }
                     }}
-                    className="w-full rounded-lg border border-zinc-300 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    className={cn(settingsBtnOutline, 'w-full py-2 text-xs font-semibold')}
                   >
                     Add existing account to shop
                   </button>
@@ -839,42 +849,42 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-medium text-zinc-800 dark:text-zinc-200">People</p>
+              <p className="text-xs font-medium text-shell-ink">People</p>
               {team.loading ? (
-                <p className="text-xs text-zinc-500">Loading…</p>
+                <p className="text-xs text-shell-muted">Loading…</p>
               ) : team.members.length === 0 ? (
-                <p className="text-xs text-zinc-500">No rows returned. Check RLS or run migrations.</p>
+                <p className="text-xs text-shell-muted">No rows returned. Check RLS or run migrations.</p>
               ) : (
                 <ul className="space-y-2">
                   {team.members.map(m => (
                     <li
                       key={m.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-xs dark:border-zinc-700 dark:bg-zinc-900/60"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-shell-line bg-shell-surface-2/30 px-3 py-2.5 text-xs"
                     >
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                          <span className="font-medium text-shell-ink">
                             {m.display_name?.trim() || (m.role === 'owner' ? 'Owner' : 'Team member')}
                           </span>
                           <span
                             className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${
                               m.role === 'owner'
-                                ? 'bg-violet-100 text-violet-800 dark:bg-violet-950/50 dark:text-violet-200'
+                                ? 'bg-violet-400/15 text-violet-200'
                                 : m.role === 'manager'
-                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-200'
-                                  : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                                  ? 'bg-blue-400/15 text-blue-200'
+                                  : 'bg-shell-surface-2 text-shell-muted'
                             }`}
                           >
                             {m.role}
                           </span>
                         </div>
                         {locations.length > 1 && m.role !== 'owner' ? (
-                          <p className="mt-1 text-[10px] text-zinc-500 dark:text-zinc-400">
+                          <p className="mt-1 text-[10px] text-shell-muted">
                             Branches:{' '}
                             {!m.allowed_location_ids?.length ? (
-                              <span className="font-medium text-zinc-700 dark:text-zinc-300">All branches</span>
+                              <span className="font-medium text-shell-muted">All branches</span>
                             ) : (
-                              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                              <span className="font-medium text-shell-muted">
                                 {m.allowed_location_ids
                                   .map(lid => locations.find(l => l.id === lid)?.name ?? 'Unknown branch')
                                   .join(', ')}
@@ -883,10 +893,10 @@ export default function SettingsPage() {
                           </p>
                         ) : null}
                         {canManageBusinessSettings && m.role !== 'owner' && locations.length > 1 ? (
-                          <div className="mt-2 w-full border-t border-zinc-100 pt-2 dark:border-zinc-800">
+                          <div className="mt-2 w-full border-t border-shell-line pt-2">
                             {editingMemberId === m.id ? (
                               <div className="space-y-2">
-                                <label className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-800 dark:text-zinc-200">
+                                <label className="flex cursor-pointer items-center gap-2 text-[11px] text-shell-ink">
                                   <Checkbox
                                     checked={editMemberAllBranches}
                                     onCheckedChange={c => {
@@ -902,7 +912,7 @@ export default function SettingsPage() {
                                     {locations.map(loc => (
                                       <label
                                         key={loc.id}
-                                        className="flex cursor-pointer items-center gap-2 text-[11px] text-zinc-700 dark:text-zinc-300"
+                                        className="flex cursor-pointer items-center gap-2 text-[11px] text-shell-muted"
                                       >
                                         <Checkbox
                                           checked={editMemberBranchIds.includes(loc.id)}
@@ -922,7 +932,7 @@ export default function SettingsPage() {
                                   <button
                                     type="button"
                                     disabled={!editMemberAllBranches && editMemberBranchIds.length === 0}
-                                    className="rounded-lg bg-primary px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+                                    className={cn(settingsBtnPrimary, 'rounded-lg px-2 py-1 text-[11px]')}
                                     onClick={async () => {
                                       if (!editMemberAllBranches && editMemberBranchIds.length === 0) return;
                                       try {
@@ -941,7 +951,7 @@ export default function SettingsPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    className="rounded-lg border border-zinc-200 px-2 py-1 text-[11px] dark:border-zinc-600"
+                                    className="rounded-lg border border-shell-line px-2 py-1 text-[11px] text-shell-muted"
                                     onClick={() => setEditingMemberId(null)}
                                   >
                                     Cancel
@@ -951,7 +961,7 @@ export default function SettingsPage() {
                             ) : (
                               <button
                                 type="button"
-                                className="text-[11px] font-medium text-primary hover:underline"
+                                className="text-[11px] font-medium text-violet-300 hover:underline"
                                 onClick={() => {
                                   const ids = m.allowed_location_ids ?? [];
                                   setEditingMemberId(m.id);
@@ -989,7 +999,7 @@ export default function SettingsPage() {
             </div>
           </>
         ) : (
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="text-xs text-shell-muted">
             Inviting teammates is available to owners and managers.
           </p>
         )}
@@ -998,32 +1008,32 @@ export default function SettingsPage() {
       {/* Subscription / plan picker hidden — restore when billing returns.
       <section className={`${panelClass} space-y-3`}>
         <div className="flex items-center gap-2">
-          <CreditCard size={18} className="text-primary" />
-          <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Subscription</h3>
+          <CreditCard size={18} className="text-violet-300" />
+          <h3 className="font-display font-semibold text-shell-ink">Subscription</h3>
         </div>
         {businessProfile ? (
-          <div className="space-y-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm dark:border-zinc-700 dark:bg-zinc-950/40">
+          <div className="space-y-1 rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-3 text-sm">
             <p>
-              <span className="text-zinc-500 dark:text-zinc-400">Current plan:</span>{' '}
-              <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatPlanLabel(businessProfile.plan)}</span>
+              <span className="text-shell-muted">Current plan:</span>{' '}
+              <span className="font-semibold text-shell-ink">{formatPlanLabel(businessProfile.plan)}</span>
             </p>
             <p>
-              <span className="text-zinc-500 dark:text-zinc-400">Status:</span>{' '}
-              <span className="font-medium text-zinc-900 dark:text-zinc-100">{formatPlanStatus(businessProfile.plan_status)}</span>
+              <span className="text-shell-muted">Status:</span>{' '}
+              <span className="font-medium text-shell-ink">{formatPlanStatus(businessProfile.plan_status)}</span>
             </p>
             {businessProfile.plan === 'trial' && trialEndLabel ? (
               <p>
-                <span className="text-zinc-500 dark:text-zinc-400">Trial ends:</span>{' '}
-                <span className="font-medium text-zinc-900 dark:text-zinc-100">{trialEndLabel}</span>
+                <span className="text-shell-muted">Trial ends:</span>{' '}
+                <span className="font-medium text-shell-ink">{trialEndLabel}</span>
               </p>
             ) : null}
           </div>
         ) : null}
         <div>
-          <p className="mb-2 text-xs font-medium text-zinc-900 dark:text-zinc-100">Compare plans</p>
+          <p className="mb-2 text-xs font-medium text-shell-ink">Compare plans</p>
           <PlanPickerGrid variant="compact" />
         </div>
-        <p className="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+        <p className="text-[11px] leading-relaxed text-shell-muted">
           Payments are not live yet. When Paystack is connected, you will subscribe from here. Until then, enjoy full access
           during your trial.
         </p>
@@ -1032,34 +1042,34 @@ export default function SettingsPage() {
 
       <section className={`${panelClass} space-y-3`}>
         <div className="flex items-center gap-2">
-          <FileBarChart2 size={18} className="text-primary" />
-          <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Reporting</h3>
+          <FileBarChart2 size={18} className="text-violet-300" />
+          <h3 className="font-display font-semibold text-shell-ink">Reporting</h3>
         </div>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="text-sm text-shell-muted">
           Review daily, weekly, and custom performance reports and export them as PDF.
         </p>
         <button
           onClick={() => navigate('/reports')}
-          className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-100 dark:hover:bg-zinc-900"
+          className={cn(settingsBtnOutline, 'w-full justify-between px-4 py-3 text-sm font-medium text-shell-ink hover:bg-shell-surface-2/60')}
         >
           <span>Open Reports</span>
-          <ChevronRight size={16} className="text-zinc-400" />
+          <ChevronRight size={16} className="text-shell-muted" />
         </button>
       </section>
 
       {/* Account info */}
       <section className={`${panelClass} space-y-3`}>
-        <h3 className="font-heading font-semibold text-zinc-900 dark:text-zinc-100">Account</h3>
+        <h3 className="font-display font-semibold text-shell-ink">Account</h3>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{accountPrimary}</p>
-            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{ownerName ? 'Owner' : 'Account'}</p>
+            <p className="text-sm font-medium text-shell-ink">{accountPrimary}</p>
+            <p className="mt-0.5 text-xs text-shell-muted">{ownerName ? 'Owner' : 'Account'}</p>
             {accountShowEmail ? (
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{user?.email}</p>
+              <p className="mt-1 text-xs text-shell-muted">{user?.email}</p>
             ) : null}
             {accountShowPhone ? (
               <p
-                className={`text-xs text-zinc-500 dark:text-zinc-400 ${accountShowEmail ? 'mt-0.5' : 'mt-1'}`}
+                className={`text-xs text-shell-muted ${accountShowEmail ? 'mt-0.5' : 'mt-1'}`}
               >
                 {user?.phone}
               </p>
@@ -1068,45 +1078,18 @@ export default function SettingsPage() {
         </div>
         <button
           onClick={handleSignOut}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30"
+          className={settingsBtnDanger}
         >
           <LogOut size={16} /> Sign Out
         </button>
       </section>
 
+      </div>
+
       {/* App info */}
-      <div className="pb-2 text-center text-xs text-zinc-500 dark:text-zinc-500">
+      <div className="pb-2 text-center text-xs text-shell-muted">
         <p>VillageStock · Built for Computer Village retailers</p>
       </div>
     </div>
-  );
-}
-
-function ReceiptColorField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="space-y-1">
-      <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">{label}</span>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="h-10 w-12 cursor-pointer rounded-lg border border-border bg-white p-1 dark:border-zinc-600/80 dark:bg-zinc-900/60"
-        />
-        <Input
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="font-mono uppercase"
-        />
-      </div>
-    </label>
   );
 }

@@ -1,14 +1,20 @@
-import { useState, useEffect, useLayoutEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useState, useEffect, useLayoutEffect, type ReactNode } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
-import { Package, Loader2, Lock } from 'lucide-react';
+import { Check, Loader2, Lock, Package, WifiOff, Zap } from 'lucide-react';
+import { Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { authCallbackUrl } from '@/lib/authSiteUrl';
+import { AuroraBackground } from '@/components/landing/AuroraBackground';
+import '@/components/landing/landing.css';
+import '@/components/auth/auth-page.css';
 
 type Panel = 'signin' | 'signup' | 'forgot';
+
+const FIELD = 'vs-auth-field';
 
 export default function AuthPage() {
   const { user, isLoading: authLoading } = useAuthStore();
@@ -27,7 +33,6 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
-  /** Invite links use `type=invite` in the hash; recovery uses `type=recovery`. Read in layout effect before root auth `getSession` consumes the hash. */
   const [passwordSetupKind, setPasswordSetupKind] = useState<'invite' | 'reset' | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [newPassword2, setNewPassword2] = useState('');
@@ -47,7 +52,7 @@ export default function AuthPage() {
   }, []);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(event => {
       if (event === 'PASSWORD_RECOVERY') {
         setRecoveryMode(true);
         setPasswordSetupKind('reset');
@@ -83,32 +88,12 @@ export default function AuthPage() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-surface text-primary">
-        <Loader2 className="animate-spin" size={28} />
-      </div>
-    );
-  }
+  if (authLoading) return <AuthSpinner />;
 
   if (user && !recoveryMode) {
-    if (shopStatus === 'loading' || shopStatus === 'idle') {
-      return (
-        <div className="flex h-screen items-center justify-center bg-surface text-primary">
-          <Loader2 className="animate-spin" size={28} />
-        </div>
-      );
-    }
-    if (q.status === 'pending') {
-      return (
-        <div className="flex h-screen items-center justify-center bg-surface text-primary">
-          <Loader2 className="animate-spin" size={28} />
-        </div>
-      );
-    }
-    if (q.profile?.onboarding_complete) {
-      return <Navigate to="/dashboard" replace />;
-    }
+    if (shopStatus === 'loading' || shopStatus === 'idle') return <AuthSpinner />;
+    if (q.status === 'pending') return <AuthSpinner />;
+    if (q.profile?.onboarding_complete) return <Navigate to="/dashboard" replace />;
     return <Navigate to="/onboarding" replace />;
   }
 
@@ -124,10 +109,8 @@ export default function AuthPage() {
         },
       });
       if (err) throw err;
-      /* Browser redirects to Google; session returns to /auth */
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Google sign-in failed';
-      setError(msg);
+      setError(err instanceof Error ? err.message : 'Google sign-in failed');
       setBusy(false);
     }
   };
@@ -148,8 +131,7 @@ export default function AuthPage() {
       const { error: err } = await supabase.auth.signInWithPassword({ email, password: passwordLogin });
       if (err) throw err;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Sign in failed';
-      setError(formatSignInErrorHint(msg));
+      setError(formatSignInErrorHint(err instanceof Error ? err.message : 'Sign in failed'));
     } finally {
       setBusy(false);
     }
@@ -173,17 +155,13 @@ export default function AuthPage() {
     }
     setBusy(true);
     try {
-      const redirectTo = authCallbackUrl();
       const { data, error: err } = await supabase.auth.signUp({
         email,
         password: signupPassword,
-        options: { emailRedirectTo: redirectTo },
+        options: { emailRedirectTo: authCallbackUrl() },
       });
       if (err) throw err;
-      if (data.session) {
-        /* Email confirmation disabled — already signed in */
-        return;
-      }
+      if (data.session) return;
       setSignupMessage('sent');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Could not create account');
@@ -201,8 +179,9 @@ export default function AuthPage() {
     }
     setBusy(true);
     try {
-      const redirectTo = authCallbackUrl();
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: authCallbackUrl(),
+      });
       if (err) throw err;
       setResetSent(true);
     } catch (err: unknown) {
@@ -212,261 +191,193 @@ export default function AuthPage() {
     }
   };
 
-  const inputClass =
-    'w-full border border-border rounded-lg bg-white px-3 py-2.5 text-sm text-dark placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition dark:bg-zinc-900/90 dark:border-zinc-600 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-primary dark:focus:ring-primary/35';
-
   return (
-    <div className="min-h-svh flex flex-col items-center justify-center bg-surface px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-6 md:py-12 relative overflow-hidden">
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_-15%,rgba(0,102,221,0.11),transparent),radial-gradient(ellipse_55%_45%_at_100%_90%,rgba(0,168,150,0.07),transparent)]"
-        aria-hidden
-      />
-      <div className="relative w-full max-w-md flex flex-col items-center">
-        <div className="flex flex-col items-center mb-8 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-lg shadow-primary/20 ring-4 ring-primary/10">
-            <Package size={32} className="text-white" />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-heading font-bold text-dark tracking-tight dark:text-zinc-100">VillageStock</h1>
-          <p className="text-muted text-sm mt-2 max-w-xs leading-relaxed">Electronics inventory for Computer Village — fast on mobile, ready offline.</p>
-        </div>
+    <div className="vs-auth-page">
+      <AuroraBackground />
 
-        <div className="w-full max-w-sm bg-white/95 text-dark backdrop-blur-sm rounded-2xl shadow-xl shadow-slate-900/5 border border-border/70 p-6 md:p-8 dark:bg-zinc-900/95 dark:text-zinc-100 dark:border-zinc-700/80 dark:shadow-black/25 dark:[&_h2]:text-zinc-100 dark:[&_label]:text-zinc-200 dark:[&_strong]:text-zinc-200">
+      <div className="vs-auth-shell">
+        <aside className="vs-auth-brand">
+          <Link to="/" className="vs-auth-logo">
+            <span className="vs-auth-logo-mark">
+              <Package size={20} strokeWidth={2.2} />
+            </span>
+            village<span>stock</span>
+          </Link>
+
+          <h1 className="vs-auth-headline">
+            Run your shop
+            <br />
+            <em>from one place.</em>
+          </h1>
+
+          <p className="vs-auth-lead">
+            Inventory, sales, repairs, and credits — built for gadget retailers in Computer Village and
+            beyond. Works offline, syncs when you&apos;re back online.
+          </p>
+
+          <ul className="vs-auth-features">
+            <li>
+              <Check size={16} strokeWidth={2.5} />
+              IMEI-tracked phones &amp; serialized stock
+            </li>
+            <li>
+              <WifiOff size={16} strokeWidth={2.2} />
+              Full offline mode — no signal needed
+            </li>
+            <li>
+              <Zap size={16} strokeWidth={2.2} />
+              Quick till, repairs bench &amp; daily cash-up
+            </li>
+          </ul>
+
+          <p className="vs-auth-trust">
+            <strong>14-day free trial</strong> · no card required · cancel anytime
+          </p>
+        </aside>
+
+        <main className="vs-auth-card">
+          <div className="vs-auth-mobile-brand">
+            <Link to="/" className="vs-auth-logo">
+              <span className="vs-auth-logo-mark">
+                <Package size={18} strokeWidth={2.2} />
+              </span>
+              village<span>stock</span>
+            </Link>
+            <p className="vs-auth-panel-sub" style={{ marginBottom: 0 }}>
+              Sign in to your shop dashboard
+            </p>
+          </div>
+
           {recoveryMode && !user && (
-            <div className="flex flex-col items-center py-8 text-muted text-sm">
-              <Loader2 className="animate-spin mb-3 text-primary" size={28} />
+            <div className="flex flex-col items-center py-10 text-sm" style={{ color: 'var(--auth-muted)' }}>
+              <Loader2 className="mb-3 animate-spin" size={28} style={{ color: 'var(--auth-accent)' }} />
               {passwordSetupKind === 'invite' ? 'Opening invitation link…' : 'Opening reset link…'}
             </div>
           )}
 
           {recoveryMode && user && (
             <>
-              <h2 className="font-heading font-semibold text-lg text-dark mb-1 flex items-center gap-2">
-                <Lock size={18} className="text-primary" />
-                {passwordSetupKind === 'invite' ? 'Choose your password' : 'Choose a new password'}
+              <h2 className="vs-auth-panel-title">
+                <Lock size={18} style={{ color: 'var(--auth-accent)' }} />
+                {passwordSetupKind === 'invite' ? 'Choose your password' : 'Set a new password'}
               </h2>
-              <p className="text-xs text-muted mb-4">
+              <p className="vs-auth-panel-sub">
                 {passwordSetupKind === 'invite'
-                  ? 'Your invite link is valid — set a password you will use to sign in next time (this account has no password until you do).'
-                  : 'Your reset link was valid — set a password you will use with your email.'}
+                  ? 'Your invite link is valid — pick a password for next time you sign in.'
+                  : 'Your reset link worked — choose a new password for this account.'}
               </p>
               <div className="space-y-3">
                 <PasswordInput
                   autoComplete="new-password"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
-                  className={inputClass}
+                  className={FIELD}
                   placeholder="New password"
                 />
                 <PasswordInput
                   autoComplete="new-password"
                   value={newPassword2}
                   onChange={e => setNewPassword2(e.target.value)}
-                  className={inputClass}
+                  className={FIELD}
                   placeholder="Confirm password"
                 />
               </div>
-              {error && (
-                <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
-                  {error}
-                </div>
-              )}
+              {error ? <AuthError>{error}</AuthError> : null}
               <button
                 type="button"
-                onClick={completePasswordRecovery}
+                onClick={() => void completePasswordRecovery()}
                 disabled={busy}
-                className="mt-4 w-full bg-primary text-white rounded-lg py-2.5 font-medium text-sm hover:bg-primary-dark disabled:opacity-60 flex items-center justify-center gap-2"
+                className="vs-auth-btn-primary mt-4"
               >
-                {busy && <Loader2 size={16} className="animate-spin" />}
-                Save password &amp; sign in
+                {busy ? <Loader2 size={16} className="animate-spin" /> : null}
+                Save password &amp; continue
               </button>
             </>
           )}
 
-          {!recoveryMode && !user && panel === 'signin' && (
+          {!recoveryMode && !user && panel !== 'forgot' && (
             <>
-              <div className="flex rounded-lg bg-surface p-0.5 mb-5 dark:bg-zinc-800/80">
-                <button
-                  type="button"
-                  className="flex-1 rounded-md py-2 text-sm font-medium bg-white text-dark shadow-sm dark:bg-zinc-700 dark:text-zinc-100 dark:shadow-none dark:ring-1 dark:ring-zinc-600"
-                >
-                  Sign in
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPanel('signup');
-                    setError('');
-                    setSignupMessage('idle');
-                  }}
-                  className="flex-1 rounded-md py-2 text-sm font-medium text-muted transition hover:text-dark dark:text-zinc-400 dark:hover:text-zinc-200"
-                >
-                  Create account
-                </button>
-              </div>
+              <AuthTabs
+                panel={panel}
+                onSignIn={() => {
+                  setPanel('signin');
+                  setError('');
+                }}
+                onSignUp={() => {
+                  setPanel('signup');
+                  setError('');
+                  setSignupMessage('idle');
+                }}
+              />
 
-              <button
-                type="button"
-                onClick={signInWithGoogle}
-                disabled={busy}
-                className="group relative flex w-full items-center justify-center gap-3 rounded-2xl border border-zinc-300/90 bg-white py-4 pl-4 pr-5 text-[15px] font-semibold text-zinc-800 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.12),0_2px_6px_-2px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04] transition hover:bg-zinc-50 hover:shadow-md active:scale-[0.99] disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50 dark:ring-white/10 dark:hover:bg-zinc-800"
-              >
-                {busy ? (
-                  <Loader2 className="size-5 shrink-0 animate-spin text-primary" />
-                ) : (
-                  <GoogleLogo className="size-5 shrink-0" />
-                )}
-                Continue with Google
-              </button>
-              <p className="mt-2 text-center text-[11px] text-muted dark:text-zinc-500">
-                Recommended — fast sign-in with your Google account.
+              <GoogleButton busy={busy} onClick={() => void signInWithGoogle()} />
+              <p className="vs-auth-hint">
+                {panel === 'signup'
+                  ? 'New shops are created on first Google sign-in.'
+                  : 'Fastest way in — uses your Google account.'}
               </p>
 
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center" aria-hidden>
-                  <span className="w-full border-t border-zinc-200 dark:border-zinc-600" />
-                </div>
-                <div className="relative flex justify-center text-xs font-medium">
-                  <span className="bg-white px-3 text-muted dark:bg-zinc-900/95 dark:text-zinc-400">
-                    Or continue with email
-                  </span>
-                </div>
-              </div>
+              <AuthDivider label={panel === 'signup' ? 'Or sign up with email' : 'Or use email'} />
 
-              <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Email &amp; password</h2>
-              <p className="text-xs text-muted mb-4">
-                Use the email and password from <strong>Create account</strong>. Password reset only works after an account
-                exists for that email (separate from shop data in the database).
-              </p>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-dark mb-1" htmlFor="email-login">
-                    Email
-                  </label>
-                  <input
-                    id="email-login"
-                    type="email"
-                    autoComplete="email"
-                    value={emailLogin}
-                    onChange={e => setEmailLogin(e.target.value)}
-                    className={inputClass}
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-dark mb-1" htmlFor="password-login">
-                    Password
-                  </label>
-                  <PasswordInput
-                    id="password-login"
-                    autoComplete="current-password"
-                    value={passwordLogin}
-                    onChange={e => setPasswordLogin(e.target.value)}
-                    className={inputClass}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPanel('forgot');
-                    setResetEmail(emailLogin);
-                    setResetSent(false);
-                    setError('');
-                  }}
-                  className="text-xs text-primary hover:underline"
-                >
-                  Forgot password?
-                </button>
-              </div>
-
-              {error && (
-                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={signInWithEmail}
-                disabled={busy}
-                className="mt-5 w-full rounded-xl border-2 border-primary/35 bg-transparent py-3 text-sm font-semibold text-primary transition hover:bg-primary/[0.06] disabled:opacity-60 flex items-center justify-center gap-2 dark:border-primary/45 dark:hover:bg-primary/10"
-              >
-                {busy && <Loader2 size={16} className="animate-spin" />}
-                Sign in with email
-              </button>
-            </>
-          )}
-
-          {!recoveryMode && !user && panel === 'signup' && (
-            <>
-              <div className="flex rounded-lg bg-surface p-0.5 mb-5 dark:bg-zinc-800/80">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPanel('signin');
-                    setError('');
-                  }}
-                  className="flex-1 rounded-md py-2 text-sm font-medium text-muted transition hover:text-dark dark:text-zinc-400 dark:hover:text-zinc-200"
-                >
-                  Sign in
-                </button>
-                <button
-                  type="button"
-                  className="flex-1 rounded-md py-2 text-sm font-medium bg-white text-dark shadow-sm dark:bg-zinc-700 dark:text-zinc-100 dark:shadow-none dark:ring-1 dark:ring-zinc-600"
-                >
-                  Create account
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={signInWithGoogle}
-                disabled={busy}
-                className="group relative flex w-full items-center justify-center gap-3 rounded-2xl border border-zinc-300/90 bg-white py-4 pl-4 pr-5 text-[15px] font-semibold text-zinc-800 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.12),0_2px_6px_-2px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04] transition hover:bg-zinc-50 hover:shadow-md active:scale-[0.99] disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50 dark:ring-white/10 dark:hover:bg-zinc-800"
-              >
-                {busy ? (
-                  <Loader2 className="size-5 shrink-0 animate-spin text-primary" />
-                ) : (
-                  <GoogleLogo className="size-5 shrink-0" />
-                )}
-                Continue with Google
-              </button>
-              <p className="mt-2 text-center text-[11px] text-muted dark:text-zinc-500">
-                New accounts are created automatically on first Google sign-in.
-              </p>
-
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center" aria-hidden>
-                  <span className="w-full border-t border-zinc-200 dark:border-zinc-600" />
-                </div>
-                <div className="relative flex justify-center text-xs font-medium">
-                  <span className="bg-white px-3 text-muted dark:bg-zinc-900/95 dark:text-zinc-400">
-                    Or sign up with email
-                  </span>
-                </div>
-              </div>
-
-              <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Email &amp; password</h2>
-              <p className="text-xs text-muted mb-4">
-                Creates your <strong>login</strong> in Supabase Auth. If email confirmation is on, check your inbox — then
-                sign in and complete shop setup.
-              </p>
-
-              {signupMessage === 'sent' ? (
+              {panel === 'signin' ? (
+                <>
+                  <div className="space-y-3">
+                    <AuthField label="Email" id="email-login">
+                      <Input
+                        id="email-login"
+                        type="email"
+                        autoComplete="email"
+                        value={emailLogin}
+                        onChange={e => setEmailLogin(e.target.value)}
+                        className={FIELD}
+                        placeholder="you@shop.com"
+                      />
+                    </AuthField>
+                    <AuthField label="Password" id="password-login">
+                      <PasswordInput
+                        id="password-login"
+                        autoComplete="current-password"
+                        value={passwordLogin}
+                        onChange={e => setPasswordLogin(e.target.value)}
+                        className={FIELD}
+                      />
+                    </AuthField>
+                    <button
+                      type="button"
+                      className="vs-auth-btn-ghost"
+                      onClick={() => {
+                        setPanel('forgot');
+                        setResetEmail(emailLogin);
+                        setResetSent(false);
+                        setError('');
+                      }}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                  {error ? <AuthError>{error}</AuthError> : null}
+                  <button
+                    type="button"
+                    onClick={() => void signInWithEmail()}
+                    disabled={busy}
+                    className="vs-auth-btn-primary mt-5"
+                  >
+                    {busy ? <Loader2 size={16} className="animate-spin" /> : null}
+                    Sign in
+                  </button>
+                </>
+              ) : signupMessage === 'sent' ? (
                 <div className="space-y-3">
-                  <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-900 dark:border-emerald-800/55 dark:bg-emerald-950/45 dark:text-emerald-100">
-                    <p className="font-medium">Check your email</p>
-                    <p className="mt-1 text-green-800 dark:text-emerald-200/95">
-                      Open the confirmation link we sent to <strong>{signupEmail.trim().toLowerCase()}</strong>, then return
-                      here and sign in.
-                    </p>
-                    <p className="mt-2 text-xs text-green-800/90 dark:text-emerald-300/85">
-                      No email? Check spam, and confirm Supabase can send mail (Auth → SMTP). Links must match your site URL
-                      in Supabase → URL Configuration.
+                  <div className="vs-auth-success">
+                    <p className="font-semibold">Check your email</p>
+                    <p className="mt-1">
+                      We sent a confirmation link to <strong>{signupEmail.trim().toLowerCase()}</strong>.
+                      Open it, then sign in here.
                     </p>
                   </div>
                   <button
                     type="button"
+                    className="vs-auth-btn-ghost w-full text-center"
                     onClick={() => {
                       setPanel('signin');
                       setSignupMessage('idle');
@@ -475,7 +386,6 @@ export default function AuthPage() {
                       setSignupPassword('');
                       setSignupPassword2('');
                     }}
-                    className="w-full text-sm text-primary hover:underline"
                   >
                     Back to sign in
                   </button>
@@ -483,102 +393,97 @@ export default function AuthPage() {
               ) : (
                 <>
                   <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-dark mb-1" htmlFor="signup-email">
-                        Email
-                      </label>
-                      <input
+                    <AuthField label="Email" id="signup-email">
+                      <Input
                         id="signup-email"
                         type="email"
                         autoComplete="email"
                         value={signupEmail}
                         onChange={e => setSignupEmail(e.target.value)}
-                        className={inputClass}
-                        placeholder="you@example.com"
+                        className={FIELD}
+                        placeholder="you@shop.com"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-dark mb-1" htmlFor="signup-password">
-                        Password
-                      </label>
+                    </AuthField>
+                    <AuthField label="Password" id="signup-password">
                       <PasswordInput
                         id="signup-password"
                         autoComplete="new-password"
                         value={signupPassword}
                         onChange={e => setSignupPassword(e.target.value)}
-                        className={inputClass}
+                        className={FIELD}
                         placeholder="At least 8 characters"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-dark mb-1" htmlFor="signup-password-2">
-                        Confirm password
-                      </label>
+                    </AuthField>
+                    <AuthField label="Confirm password" id="signup-password-2">
                       <PasswordInput
                         id="signup-password-2"
                         autoComplete="new-password"
                         value={signupPassword2}
                         onChange={e => setSignupPassword2(e.target.value)}
-                        className={inputClass}
+                        className={FIELD}
                       />
-                    </div>
+                    </AuthField>
                   </div>
-                  {error && (
-                    <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
-                  {error}
-                </div>
-                  )}
+                  {error ? <AuthError>{error}</AuthError> : null}
                   <button
                     type="button"
-                    onClick={signUpWithEmail}
+                    onClick={() => void signUpWithEmail()}
                     disabled={busy}
-                    className="mt-4 w-full rounded-xl border-2 border-primary/35 bg-transparent py-3 text-sm font-semibold text-primary transition hover:bg-primary/[0.06] disabled:opacity-60 flex items-center justify-center gap-2 dark:border-primary/45 dark:hover:bg-primary/10"
+                    className="vs-auth-btn-primary mt-4"
                   >
-                    {busy && <Loader2 size={16} className="animate-spin" />}
-                    Create account with email
+                    {busy ? <Loader2 size={16} className="animate-spin" /> : null}
+                    Create account
                   </button>
                 </>
               )}
             </>
           )}
 
-          {!recoveryMode && panel === 'forgot' && (
+          {!recoveryMode && !user && panel === 'forgot' && (
             <>
               <button
                 type="button"
+                className="vs-auth-btn-ghost vs-auth-back"
                 onClick={() => {
                   setPanel('signin');
                   setError('');
                   setResetSent(false);
                 }}
-                className="text-xs text-primary hover:underline mb-4"
               >
                 ← Back to sign in
               </button>
-              <h2 className="font-heading font-semibold text-lg text-dark mb-1 flex items-center gap-2">
-                <Lock size={18} className="text-primary" />
+              <h2 className="vs-auth-panel-title">
+                <Lock size={18} style={{ color: 'var(--auth-accent)' }} />
                 Reset password
               </h2>
-              <p className="text-xs text-muted mb-3">
-                We email a link only if there is already a <strong>login account</strong> for that address (Supabase
-                Authentication). Shop profiles in your app database do not count — you must have used{' '}
-                <strong>Create account</strong> (or had an admin create the user) first.
+              <p className="vs-auth-panel-sub">
+                We&apos;ll email a reset link if an account exists for that address. No account yet?{' '}
+                <button
+                  type="button"
+                  className="vs-auth-btn-ghost"
+                  onClick={() => {
+                    setSignupEmail(resetEmail.trim().toLowerCase());
+                    setPanel('signup');
+                    setError('');
+                  }}
+                >
+                  Create one
+                </button>{' '}
+                instead.
               </p>
+
               {resetSent ? (
-                <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-900 dark:border-emerald-800/55 dark:bg-emerald-950/45 dark:text-emerald-100">
-                  <p className="font-medium">If that login exists, we sent a link</p>
-                  <p className="mt-1 text-green-800 dark:text-emerald-200/95">
-                    Check <strong>{resetEmail.trim().toLowerCase()}</strong> (and spam). The link expires after a short time.
-                  </p>
-                  <p className="mt-2 text-xs text-green-800/90 dark:text-emerald-300/85">
-                    <strong>No email after a few minutes?</strong> Usually there is no Auth user for that address yet. Use{' '}
-                    <strong>Create account</strong> with the same email instead of reset.
-                  </p>
-                  <p className="mt-2 text-xs text-green-800/90 dark:text-emerald-300/85">
-                    Project checks: Supabase → Authentication → URL Configuration (redirects) and SMTP so mail can send.
-                  </p>
+                <div className="space-y-3">
+                  <div className="vs-auth-success">
+                    <p className="font-semibold">Check your inbox</p>
+                    <p className="mt-1">
+                      If <strong>{resetEmail.trim().toLowerCase()}</strong> has an account, a reset link
+                      is on its way (check spam too).
+                    </p>
+                  </div>
                   <button
                     type="button"
+                    className="vs-auth-btn-primary"
                     onClick={() => {
                       setSignupEmail(resetEmail.trim().toLowerCase());
                       setPanel('signup');
@@ -586,61 +491,109 @@ export default function AuthPage() {
                       setSignupMessage('idle');
                       setError('');
                     }}
-                    className="mt-3 w-full rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-medium text-green-900 transition hover:bg-green-100/80 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-100 dark:hover:bg-emerald-900/65"
                   >
                     Create account with this email
                   </button>
                 </div>
               ) : (
                 <>
-                  <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50/90 px-3 py-2 text-xs text-amber-950 dark:border-amber-700/50 dark:bg-amber-950/50 dark:text-amber-100">
-                    New to VillageStock?{' '}
-                    <button
-                      type="button"
-                      className="font-semibold text-primary underline-offset-2 hover:underline"
-                      onClick={() => {
-                        setSignupEmail(resetEmail.trim().toLowerCase());
-                        setPanel('signup');
-                        setError('');
-                      }}
-                    >
-                      Create account
-                    </button>{' '}
-                    first — then you can use forgot password later if needed.
-                  </div>
-                  <input
+                  <Input
                     type="email"
                     autoComplete="email"
                     value={resetEmail}
                     onChange={e => setResetEmail(e.target.value)}
-                    className={inputClass}
-                    placeholder="you@example.com"
+                    className={FIELD}
+                    placeholder="you@shop.com"
                   />
-                  {error && (
-                    <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-800/60 dark:bg-red-950/40 dark:text-red-300">
-                  {error}
-                </div>
-                  )}
+                  {error ? <AuthError>{error}</AuthError> : null}
                   <button
                     type="button"
-                    onClick={sendResetLink}
+                    onClick={() => void sendResetLink()}
                     disabled={busy}
-                    className="mt-4 w-full bg-primary text-white rounded-lg py-2.5 font-medium text-sm hover:bg-primary-dark disabled:opacity-60 flex items-center justify-center gap-2"
+                    className="vs-auth-btn-primary mt-4"
                   >
-                    {busy && <Loader2 size={16} className="animate-spin" />}
+                    {busy ? <Loader2 size={16} className="animate-spin" /> : null}
                     Send reset link
                   </button>
                 </>
               )}
             </>
           )}
-        </div>
+        </main>
       </div>
     </div>
   );
 }
 
-/** Google "G" logo (brand colors) for the OAuth button. */
+function AuthSpinner() {
+  return (
+    <div className="vs-auth-loading">
+      <Loader2 className="animate-spin" size={28} />
+    </div>
+  );
+}
+
+function AuthTabs({
+  panel,
+  onSignIn,
+  onSignUp,
+}: {
+  panel: Panel;
+  onSignIn: () => void;
+  onSignUp: () => void;
+}) {
+  return (
+    <div className="vs-auth-tabs" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={panel === 'signin'}
+        className={`vs-auth-tab${panel === 'signin' ? ' is-active' : ''}`}
+        onClick={onSignIn}
+      >
+        Sign in
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={panel === 'signup'}
+        className={`vs-auth-tab${panel === 'signup' ? ' is-active' : ''}`}
+        onClick={onSignUp}
+      >
+        Create account
+      </button>
+    </div>
+  );
+}
+
+function GoogleButton({ busy, onClick }: { busy: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} disabled={busy} className="vs-auth-btn-google">
+      {busy ? <Loader2 className="size-5 shrink-0 animate-spin" /> : <GoogleLogo className="size-5 shrink-0" />}
+      Continue with Google
+    </button>
+  );
+}
+
+function AuthDivider({ label }: { label: string }) {
+  return <div className="vs-auth-divider">{label}</div>;
+}
+
+function AuthField({ label, id, children }: { label: string; id: string; children: ReactNode }) {
+  return (
+    <div>
+      <label className="vs-auth-label" htmlFor={id}>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function AuthError({ children }: { children: ReactNode }) {
+  return <div className="vs-auth-error">{children}</div>;
+}
+
 function GoogleLogo({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden>
@@ -668,7 +621,6 @@ function isValidEmailLoose(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 }
 
-/** Adds operator-friendly hint when credentials fail (often no Auth user yet). */
 function formatSignInErrorHint(message: string): string {
   const lower = message.toLowerCase();
   if (
@@ -676,7 +628,7 @@ function formatSignInErrorHint(message: string): string {
     lower.includes('invalid credentials') ||
     lower.includes('email not confirmed')
   ) {
-    return `${message} If you never used Create account with this email, sign up first — shop profile data alone does not create a login.`;
+    return `${message} If you never created an account with this email, use Create account first.`;
   }
   return message;
 }

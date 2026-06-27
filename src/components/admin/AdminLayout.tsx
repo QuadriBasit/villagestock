@@ -16,14 +16,14 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-svh flex bg-slate-100/90">
+    <div className="flex min-h-svh bg-shell-bg">
       <aside className="flex w-56 sm:w-64 bg-linear-to-b from-slate-950 via-slate-900 to-slate-950 text-white flex-col shrink-0 border-r border-white/5 shadow-xl shadow-slate-900/20">
         <div className="p-5 border-b border-white/8 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400/15 text-amber-400 ring-1 ring-amber-400/25">
             <Shield size={20} />
           </div>
           <div>
-            <p className="font-heading font-bold text-sm leading-tight tracking-tight">VillageStock</p>
+            <p className="font-display text-sm font-bold leading-tight tracking-tight">VillageStock</p>
             <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Admin</p>
           </div>
         </div>

@@ -16,16 +16,39 @@ export function useInventoryActions() {
   const { shopOwnerId, actorUserId, actorAllowedLocationIds } = useShopAccess();
   const { activeLocationId, ready: locationReady } = useShopLocation();
 
-  async function addItem(input: InventoryItemInput): Promise<string> {
+  async function addItem(input: InventoryItemInput, options?: { deferIdentifiers?: boolean }): Promise<string> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
     // await assertTrialAllowsMutations(shopOwnerId);
 
     const mode = getCategoryMode(input.category);
-    const idErr = inventoryMissingRequiredIdentifiers(input.category, input.imei, input.serial_number);
-    if (idErr) throw new Error(idErr);
+    if (!options?.deferIdentifiers) {
+      const idErr = inventoryMissingRequiredIdentifiers(input.category, input.imei, input.serial_number);
+      if (idErr) throw new Error(idErr);
+    }
 
     const now = new Date().toISOString();
+
+    if (mode === 'non_serialized') {
+      const existing = await db.inventory_items
+        .where('user_id')
+        .equals(shopOwnerId)
+        .filter(
+          i =>
+            !i.deleted &&
+            i.location_id === activeLocationId &&
+            i.brand === input.brand &&
+            i.name === input.name &&
+            i.category === input.category &&
+            (i.description ?? '') === (input.description ?? ''),
+        )
+        .first();
+      if (existing) {
+        const quantity = existing.quantity + input.quantity;
+        await updateItem(existing.id, { quantity, price: input.price, cost_price: input.cost_price });
+        return existing.id;
+      }
+    }
 
     const item: InventoryItem = {
       ...input,
@@ -58,7 +81,11 @@ export function useInventoryActions() {
     return item.id;
   }
 
-  async function updateItem(id: string, changes: Partial<InventoryItemInput>): Promise<void> {
+  async function updateItem(
+    id: string,
+    changes: Partial<InventoryItemInput>,
+    options?: { deferIdentifiers?: boolean },
+  ): Promise<void> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     // await assertTrialAllowsMutations(shopOwnerId);
     const existing = await db.inventory_items.get(id);
@@ -69,8 +96,10 @@ export function useInventoryActions() {
     };
     void location_id;
     const merged = { ...existing, ...rest };
-    const idErr = inventoryMissingRequiredIdentifiers(merged.category, merged.imei, merged.serial_number);
-    if (idErr) throw new Error(idErr);
+    if (!options?.deferIdentifiers) {
+      const idErr = inventoryMissingRequiredIdentifiers(merged.category, merged.imei, merged.serial_number);
+      if (idErr) throw new Error(idErr);
+    }
     const updates = { ...rest, updated_at: now, sync_status: 'pending' as const };
     await db.inventory_items.update(id, updates);
     const updated = await db.inventory_items.get(id);

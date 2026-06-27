@@ -14,6 +14,9 @@ type SidebarLayoutContextValue = {
   collapsed: boolean;
   setCollapsed: (next: boolean) => void;
   toggleCollapsed: () => void;
+  mobileOpen: boolean;
+  setMobileOpen: (next: boolean) => void;
+  closeMobile: () => void;
 };
 
 const SidebarLayoutContext = createContext<SidebarLayoutContextValue | null>(null);
@@ -44,8 +47,14 @@ export function SidebarLayoutProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const [mobileOpen, setMobileOpenState] = useState(false);
+  const setMobileOpen = useCallback((next: boolean) => setMobileOpenState(next), []);
+  const closeMobile = useCallback(() => setMobileOpenState(false), []);
+
   return (
-    <SidebarLayoutContext.Provider value={{ collapsed, setCollapsed, toggleCollapsed }}>
+    <SidebarLayoutContext.Provider
+      value={{ collapsed, setCollapsed, toggleCollapsed, mobileOpen, setMobileOpen, closeMobile }}
+    >
       {children}
     </SidebarLayoutContext.Provider>
   );

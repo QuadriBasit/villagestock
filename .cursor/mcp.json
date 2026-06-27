@@ -2,6 +2,14 @@
   "mcpServers": {
     "supabase": {
       "url": "https://mcp.supabase.com/mcp?project_ref=ytnjzxptpofjrotdokaz"
+    },
+    "context-engine": {
+      "command": "/Users/abdulbasitquadri/.local/bin/cce",
+      "args": [
+        "serve",
+        "--project-dir",
+        "/Users/abdulbasitquadri/Documents/Code/villagestock"
+      ]
     }
   }
 }

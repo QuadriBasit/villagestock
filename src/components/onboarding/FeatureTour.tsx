@@ -12,13 +12,16 @@ export default function FeatureTour() {
   return (
     <ul className="space-y-3 text-left">
       {ITEMS.map(({ Icon, title, text }) => (
-        <li key={title} className="ui-card flex gap-3 rounded-xl p-3">
-          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <Icon size={18} className="text-primary" />
+        <li
+          key={title}
+          className="flex gap-3 rounded-xl border border-shell-line bg-shell-surface-2/30 p-3"
+        >
+          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-violet-400/15 text-violet-300">
+            <Icon size={18} />
           </div>
           <div>
-            <p className="text-sm font-semibold text-dark dark:text-zinc-100">{title}</p>
-            <p className="mt-0.5 text-xs text-muted dark:text-zinc-400">{text}</p>
+            <p className="text-sm font-semibold text-shell-ink">{title}</p>
+            <p className="mt-0.5 text-xs text-shell-muted">{text}</p>
           </div>
         </li>
       ))}

@@ -16,8 +16,17 @@
   --color-surface: #f8fafc;
   --color-border: #e2e8f0;
 
+  /* Prototype app shell (prototype-development-request) */
+  --color-shell-bg: #0b0f1a;
+  --color-shell-surface: #141a28;
+  --color-shell-surface-2: #1b2435;
+  --color-shell-line: #28324a;
+  --color-shell-ink: #eef2f9;
+  --color-shell-muted: #8794ab;
+
   --font-heading: 'Syne', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'DM Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -264,7 +273,35 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @utility app-page {
-  @apply relative mx-auto w-full max-w-lg px-3 sm:px-4 md:px-5 lg:max-w-[85rem] xl:max-w-[92rem];
+  @apply relative w-full max-w-none;
+}
+
+/* Authenticated app chrome — matches prototype-development-request shell */
+.app-shell {
+  --bg: #0b0f1a;
+  --surface: #141a28;
+  --surface-2: #1b2435;
+  --line: #28324a;
+  --ink: #eef2f9;
+  --muted: #8794ab;
+  --accent: #a78bfa;
+  --accent-2: #34d399;
+  --accent-3: #60a5fa;
+  --accent-4: #fbbf24;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  font-family: var(--font-body);
+}
+
+.app-shell ::selection {
+  background: color-mix(in oklch, var(--accent) 40%, transparent);
+}
+
+.app-shell .shell-inset-field:focus,
+.app-shell .shell-inset-field:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 @utility label-caps {
