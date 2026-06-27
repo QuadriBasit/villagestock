@@ -44,9 +44,9 @@ export function DateTimeField({
 
   return (
     <div className={cn('space-y-1.5', className)}>
-      <Label className="mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200">{label}</Label>
+      <Label className="mb-1 block text-sm font-medium text-shell-muted">{label}</Label>
       {hint ? (
-        <p className="mb-3 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">{hint}</p>
+        <p className="mb-3 text-[11px] leading-snug text-shell-muted">{hint}</p>
       ) : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <DatePickerField

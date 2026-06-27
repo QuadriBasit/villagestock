@@ -30,7 +30,7 @@ export function DashboardQuickActions() {
   ];
 
   return (
-    <Card className="border-shell-line bg-gradient-to-br from-violet-400/[0.18] to-shell-surface">
+    <Card className="border-shell-line bg-[linear-gradient(to_bottom_right,color-mix(in_oklch,var(--accent)_18%,transparent),var(--color-shell-surface))]">
       <CardContent className="p-4 md:p-5">
         <DashboardSectionHead title="Quick actions" />
         <div className="grid grid-cols-2 gap-2.5">
@@ -39,11 +39,7 @@ export function DashboardQuickActions() {
               key={label}
               type="button"
               variant={primary ? 'default' : 'outline'}
-              className={
-                primary
-                  ? 'h-10 w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300'
-                  : 'h-10 w-full border-shell-line bg-shell-surface-2 text-shell-ink hover:bg-shell-surface'
-              }
+              className={primary ? 'h-10 w-full' : 'h-10 w-full border-shell-line bg-shell-surface-2 text-shell-ink hover:bg-shell-surface'}
               onClick={() => navigate(to)}
             >
               <Icon size={16} />

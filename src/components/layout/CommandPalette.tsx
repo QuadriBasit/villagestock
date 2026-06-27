@@ -77,7 +77,7 @@ export function CommandPalette({ open, onClose, onNewSale }: CommandPaletteProps
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
+        className="w-full max-w-lg overflow-hidden rounded-xl border border-shell-line bg-shell-surface shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         <Command shouldFilter={false}>
@@ -120,7 +120,7 @@ export function CommandPalette({ open, onClose, onNewSale }: CommandPaletteProps
                         onSelect={() => go(`/inventory?edit=${item.id}`)}
                       >
                         <span className="flex-1 truncate">{item.brand} {item.name}</span>
-                        <span className="ml-2 text-xs tabular-nums text-muted">
+                        <span className="ml-2 text-xs tabular-nums text-shell-muted">
                           {formatCurrency(item.price)}
                         </span>
                       </CommandItem>

@@ -511,12 +511,12 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
               </div>
             )}
             {capture.status === "error" && (
-              <p className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
+              <p className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-200">
                 {capture.message}
               </p>
             )}
             {actionError && (
-              <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+              <p className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300">
                 {actionError}
               </p>
             )}
@@ -542,7 +542,7 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
               <button
                 type="button"
                 onClick={handleRetryCapture}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-shell-line bg-shell-surface-2/30 py-3 text-sm font-medium text-shell-ink dark:text-zinc-100"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-shell-line bg-shell-surface-2/30 py-3 text-sm font-medium text-shell-ink"
               >
                 <RefreshCw size={16} />
                 Retry capture
@@ -553,7 +553,7 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
                   type="button"
                   onClick={handleShare}
                   disabled={!ready}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-shell-line bg-shell-surface-2/30 py-3 text-sm font-medium text-shell-ink transition-colors hover:bg-shell-surface-2/30 disabled:opacity-60 dark:text-zinc-100 dark:hover:bg-zinc-700"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-shell-line bg-shell-surface-2/30 py-3 text-sm font-medium text-shell-ink transition-colors hover:bg-shell-surface-2/50 disabled:opacity-60"
                 >
                   {busy ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -566,7 +566,7 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
                   type="button"
                   onClick={handleDownloadPDF}
                   disabled={!ready}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-60"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-400 disabled:opacity-60"
                 >
                   {busy ? (
                     <Loader2 size={16} className="animate-spin" />

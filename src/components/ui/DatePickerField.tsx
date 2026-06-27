@@ -32,7 +32,7 @@ export function DatePickerField({
 
   return (
     <div className={cn('space-y-1.5', className)}>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200">
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-shell-muted">
         {label}
       </label>
       <Popover open={open} onOpenChange={setOpen}>
@@ -43,8 +43,8 @@ export function DatePickerField({
             variant="outline"
             disabled={disabled}
             className={cn(
-              'h-11 w-full justify-start gap-2 rounded-xl border-zinc-200 bg-white px-3 font-normal shadow-sm dark:border-zinc-700 dark:bg-zinc-900/95',
-              !value && 'text-zinc-500 dark:text-zinc-400'
+              'h-11 w-full justify-start gap-2 rounded-xl border-shell-line bg-shell-surface-2/40 px-3 font-normal shadow-sm',
+              !value && 'text-shell-muted'
             )}
           >
             <CalendarIcon className="size-4 shrink-0 opacity-70" aria-hidden />

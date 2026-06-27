@@ -4,7 +4,7 @@ export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'animate-pulse rounded-2xl bg-slate-200/80 dark:bg-zinc-600/45',
+        'animate-pulse rounded-2xl bg-shell-surface-2/50',
         className,
       )}
     />
@@ -44,7 +44,7 @@ export function InventorySkeletonList() {
       {[...Array(6)].map((_, i) => (
         <div
           key={i}
-          className="ui-card flex items-center gap-3 rounded-3xl px-4 py-3.5"
+          className="flex items-center gap-3 rounded-3xl border border-shell-line bg-shell-surface px-4 py-3.5"
         >
           <Skeleton className="w-11 h-11 rounded-2xl shrink-0" />
           <div className="flex-1 space-y-2">

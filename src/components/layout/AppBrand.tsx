@@ -8,7 +8,7 @@ type AppBrandProps = {
 export function AppBrand({ compact, className }: AppBrandProps) {
   return (
     <div className={cn('flex items-center gap-[11px]', className)}>
-      <div className="grid size-[38px] shrink-0 place-items-center rounded-[11px] bg-violet-400 font-display text-[19px] font-extrabold text-[#160a2e]">
+      <div className="grid size-[38px] shrink-0 place-items-center rounded-[11px] shell-accent-bg font-display text-[19px] font-extrabold">
         V
       </div>
       <div className={cn(compact && 'hidden min-[561px]:block')}>

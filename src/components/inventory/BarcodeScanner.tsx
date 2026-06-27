@@ -207,16 +207,16 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
         aria-modal="true"
         aria-label="Scan barcode or QR code"
       >
-        <div className="my-auto w-full max-w-sm shrink-0 overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
-          <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
-            <div className="flex items-center gap-2 font-heading text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-              <Camera size={18} className="text-primary" aria-hidden />
-              Scan Barcode / QR
+        <div className="my-auto w-full max-w-sm shrink-0 overflow-hidden rounded-xl border border-shell-line bg-shell-surface shadow-2xl">
+          <div className="flex items-center justify-between border-b border-shell-line px-4 py-3">
+            <div className="flex items-center gap-2 font-display text-sm font-semibold text-shell-ink">
+              <Camera size={18} className="text-violet-300" aria-hidden />
+              Scan barcode / QR
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="rounded-full p-1.5 text-shell-muted transition-colors hover:bg-shell-surface-2 hover:text-shell-ink"
               aria-label="Close scanner"
             >
               <X size={20} />
@@ -225,7 +225,7 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
 
           <div className="p-4">
             {error ? (
-              <div className="py-8 text-center text-sm text-red-600 dark:text-red-400">{error}</div>
+              <div className="py-8 text-center text-sm text-red-400">{error}</div>
             ) : (
               <div
                 id={containerId}
@@ -238,7 +238,7 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
                 className="flex min-h-[12.5rem] w-full items-center justify-center overflow-hidden rounded-xl bg-black [&_canvas]:max-w-full [&_video]:max-h-[min(50vh,20rem)] [&_video]:w-full [&_video]:object-cover"
               />
             )}
-            <p className="mt-3 text-center text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="mt-3 text-center text-xs text-shell-muted">
               Point your camera at the label, hold steady, and move a little closer for blurry codes
             </p>
           </div>

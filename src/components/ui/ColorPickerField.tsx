@@ -20,7 +20,7 @@ export function ColorPickerField({ id, label, value, onChange, className }: Colo
       <div className="flex items-center gap-2">
         <label
           htmlFor={id ? `${id}_swatch` : undefined}
-          className="relative flex h-10 w-12 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-border bg-white p-1 dark:border-zinc-600/80 dark:bg-zinc-900/60"
+          className="relative flex h-10 w-12 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-shell-line bg-shell-surface-2/40 p-1"
           aria-label={`${label} swatch`}
         >
           <span

@@ -23,8 +23,8 @@ export function SegmentedTabs<T extends string>({
           className={cn(
             'rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors md:text-sm',
             value === opt.value
-              ? 'border-primary bg-primary text-white dark:border-primary dark:bg-primary'
-              : 'border-zinc-200/90 bg-white text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-zinc-600'
+              ? 'border-violet-400/40 bg-violet-500 text-white'
+              : 'border-shell-line bg-shell-surface text-shell-muted hover:border-shell-muted/50 hover:text-shell-ink'
           )}
         >
           {opt.label}

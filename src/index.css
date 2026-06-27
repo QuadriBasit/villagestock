@@ -73,6 +73,21 @@ html {
   }
 }
 
+@keyframes vs-bottom-nav-glow-shell {
+  0%, 100% {
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.05) inset,
+      0 -1px 24px rgb(167 139 250 / 0.12),
+      0 4px 24px rgb(0 0 0 / 0.35);
+  }
+  50% {
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.06) inset,
+      0 -1px 32px rgb(167 139 250 / 0.22),
+      0 6px 28px rgb(0 0 0 / 0.4);
+  }
+}
+
 @keyframes vs-bottom-nav-glow {
   0%, 100% {
     box-shadow:
@@ -244,6 +259,18 @@ h1, h2, h3, h4, h5, h6 {
     animation-name: vs-bottom-nav-glow-dark;
   }
 
+  .app-shell .bottom-nav-animated {
+    animation-name: vs-bottom-nav-glow-shell;
+  }
+
+  .app-shell .fab-pulse-host::before {
+    border-color: color-mix(in oklch, var(--accent) 45%, transparent);
+  }
+
+  .app-shell .fab-pulse-host::after {
+    border-color: color-mix(in oklch, var(--accent-3) 35%, transparent);
+  }
+
   /* Route shell: content fades / lifts in */
   .route-enter {
     animation: vs-page-enter 0.42s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
@@ -302,6 +329,82 @@ h1, h2, h3, h4, h5, h6 {
 .app-shell .shell-inset-field:focus-visible {
   outline: none;
   box-shadow: none;
+}
+
+/* Brand accent — driven by receipt theme via ShellAccentSync (--accent on .app-shell) */
+@layer components {
+  .shell-accent-bg {
+    background-color: var(--accent);
+    color: #160a2e;
+  }
+
+  .shell-accent-bg:hover {
+    filter: brightness(1.07);
+  }
+
+  .shell-accent-text {
+    color: var(--accent);
+  }
+
+  .shell-accent-text-soft {
+    color: color-mix(in oklch, var(--accent) 72%, white);
+  }
+
+  .shell-accent-subtle {
+    background: color-mix(in oklch, var(--accent) 16%, transparent);
+  }
+
+  .shell-accent-subtle-border {
+    border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+  }
+
+  .shell-accent-icon {
+    background: color-mix(in oklch, var(--accent) 15%, transparent);
+    color: color-mix(in oklch, var(--accent) 82%, white);
+  }
+
+  .shell-accent-ring {
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent) 12%, transparent);
+  }
+
+  .shell-focus-accent:focus,
+  .shell-focus-accent:focus-visible {
+    border-color: color-mix(in oklch, var(--accent) 45%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent) 12%, transparent);
+    outline: none;
+  }
+
+  .shell-hover-accent:hover {
+    border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+  }
+
+  .shell-nav-active {
+    background: color-mix(in oklch, var(--accent) 16%, transparent);
+  }
+
+  .shell-nav-active svg {
+    color: var(--accent);
+  }
+}
+
+/* Light appearance — Settings → Appearance (html.dark removed by ThemeProvider) */
+html:not(.dark) .app-shell {
+  --bg: #eef2f7;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --line: #e2e8f0;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --color-shell-bg: #eef2f7;
+  --color-shell-surface: #ffffff;
+  --color-shell-surface-2: #f8fafc;
+  --color-shell-line: #e2e8f0;
+  --color-shell-ink: #0f172a;
+  --color-shell-muted: #64748b;
+}
+
+html:not(.dark) .app-shell .shell-nav-active {
+  background: color-mix(in oklch, var(--accent) 12%, var(--color-shell-bg));
 }
 
 @utility label-caps {

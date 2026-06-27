@@ -1,4 +1,13 @@
+import { cn } from '@/lib/utils';
 import { PAID_PLANS, COMING_SOON_CTA } from '@/lib/plans';
+import {
+  billingPlanBlurb,
+  billingPlanCard,
+  billingPlanCta,
+  billingPlanFeature,
+  billingPlanPrice,
+  billingPlanTitle,
+} from '@/components/billing/billingUi';
 
 type Props = {
   /** Larger padding for overlay context */
@@ -6,43 +15,33 @@ type Props = {
 };
 
 export default function PlanPickerGrid({ variant = 'default' }: Props) {
-  const pad = variant === 'compact' ? 'p-3' : 'p-4';
   const grid = variant === 'compact' ? 'gap-2' : 'gap-3';
 
   return (
-    <div className={`grid sm:grid-cols-3 ${grid}`}>
+    <div className={cn('grid sm:grid-cols-3', grid)}>
       {PAID_PLANS.map(plan => (
-        <div
-          key={plan.id}
-          className={`ui-card rounded-2xl ${pad} flex flex-col ${
-            plan.highlight ? 'border-primary shadow-md ring-2 ring-primary/20' : ''
-          }`}
-        >
+        <div key={plan.id} className={billingPlanCard(plan.highlight)}>
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h4 className="font-heading font-semibold text-dark">{plan.title}</h4>
-              <p className="text-lg font-bold text-primary mt-0.5">{plan.priceLabel}</p>
+              <h4 className={billingPlanTitle}>{plan.title}</h4>
+              <p className={cn(billingPlanPrice, 'mt-0.5')}>{plan.priceLabel}</p>
             </div>
-            {plan.highlight && (
-              <span className="text-[10px] font-semibold uppercase tracking-wide bg-primary/10 text-primary px-2 py-0.5 rounded-full shrink-0">
+            {plan.highlight ? (
+              <span className="shrink-0 rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-300">
                 Popular
               </span>
-            )}
+            ) : null}
           </div>
-          <p className="text-xs text-muted mt-1">{plan.blurb}</p>
-          <ul className="mt-3 space-y-1.5 text-xs text-dark flex-1">
+          <p className={cn(billingPlanBlurb, 'mt-1')}>{plan.blurb}</p>
+          <ul className="mt-3 flex-1 space-y-1.5">
             {plan.features.map(f => (
-              <li key={f} className="flex gap-2">
-                <span className="text-primary shrink-0">✓</span>
+              <li key={f} className={cn(billingPlanFeature, 'flex gap-2')}>
+                <span className="shrink-0 text-violet-300">✓</span>
                 <span>{f}</span>
               </li>
             ))}
           </ul>
-          <button
-            type="button"
-            disabled
-            className="mt-4 w-full rounded-xl border border-border bg-surface py-2.5 text-xs font-medium text-muted cursor-not-allowed"
-          >
+          <button type="button" disabled className={billingPlanCta}>
             {COMING_SOON_CTA}
           </button>
         </div>

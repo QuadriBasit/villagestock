@@ -183,19 +183,19 @@ export default function ReturnForm({
 
           <div className={salesModalBody}>
             <section className={`${cardSection} space-y-2`}>
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-shell-muted uppercase tracking-wider">
                 Original Sale
               </h3>
               <div className={readonlyClass}>{sale.item_name}</div>
-              <div className="flex gap-2 text-xs text-muted">
-                <span className="bg-surface border border-border rounded-full px-2 py-0.5">
+              <div className="flex gap-2 text-xs text-shell-muted">
+                <span className="bg-shell-surface-2/40 border border-shell-line rounded-full px-2 py-0.5">
                   {sale.receipt_number}
                 </span>
-                <span className="bg-surface border border-border rounded-full px-2 py-0.5">
+                <span className="bg-shell-surface-2/40 border border-shell-line rounded-full px-2 py-0.5">
                   {formatCurrency(sale.sale_price)}
                 </span>
                 {sale.serial_number && (
-                  <span className="bg-surface border border-border rounded-full px-2 py-0.5 font-mono">
+                  <span className="bg-shell-surface-2/40 border border-shell-line rounded-full px-2 py-0.5 font-mono">
                     S/N: {sale.serial_number}
                   </span>
                 )}
@@ -204,7 +204,7 @@ export default function ReturnForm({
 
             {/* Return details */}
             <section className={`${cardSection} space-y-4`}>
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-shell-muted uppercase tracking-wider">
                 Return Details
               </h3>
 
@@ -331,7 +331,7 @@ export default function ReturnForm({
             {/* Exchange item picker */}
             {returnType === "exchange" && (
               <section className={`${cardSection} space-y-3`}>
-                <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+                <h3 className="text-xs font-semibold text-shell-muted uppercase tracking-wider">
                   Exchange Item
                 </h3>
 
@@ -341,7 +341,7 @@ export default function ReturnForm({
                       <p className="text-sm font-medium text-shell-ink">
                         {selectedExchangeItem.name}
                       </p>
-                      <p className="text-xs text-muted">
+                      <p className="text-xs text-shell-muted">
                         {selectedExchangeItem.brand} ·{" "}
                         {formatCurrency(selectedExchangeItem.price)} ·{" "}
                         {selectedExchangeItem.quantity} in stock
@@ -350,7 +350,7 @@ export default function ReturnForm({
                     <button
                       type="button"
                       onClick={() => setSelectedExchangeItem(null)}
-                      className="p-1 rounded-full hover:bg-border text-muted"
+                      className="rounded-full p-1 text-shell-muted hover:bg-shell-surface-2"
                     >
                       <X size={14} />
                     </button>
@@ -360,7 +360,7 @@ export default function ReturnForm({
                     <div className="relative">
                       <Search
                         size={14}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-shell-muted"
                       />
                       <Input
                         type="text"
@@ -372,7 +372,7 @@ export default function ReturnForm({
                     </div>
                     <div className="space-y-1.5 max-h-48 overflow-y-auto">
                       {filteredItems.length === 0 ? (
-                        <p className="text-sm text-muted text-center py-3">
+                        <p className="text-sm text-shell-muted text-center py-3">
                           No items found
                         </p>
                       ) : (
@@ -381,12 +381,12 @@ export default function ReturnForm({
                             key={item.id}
                             type="button"
                             onClick={() => setSelectedExchangeItem(item)}
-                            className="w-full rounded-xl border border-shell-line px-3 py-2 text-left transition-colors hover:bg-zinc-100 hover:bg-shell-surface-2/50"
+                            className="w-full rounded-xl border border-shell-line px-3 py-2 text-left transition-colors hover:bg-shell-surface-2/50"
                           >
                             <p className="text-sm font-medium text-shell-ink">
                               {item.name}
                             </p>
-                            <p className="text-xs text-muted">
+                            <p className="text-xs text-shell-muted">
                               {item.brand} · {formatCurrency(item.price)} ·{" "}
                               {item.quantity} in stock
                             </p>

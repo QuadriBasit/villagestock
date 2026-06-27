@@ -93,7 +93,7 @@ function parseSoldAtLocal(iso: string | undefined): {
 const itemMetaPill =
   "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium";
 const itemPillNeutral = `${itemMetaPill} border-shell-line bg-shell-surface-2/40 text-shell-muted`;
-const itemPillTeal = `${itemMetaPill} border-teal/30 bg-teal/10 text-teal dark:border-teal/35 dark:bg-teal/15 dark:text-teal`;
+const itemPillTeal = `${itemMetaPill} border-emerald-400/30 bg-emerald-500/10 text-emerald-300`;
 const itemPillMono = `${itemMetaPill} border-shell-line bg-shell-surface-2/40 font-mono text-[10px] tracking-tight text-shell-muted`;
 
 export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
@@ -247,7 +247,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
 
           <div className={salesModalHeader}>
             <div className="flex items-center gap-2">
-              <ShoppingCart size={18} className="text-teal" />
+              <ShoppingCart size={18} className="text-violet-300" />
               <h2 className="font-display text-base font-bold text-shell-ink">
                 Record Sale
               </h2>
@@ -285,7 +285,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
               </p>
             )}
             {/* Item snapshot */}
-            <section className="rounded-2xl border border-shell-line bg-shell-surface p-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/35">
+            <section className="rounded-2xl border border-shell-line bg-shell-surface p-4 shadow-sm">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-shell-muted">
                 Item
               </h3>
@@ -319,14 +319,14 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
 
             {/* Sale details */}
             <section className="rounded-xl border border-shell-line bg-shell-surface p-4 shadow-none space-y-4">
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-shell-muted uppercase tracking-wider">
                 Sale Details
               </h3>
 
               <div>
                 <label className={labelClass} htmlFor="sale_price">
                   Sale Price (₦) *
-                  <span className="ml-2 text-muted font-normal text-xs">
+                  <span className="ml-2 text-shell-muted font-normal text-xs">
                     Listed: {formatCurrency(item.price)}
                   </span>
                 </label>
@@ -352,7 +352,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
                 )}
                 {canViewProfit && hasProfit && (
                   <p
-                    className={`text-xs mt-1 font-medium ${unitProfit >= 0 ? "text-teal" : "text-red-500"}`}
+                    className={`mt-1 text-xs font-medium ${unitProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
                   >
                     {unitProfit >= 0 ? "Profit" : "Loss"}:{" "}
                     {formatCurrency(Math.abs(unitProfit))}
@@ -528,7 +528,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
 
             {/* Customer (optional) */}
             <section className="rounded-xl border border-shell-line bg-shell-surface p-4 shadow-none space-y-4">
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-shell-muted uppercase tracking-wider">
                 Customer{" "}
                 <span className="normal-case font-normal">
                   {paymentStatus === "credit"
@@ -567,19 +567,19 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
           <div className={modalSheetFooter}>
             {completedSale ? (
               <div className="space-y-2">
-                <p className="text-center text-sm font-medium text-teal mb-1">
+                <p className="mb-1 text-center text-sm font-medium text-emerald-400">
                   ✓ Sale recorded — {completedSale.receipt_number}
                 </p>
                 <div className="flex gap-2">
                   <button
                     onClick={onSuccess}
-                    className="flex-1 border border-border text-muted rounded-xl py-3 text-sm font-medium hover:bg-surface transition-colors"
+                    className="flex-1 rounded-xl border border-shell-line py-3 text-sm font-medium text-shell-muted transition-colors hover:bg-shell-surface-2/50"
                   >
                     Done
                   </button>
                   <button
                     onClick={() => setShowReceipt(true)}
-                    className="flex-1 bg-primary text-white rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary-dark transition-colors"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-400"
                   >
                     <ReceiptIcon size={16} /> View Receipt
                   </button>

@@ -20,7 +20,7 @@ export function StatCard({ label, value, icon: Icon, iconClassName, hint, hintCl
           {Icon ? (
             <span
               className={cn(
-                'grid size-8 place-items-center rounded-lg bg-primary/10 text-primary dark:bg-primary/20 dark:text-violet-200',
+                'grid size-8 place-items-center rounded-lg bg-violet-500/15 text-violet-300',
                 iconClassName
               )}
             >
@@ -33,7 +33,7 @@ export function StatCard({ label, value, icon: Icon, iconClassName, hint, hintCl
             {value}
           </div>
           {hint ? (
-            <div className={cn('mt-1 text-xs font-semibold', hintClassName ?? 'text-muted dark:text-zinc-500')}>
+            <div className={cn('mt-1 text-xs font-semibold', hintClassName ?? 'text-shell-muted')}>
               {hint}
             </div>
           ) : null}

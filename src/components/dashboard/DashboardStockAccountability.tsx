@@ -15,7 +15,6 @@ import { hasStockAccountabilityPlan } from '@/lib/stockSessionUtils';
 import {
   modalSheetBackdrop,
   modalSheetHandle,
-  modalSheetPanelMd,
 } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { useShopAccess } from '@/context/ShopAccessContext';
@@ -24,6 +23,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Textarea } from '@/components/ui/Textarea';
 import { cn } from '@/lib/utils';
+import { settingsField } from '@/components/settings/settingsUi';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 export function DashboardStockAccountability() {
@@ -202,9 +202,9 @@ export function DashboardStockAccountability() {
                     <button
                       type="button"
                       onClick={() => setResolving(item)}
-                      className="flex w-full items-center justify-between gap-2 rounded-xl border border-red-100 bg-white px-3 py-2 text-left text-sm dark:border-red-900/30 dark:bg-zinc-900/50"
+                      className="flex w-full items-center justify-between gap-2 rounded-xl border border-red-500/25 bg-shell-surface px-3 py-2 text-left text-sm hover:bg-shell-surface-2/40"
                     >
-                      <span className="min-w-0 truncate font-medium text-zinc-900 dark:text-zinc-100">
+                      <span className="min-w-0 truncate font-medium text-shell-ink">
                         {item.name}
                       </span>
                       <Search size={14} className="shrink-0 text-red-500" />
@@ -267,17 +267,18 @@ function ResolveMissingModal({
   return (
     <ModalSheetPortal>
     <div className={modalSheetBackdrop} onClick={onClose}>
-      <div className={modalSheetPanelMd} onClick={(e) => e.stopPropagation()}>
+      <div
+        className="max-h-[min(90vh,720px)] overflow-y-auto border border-shell-line bg-shell-surface p-0 shadow-none sm:max-h-[min(85vh,680px)] sm:rounded-2xl"
+        onClick={e => e.stopPropagation()}
+      >
         <div className={modalSheetHandle}>
-          <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+          <div className="h-1 w-10 rounded-full bg-shell-line" />
         </div>
-        <div className="max-h-[min(90vh,720px)] overflow-y-auto p-5 sm:max-h-[min(85vh,680px)]">
-        <h3 className="font-heading text-lg font-bold text-zinc-900 dark:text-zinc-50">
-          Resolve missing device
-        </h3>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{item.name}</p>
+        <div className="p-5">
+        <h3 className="font-display text-lg font-semibold text-shell-ink">Resolve missing device</h3>
+        <p className="mt-1 text-sm text-shell-muted">{item.name}</p>
         {(item.imei || item.serial_number) && (
-          <p className="mt-1 font-mono text-[11px] text-zinc-500">
+          <p className="mt-1 font-mono text-[11px] text-shell-muted">
             {[item.imei && `IMEI ${item.imei}`, item.serial_number && `S/N ${item.serial_number}`]
               .filter(Boolean)
               .join(' · ')}
@@ -285,7 +286,7 @@ function ResolveMissingModal({
         )}
 
         <div className="mt-4 space-y-2">
-          <p className="text-xs font-medium text-zinc-500">Outcome</p>
+          <p className="text-xs font-medium text-shell-muted">Outcome</p>
           <div className="grid gap-2">
             {(
               [
@@ -301,19 +302,19 @@ function ResolveMissingModal({
                 className={cn(
                   'flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition-colors',
                   resolution === val
-                    ? 'border-primary bg-primary/10 text-zinc-900 dark:text-zinc-100'
-                    : 'border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900/60',
+                    ? 'border-violet-400/40 bg-violet-400/10 text-shell-ink'
+                    : 'border-shell-line text-shell-muted hover:bg-shell-surface-2 hover:text-shell-ink',
                 )}
               >
                 <span
                   className={cn(
                     'grid size-4 shrink-0 place-items-center rounded-full border',
-                    resolution === val ? 'border-primary bg-primary' : 'border-zinc-300 dark:border-zinc-600',
+                    resolution === val ? 'border-violet-400 bg-violet-400' : 'border-shell-line',
                   )}
                   aria-hidden
                 >
                   {resolution === val ? (
-                    <span className="size-1.5 rounded-full bg-white" />
+                    <span className="size-1.5 rounded-full bg-[#160a2e]" />
                   ) : null}
                 </span>
                 {label}
@@ -323,25 +324,30 @@ function ResolveMissingModal({
         </div>
 
         <div className="mt-4">
-          <label className="text-xs font-medium text-zinc-500">Note *</label>
+          <label className="text-xs font-medium text-shell-muted">Note *</label>
           <Textarea
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={e => setNote(e.target.value)}
             rows={3}
-            className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            className={cn(settingsField, 'mt-1')}
             placeholder="Record what happened…"
           />
         </div>
 
-        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        {error ? <p className="mt-2 text-xs text-red-400">{error}</p> : null}
 
         <div className="mt-5 flex gap-2">
-          <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={onClose}>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 rounded-xl border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
+            onClick={onClose}
+          >
             Cancel
           </Button>
           <Button
             type="button"
-            className="flex-1 rounded-xl"
+            className="flex-1 rounded-xl bg-violet-400 text-[#160a2e] hover:bg-violet-300"
             disabled={busy}
             onClick={() => void submit()}
           >

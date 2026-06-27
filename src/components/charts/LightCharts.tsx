@@ -104,11 +104,11 @@ export function SimpleAreaChart({
         ))}
       </svg>
 
-      <div className="grid grid-cols-2 gap-2 text-xs text-zinc-500 dark:text-zinc-400 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 text-xs text-shell-muted md:grid-cols-4">
         {data.slice(-4).map(point => (
-          <div key={point.label} className="rounded-lg bg-zinc-50 px-2.5 py-2 dark:bg-zinc-900/60">
+          <div key={point.label} className="rounded-lg bg-shell-surface-2/40 px-2.5 py-2">
             <p className="truncate">{point.label}</p>
-            <p className="mt-0.5 font-semibold text-zinc-900 dark:text-zinc-100">{valueFormatter(point.value)}</p>
+            <p className="mt-0.5 font-semibold text-shell-ink">{valueFormatter(point.value)}</p>
           </div>
         ))}
       </div>
@@ -151,8 +151,8 @@ export function SimpleDonutChart({
           })}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{total.toLocaleString()}</span>
-          {totalLabel && <span className="text-xs text-zinc-500 dark:text-zinc-400">{totalLabel}</span>}
+          <span className="text-2xl font-bold text-shell-ink">{total.toLocaleString()}</span>
+          {totalLabel && <span className="text-xs text-shell-muted">{totalLabel}</span>}
         </div>
       </div>
 
@@ -164,11 +164,11 @@ export function SimpleDonutChart({
               <div className="flex items-center justify-between gap-3 text-xs">
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: slice.color }} />
-                  <span className="capitalize text-zinc-700 dark:text-zinc-200">{slice.label}</span>
+                  <span className="capitalize text-shell-ink">{slice.label}</span>
                 </div>
-                <span className="text-zinc-500 dark:text-zinc-400">{percent.toFixed(0)}%</span>
+                <span className="text-shell-muted">{percent.toFixed(0)}%</span>
               </div>
-              <div className="h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
+              <div className="h-2 rounded-full bg-shell-surface-2">
                 <div
                   className="h-2 rounded-full"
                   style={{ width: `${percent}%`, backgroundColor: slice.color }}
@@ -201,10 +201,10 @@ export function SimpleBarChart({
         const heightPercent = (item.value / topValue) * 100;
         return (
           <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-            <span className="text-xs font-semibold tabular-nums text-zinc-500 dark:text-zinc-400">
+            <span className="text-xs font-semibold tabular-nums text-shell-muted">
               {item.value}
             </span>
-            <div className="flex h-52 w-full items-end rounded-t-2xl bg-zinc-100/70 px-1.5 dark:bg-zinc-800/70">
+            <div className="flex h-52 w-full items-end rounded-t-2xl bg-shell-surface-2/70 px-1.5">
               <div
                 className="w-full rounded-t-xl transition-[height]"
                 style={{

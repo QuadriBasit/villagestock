@@ -33,6 +33,7 @@ import {Input} from '@/components/ui/Input';
 import {Checkbox} from '@/components/ui/Checkbox';
 import {Textarea} from '@/components/ui/Textarea';
 import {CurrencyInput} from '@/components/ui/CurrencyInput';
+import {settingsField, settingsLabel} from '@/components/settings/settingsUi';
 import type {
   InventoryItemInput,
   Category,
@@ -241,16 +242,16 @@ const SCREEN_CONDITION_OPTIONS: {value: MacScreenCondition; label: string}[] = [
 
 type ScanTarget = 'serial_number' | 'imei' | 'imei2' | 'barcode';
 
-const formFieldClass =
-  'w-full rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-100';
-
-const formLabelClass =
-  'mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200';
-
-/** Radix Select cannot use `value=""`; map empty / unset to this sentinel in the UI only. */
 const SELECT_NONE = '__none__';
-const sectionTitleClass =
-  'font-heading text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100';
+
+const shellFieldClass = settingsField;
+const shellLabelClass = settingsLabel;
+const shellSectionClass =
+  'space-y-4 rounded-lg border border-shell-line bg-shell-surface/80 p-4';
+const shellSectionHeadingClass =
+  'font-display text-sm font-semibold uppercase tracking-wide text-shell-ink';
+const shellHintClass = 'text-[11px] leading-snug text-shell-muted';
+const shellHintStrongClass = 'text-shell-ink';
 
 interface ItemFormProps {
   defaultValues?: Partial<FormData> & {
@@ -495,19 +496,11 @@ export default function ItemForm({
     }
   });
 
-  const fieldClass = isModal
-    ? 'shell-inset-field w-full rounded-lg border border-shell-line bg-shell-surface-2/40 px-3 py-2.5 text-sm text-shell-ink outline-none placeholder:text-shell-muted focus:border-shell-muted/60'
-    : formFieldClass;
-  const labelClass = isModal
-    ? 'mb-1 block text-sm font-medium text-shell-ink'
-    : formLabelClass;
-  const sectionClass = isModal
-    ? 'space-y-4 rounded-lg border border-shell-line bg-shell-surface/80 p-4'
-    : 'space-y-4 rounded-2xl border border-zinc-200/80 bg-white/90 p-4 dark:border-zinc-800 dark:bg-zinc-900/70 md:p-4';
-  const sectionHeadingClass = isModal
-    ? 'font-display text-sm font-semibold uppercase tracking-wide text-shell-ink'
-    : sectionTitleClass;
-  const errorClass = 'text-red-500 text-xs mt-1';
+  const fieldClass = shellFieldClass;
+  const labelClass = shellLabelClass;
+  const sectionClass = shellSectionClass;
+  const sectionHeadingClass = shellSectionHeadingClass;
+  const errorClass = 'text-red-400 text-xs mt-1';
 
   return (
     <>
@@ -529,14 +522,10 @@ export default function ItemForm({
         <section className={sectionClass}>
           <h3 className={sectionHeadingClass}>Basic Info</h3>
 
-          <p className='text-[11px] leading-snug text-zinc-500 dark:text-zinc-400'>
+          <p className={shellHintClass}>
             Choose{' '}
-            <strong className='text-zinc-700 dark:text-zinc-300'>
-              category
-            </strong>{' '}
-            and{' '}
-            <strong className='text-zinc-700 dark:text-zinc-300'>brand</strong>{' '}
-            first — item name suggestions filter by brand so lists stay relevant
+            <strong className={shellHintStrongClass}>category</strong> and{' '}
+            <strong className={shellHintStrongClass}>brand</strong> first — item name suggestions filter by brand so lists stay relevant
             (you can still type anything).
           </p>
 
@@ -619,7 +608,7 @@ export default function ItemForm({
           )}
 
           {/* Mode hint */}
-          <p className='text-xs text-muted bg-surface rounded-lg px-3 py-2 border border-border'>
+          <p className='text-xs text-shell-muted rounded-lg border border-shell-line bg-shell-surface-2/40 px-3 py-2'>
             {isSerialized
               ? 'Serialized mode — each unit is a separate record. Add one unit at a time.'
               : 'Non-serialized mode — tracked by quantity.'}
@@ -639,7 +628,7 @@ export default function ItemForm({
           </div>
 
           {(showAppleMobileFields || showAppleLaptopFields) && (
-            <p className='text-xs text-primary bg-primary/5 rounded-lg px-3 py-2 border border-primary/10'>
+            <p className='text-xs text-violet-300 rounded-lg border border-violet-400/20 bg-violet-500/10 px-3 py-2'>
               Apple device details will be saved as structured metadata and will
               appear in search, inventory badges, and receipts.
             </p>
@@ -848,34 +837,20 @@ export default function ItemForm({
                 />
               )}
             />
-            <p className='text-[11px] leading-snug text-zinc-500 dark:text-zinc-400 rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900/50'>
+            <p className={cn(shellHintClass, 'rounded-lg border border-shell-line bg-shell-surface-2/40 px-3 py-2')}>
               Apple shows{' '}
-              <strong className='text-zinc-700 dark:text-zinc-300'>
-                Important Battery Message
-              </strong>{' '}
-              or{' '}
-              <strong className='text-zinc-700 dark:text-zinc-300'>
-                Important Display Message
-              </strong>{' '}
-              /{' '}
-              <strong className='text-zinc-700 dark:text-zinc-300'>
-                Unknown Part
-              </strong>{' '}
-              in Settings when a part wasn&apos;t verified through Apple or an
-              Authorized Provider — separate from Find My / iCloud lock. Trade
-              terms{' '}
-              <strong className='text-zinc-700 dark:text-zinc-300'>IBM</strong>,{' '}
-              <strong className='text-zinc-700 dark:text-zinc-300'>IDM</strong>,{' '}
-              <strong className='text-zinc-700 dark:text-zinc-300'>ICM</strong>{' '}
-              often pair with those warnings; tick all that apply on this unit.{' '}
-              <strong className='text-zinc-700 dark:text-zinc-300'>
-                Battery health under 80%
-              </strong>{' '}
-              is stored automatically as a serviced / low-health battery
+              <strong className={shellHintStrongClass}>Important Battery Message</strong> or{' '}
+              <strong className={shellHintStrongClass}>Important Display Message</strong> /{' '}
+              <strong className={shellHintStrongClass}>Unknown Part</strong> in Settings when a part wasn&apos;t verified through Apple or an
+              Authorized Provider — separate from Find My / iCloud lock. Trade terms{' '}
+              <strong className={shellHintStrongClass}>IBM</strong>,{' '}
+              <strong className={shellHintStrongClass}>IDM</strong>,{' '}
+              <strong className={shellHintStrongClass}>ICM</strong> often pair with those warnings; tick all that apply on this unit.{' '}
+              <strong className={shellHintStrongClass}>Battery health under 80%</strong> is stored automatically as a serviced / low-health battery
               disclosure (receipts and badges).
             </p>
-            <div className='space-y-2.5 rounded-xl border border-zinc-200/80 bg-white/60 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-900/40'>
-              <p className='text-xs font-semibold text-zinc-800 dark:text-zinc-200'>
+            <div className='space-y-2.5 rounded-xl border border-shell-line bg-shell-surface-2/35 px-3 py-3'>
+              <p className='text-xs font-semibold text-shell-ink'>
                 Disclosures (check all that apply)
               </p>
               <div className='grid gap-2.5 sm:grid-cols-2'>
@@ -1122,7 +1097,7 @@ export default function ItemForm({
           className={cn(
             isModal
               ? 'sticky bottom-0 -mx-1 border-t border-shell-line bg-shell-surface pt-3 pb-1'
-              : 'fixed z-30 max-lg:bottom-[0] lg:bottom-0 left-0 right-0 px-3 md:px-5 pb-[max(0.35rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[#f0f0f3] via-[#f0f0f3]/96 to-transparent pt-3 dark:from-zinc-950 dark:via-zinc-950/96 pb-4',
+              : 'fixed z-30 max-lg:bottom-[0] lg:bottom-0 left-0 right-0 px-3 md:px-5 pb-[max(0.35rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-shell-bg via-shell-bg/96 to-transparent pt-3 pb-4',
           )}>
           <div
             className={cn(
@@ -1134,10 +1109,7 @@ export default function ItemForm({
               type='submit'
               disabled={isSubmitting}
               className={cn(
-                'rounded-xl py-3.5 font-heading font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2',
-                isModal
-                  ? 'bg-violet-400 text-[#160a2e] hover:bg-violet-300'
-                  : 'bg-primary text-white hover:bg-primary-dark',
+                'rounded-xl py-3.5 font-display font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2 bg-violet-400 text-[#160a2e] hover:bg-violet-300',
               )}>
               {isSubmitting && <Loader2 size={16} className='animate-spin' />}
               {submitLabel}
@@ -1149,10 +1121,7 @@ export default function ItemForm({
                 disabled={isSubmitting}
                 onClick={handleAddAnother}
                 className={cn(
-                  'rounded-xl py-3.5 font-heading font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2',
-                  isModal
-                    ? 'border border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2'
-                    : 'bg-teal text-white hover:bg-teal-dark',
+                  'rounded-xl py-3.5 font-display font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2 border border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2',
                 )}>
                 {isSubmitting ? (
                   <Loader2 size={16} className='animate-spin' />
@@ -1204,7 +1173,7 @@ function AppleDetailCheckbox({
       render={({field}) => (
         <label
           htmlFor={id}
-          className='flex cursor-pointer gap-2.5 rounded-lg border border-zinc-200/90 bg-white px-2.5 py-2 text-left dark:border-zinc-600 dark:bg-zinc-900/60'>
+          className='flex cursor-pointer gap-2.5 rounded-lg border border-shell-line bg-shell-surface-2/35 px-2.5 py-2 text-left'>
           <Checkbox
             id={id}
             className='mt-0.5'
@@ -1212,12 +1181,8 @@ function AppleDetailCheckbox({
             onCheckedChange={checked => field.onChange(checked === true)}
           />
           <span className='min-w-0'>
-            <span className='block text-sm font-medium text-zinc-900 dark:text-zinc-100'>
-              {label}
-            </span>
-            <span className='block text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug'>
-              {hint}
-            </span>
+            <span className='block text-sm font-medium text-shell-ink'>{label}</span>
+            <span className='block text-[10px] leading-snug text-shell-muted'>{hint}</span>
           </span>
         </label>
       )}
@@ -1235,15 +1200,15 @@ interface ScanFieldProps extends ComponentProps<typeof Input> {
 
 const ScanField = ({id, label, onScan, className, ...props}: ScanFieldProps) => (
   <div>
-    <Label className={formLabelClass} htmlFor={id}>
+    <Label className={shellLabelClass} htmlFor={id}>
       {label}
     </Label>
     <div className='flex gap-2'>
-      <Input id={id} className={cn(formFieldClass, 'flex-1', className)} {...props} />
+      <Input id={id} className={cn(shellFieldClass, 'flex-1', className)} {...props} />
       <button
         type='button'
         onClick={onScan}
-        className='shrink-0 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-muted transition-colors hover:bg-zinc-50 hover:text-primary dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700/80 dark:hover:text-primary-light'
+        className='shrink-0 rounded-lg border border-shell-line bg-shell-surface px-3 py-2.5 text-shell-muted transition-colors hover:bg-shell-surface-2 hover:text-violet-300'
         aria-label={`Scan ${label}`}>
         <ScanLine size={18} />
       </button>
@@ -1268,7 +1233,7 @@ function NumberField({
 }) {
   return (
     <div>
-      <Label className={formLabelClass} htmlFor={id}>
+      <Label className={shellLabelClass} htmlFor={id}>
         {label}
       </Label>
       <div className='relative'>
@@ -1277,10 +1242,10 @@ function NumberField({
           type='number'
           inputMode='numeric'
           {...register}
-          className={cn(formFieldClass, 'pr-8')}
+          className={cn(shellFieldClass, 'pr-8')}
         />
         {suffix && (
-          <span className='absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 dark:text-zinc-400'>
+          <span className='absolute right-3 top-1/2 -translate-y-1/2 text-xs text-shell-muted'>
             {suffix}
           </span>
         )}

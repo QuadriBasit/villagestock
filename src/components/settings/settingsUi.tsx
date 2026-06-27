@@ -5,8 +5,9 @@ import { cn } from '@/lib/utils';
 export const settingsPanel =
   'rounded-xl border border-shell-line bg-shell-surface p-4 md:p-5 shadow-none';
 
-export const settingsField =
-  'shell-inset-field w-full rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-2.5 text-sm text-shell-ink placeholder:text-shell-muted outline-none transition focus:border-violet-400/45 focus:ring-2 focus:ring-violet-400/12';
+export const settingsField = cn(
+  'shell-inset-field shell-focus-accent w-full rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-2.5 text-sm text-shell-ink placeholder:text-shell-muted outline-none transition',
+);
 
 export const settingsLabel = 'mb-1.5 block text-xs font-semibold text-shell-muted';
 
@@ -14,7 +15,7 @@ export const settingsInset =
   'rounded-xl border border-shell-line bg-shell-surface-2/40';
 
 export const settingsBtnPrimary =
-  'inline-flex items-center justify-center gap-2 rounded-xl bg-violet-400 px-4 py-2.5 text-sm font-semibold text-[#160a2e] transition hover:bg-violet-300 disabled:opacity-50';
+  'shell-accent-bg inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50';
 
 export const settingsBtnOutline =
   'inline-flex items-center justify-center gap-2 rounded-xl border border-shell-line bg-transparent px-4 py-2.5 text-sm font-medium text-shell-ink transition hover:bg-shell-surface-2';
@@ -26,7 +27,7 @@ export const settingsRoleChip = (active: boolean) =>
   cn(
     'rounded-xl border px-3 py-2.5 text-left text-xs transition-colors',
     active
-      ? 'border-violet-400/40 bg-violet-400/10 text-violet-200'
+      ? 'shell-accent-subtle shell-accent-subtle-border shell-accent-text-soft'
       : 'border-shell-line bg-shell-surface-2/30 text-shell-muted hover:bg-shell-surface-2/60 hover:text-shell-ink',
   );
 
@@ -46,7 +47,7 @@ export function SettingsCard({
   return (
     <section className={cn(settingsPanel, 'flex flex-col gap-4', className)}>
       <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-violet-400/15 text-violet-300">
+        <span className="shell-accent-icon grid size-9 shrink-0 place-items-center rounded-[10px]">
           <Icon size={18} strokeWidth={2} />
         </span>
         <div className="min-w-0">
@@ -83,7 +84,7 @@ export function SettingsToggle({
         onClick={() => onChange(!checked)}
         className={cn(
           'relative h-6 w-10 shrink-0 rounded-full transition-colors',
-          checked ? 'bg-violet-400' : 'bg-shell-line',
+          checked ? 'shell-accent-bg' : 'bg-shell-line',
         )}
       >
         <span

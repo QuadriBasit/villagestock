@@ -16,10 +16,10 @@ export function StockLevelBar({
       ? 'bg-red-500'
       : qty <= reorder
         ? 'bg-amber-400'
-        : 'bg-primary';
+        : 'bg-violet-400';
 
   return (
-    <div className={cn('h-1.5 w-12 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700', className)}>
+    <div className={cn('h-1.5 w-12 overflow-hidden rounded-full bg-shell-surface-2', className)}>
       <div className={cn('h-full rounded-full transition-all', tone)} style={{ width: `${pct}%` }} />
     </div>
   );

@@ -9,10 +9,7 @@ const Command = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive
     ref={ref}
-    className={cn(
-      'flex h-full w-full flex-col overflow-hidden rounded-xl bg-transparent text-zinc-950 dark:text-zinc-50',
-      className
-    )}
+    className={cn('flex h-full w-full flex-col overflow-hidden rounded-xl bg-transparent text-shell-ink', className)}
     {...props}
   />
 ));
@@ -22,13 +19,13 @@ const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
-    <div className="flex items-center border-b border-zinc-200 px-3 dark:border-zinc-700">
-    <Search className="mr-2 size-4 shrink-0 opacity-50" strokeWidth={2} aria-hidden />
+  <div className="flex items-center border-b border-shell-line px-3">
+    <Search className="mr-2 size-4 shrink-0 text-shell-muted" strokeWidth={2} aria-hidden />
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        'flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-zinc-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-100 dark:placeholder:text-zinc-500',
-        className
+        'flex h-10 w-full rounded-md bg-transparent py-3 text-sm text-shell-ink outline-none placeholder:text-shell-muted disabled:cursor-not-allowed disabled:opacity-50',
+        className,
       )}
       {...props}
     />
@@ -44,7 +41,7 @@ const CommandList = React.forwardRef<
     ref={ref}
     className={cn(
       'max-h-[min(18rem,70vh)] touch-pan-y overflow-y-auto overflow-x-hidden overscroll-y-contain p-1 [-webkit-overflow-scrolling:touch]',
-      className
+      className,
     )}
     {...props}
   />
@@ -55,7 +52,7 @@ const CommandEmpty = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Empty>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
 >((props, ref) => (
-  <CommandPrimitive.Empty ref={ref} className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400" {...props} />
+  <CommandPrimitive.Empty ref={ref} className="py-6 text-center text-sm text-shell-muted" {...props} />
 ));
 CommandEmpty.displayName = CommandPrimitive.Empty.displayName;
 
@@ -66,8 +63,8 @@ const CommandGroup = React.forwardRef<
   <CommandPrimitive.Group
     ref={ref}
     className={cn(
-      'overflow-hidden px-1 py-1 text-zinc-950 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-zinc-500 dark:text-zinc-50 dark:[&_[cmdk-group-heading]]:text-zinc-400',
-      className
+      'overflow-hidden px-1 py-1 text-shell-ink [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-shell-muted',
+      className,
     )}
     {...props}
   />
@@ -78,11 +75,7 @@ const CommandSeparator = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
 >(({ className, ...props }, ref) => (
-  <CommandPrimitive.Separator
-    ref={ref}
-    className={cn('-mx-1 h-px bg-zinc-200 dark:bg-zinc-700', className)}
-    {...props}
-  />
+  <CommandPrimitive.Separator ref={ref} className={cn('-mx-1 h-px bg-shell-line', className)} {...props} />
 ));
 CommandSeparator.displayName = CommandPrimitive.Separator.displayName;
 
@@ -93,8 +86,8 @@ const CommandItem = React.forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex cursor-pointer select-none items-center rounded-lg px-2 py-2 text-sm outline-none aria-selected:bg-zinc-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 dark:aria-selected:bg-zinc-800',
-      className
+      'relative flex cursor-pointer select-none items-center rounded-lg px-2 py-2 text-sm text-shell-ink outline-none aria-selected:bg-shell-surface-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      className,
     )}
     {...props}
   />

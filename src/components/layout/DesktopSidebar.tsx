@@ -35,7 +35,7 @@ export default function DesktopSidebar() {
       />
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-[60] flex h-full w-[252px] flex-col border-r border-shell-line bg-[#0e1320] transition-transform duration-200 ease-out lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-[60] flex h-full w-[252px] flex-col border-r border-shell-line bg-shell-surface transition-transform duration-200 ease-out lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -80,9 +80,9 @@ export default function DesktopSidebar() {
           })}
         </nav>
 
-        <div className="m-3 rounded-[14px] border border-shell-line bg-shell-surface-2 p-3.5">
+        <div className="m-3 rounded-[14px] border border-shell-line bg-shell-bg p-3.5 dark:bg-shell-surface-2">
           <div className="flex items-center gap-[11px]">
-            <div className="grid size-9 shrink-0 place-items-center rounded-full bg-violet-400 font-display text-sm font-bold text-[#160a2e]">
+            <div className="grid size-9 shrink-0 place-items-center rounded-full shell-accent-bg font-display text-sm font-bold">
               {avatar}
             </div>
             <div className="min-w-0">

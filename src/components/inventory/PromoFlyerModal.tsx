@@ -9,6 +9,7 @@ import {
   modalSheetPanelSm,
 } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useShopProfile } from '@/hooks/useShopProfile';
 import type { InventoryItem } from '@/types';
@@ -33,15 +34,15 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
   const [actionError, setActionError] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeVariant>('sale');
 
-  const shopName = profile?.shop_name || 'Our Shop';
+  const shopName = profile.shop_name || 'Our Shop';
   const price = item.price ?? 0;
-  const brandColor = profile.receipt_theme?.header_color || '#3b82f6';
-  
-  // A gradient background using the brand color
+  const brandColor = profile.receipt_theme?.header_color || '#7c3aed';
+
   const flyerStyle = {
-    background: theme === 'sale' 
-      ? `linear-gradient(135deg, ${brandColor} 0%, #1e293b 100%)`
-      : '#ffffff',
+    background:
+      theme === 'sale'
+        ? `linear-gradient(135deg, ${brandColor} 0%, #160a2e 100%)`
+        : '#ffffff',
     color: theme === 'sale' ? '#ffffff' : '#0f172a',
   };
 
@@ -53,8 +54,7 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
   const runCapture = useCallback(async (): Promise<CaptureReady> => {
     if (!flyerRef.current) throw new Error('Flyer not mounted');
     const html2canvas = await loadCaptureLibs();
-    
-    // We render it at 2x scale for crispness
+
     const canvas = await html2canvas(flyerRef.current, {
       scale: 2,
       useCORS: true,
@@ -81,11 +81,7 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
       try {
         const { blob, dataUrl } = await runCapture();
         if (cancelled) return;
-        setCapture({
-          status: 'ready',
-          blob,
-          dataUrl,
-        });
+        setCapture({ status: 'ready', blob, dataUrl });
       } catch (e) {
         if (cancelled) return;
         setCapture({
@@ -101,9 +97,7 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
     };
   }, [runCapture]);
 
-  useEffect(() => {
-    return updateCapture();
-  }, [updateCapture]);
+  useEffect(() => updateCapture(), [updateCapture]);
 
   const triggerPngDownload = (blob: Blob) => {
     const url = URL.createObjectURL(blob);
@@ -166,139 +160,168 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
 
   return (
     <ModalSheetPortal>
-      <div className={cn(modalSheetBackdrop, 'bg-black/60 dark:bg-black/70')} onClick={onClose}>
-        <div className={modalSheetPanelSm} onClick={e => e.stopPropagation()}>
+      <div className={cn(modalSheetBackdrop, 'bg-black/70')} onClick={onClose}>
+        <div
+          className={cn(modalSheetPanelSm, 'border-shell-line bg-shell-surface shadow-none')}
+          onClick={e => e.stopPropagation()}
+        >
           <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            <div className="h-1 w-10 rounded-full bg-shell-line" />
           </div>
 
-          <div className={modalSheetHeader}>
-            <h2 className="font-heading text-base font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
-              <ImageIcon size={18} className="text-primary" />
-              Share Promo Flyer
+          <div className={cn(modalSheetHeader, 'border-shell-line')}>
+            <h2 className="flex items-center gap-2 font-display text-base font-semibold text-shell-ink">
+              <ImageIcon size={18} className="text-violet-300" />
+              Share promo flyer
             </h2>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="rounded-full p-1.5 text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
             >
               <X size={18} />
             </button>
           </div>
 
-          <div className={`${modalSheetBodyScroll} bg-zinc-100 px-4 py-4 dark:bg-zinc-950/80`}>
-            {actionError && (
-              <p className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+          <div className={cn(modalSheetBodyScroll, 'bg-shell-surface-2/25 px-4 py-4')}>
+            {actionError ? (
+              <p className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300">
                 {actionError}
               </p>
-            )}
+            ) : null}
 
             <div className="mb-3 flex justify-center gap-2">
-              <button
-                type="button"
-                onClick={() => setTheme('sale')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${theme === 'sale' ? 'bg-primary border-primary text-white' : 'bg-white border-zinc-200 text-zinc-600'}`}
-              >
-                Flash Sale
-              </button>
-              <button
-                type="button"
-                onClick={() => setTheme('minimal')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-full border ${theme === 'minimal' ? 'bg-primary border-primary text-white' : 'bg-white border-zinc-200 text-zinc-600'}`}
-              >
-                Minimal
-              </button>
+              {(['sale', 'minimal'] as const).map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setTheme(v)}
+                  className={cn(
+                    'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                    theme === v
+                      ? 'border-violet-400/40 bg-violet-400/15 text-violet-200'
+                      : 'border-shell-line bg-shell-surface text-shell-muted hover:text-shell-ink',
+                  )}
+                >
+                  {v === 'sale' ? 'Flash sale' : 'Minimal'}
+                </button>
+              ))}
             </div>
 
             <div className="flex justify-center">
-              {/* Flyer Container (Square 1080x1080 equivalent layout ratio, scaled down for preview) */}
-              <div 
+              <div
                 ref={flyerRef}
-                className="w-full aspect-square max-w-[320px] relative overflow-hidden flex flex-col shadow-xl"
+                className="relative flex aspect-square w-full max-w-[320px] flex-col overflow-hidden shadow-xl"
                 style={flyerStyle}
               >
-                {/* Decorative shapes for Flash Sale */}
-                {theme === 'sale' && (
+                {theme === 'sale' ? (
                   <>
-                    <div className="absolute -top-16 -right-16 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
-                    <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-black/20 rounded-full blur-2xl" />
+                    <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+                    <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-black/20 blur-2xl" />
                   </>
-                )}
+                ) : null}
 
-                <div className="flex-1 flex flex-col items-center justify-center p-8 z-10 text-center">
-                  {theme === 'sale' && (
-                    <div className="bg-white text-rose-600 font-black tracking-widest uppercase text-xs px-3 py-1 rounded-full mb-4 shadow-md">
+                <div className="z-10 flex flex-1 flex-col items-center justify-center p-8 text-center">
+                  {theme === 'sale' ? (
+                    <div className="mb-4 rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-widest text-rose-600 shadow-md">
                       Flash Sale
                     </div>
-                  )}
-                  
-                  {/* Photo Placeholder */}
+                  ) : null}
+
                   {item.image_url ? (
-                    <img src={item.image_url} alt={item.name} className="w-32 h-32 object-cover rounded-2xl mb-4 border-4 border-white/20 shadow-lg" crossOrigin="anonymous" />
+                    <img
+                      src={item.image_url}
+                      alt={item.name}
+                      className="mb-4 h-32 w-32 rounded-2xl border-4 border-white/20 object-cover shadow-lg"
+                      crossOrigin="anonymous"
+                    />
                   ) : (
-                    <div className="w-28 h-28 bg-black/10 rounded-2xl mb-4 flex items-center justify-center border-2 border-white/20 shadow-inner">
+                    <div className="mb-4 flex h-28 w-28 items-center justify-center rounded-2xl border-2 border-white/20 bg-black/10 shadow-inner">
                       <ImageIcon size={40} className="opacity-50" />
                     </div>
                   )}
 
-                  <h3 className={`text-2xl font-bold font-heading line-clamp-2 leading-tight ${theme === 'minimal' ? 'text-zinc-800' : 'text-white'}`}>
+                  <h3
+                    className={cn(
+                      'line-clamp-2 font-display text-2xl font-bold leading-tight',
+                      theme === 'minimal' ? 'text-zinc-800' : 'text-white',
+                    )}
+                  >
                     {item.name}
                   </h3>
-                  {item.brand && (
-                    <p className={`text-sm mt-1 uppercase tracking-wider ${theme === 'minimal' ? 'text-zinc-500' : 'text-white/80'}`}>
+                  {item.brand ? (
+                    <p
+                      className={cn(
+                        'mt-1 text-sm uppercase tracking-wider',
+                        theme === 'minimal' ? 'text-zinc-500' : 'text-white/80',
+                      )}
+                    >
                       {item.brand}
                     </p>
-                  )}
-                  
-                  <div className={`mt-5 text-3xl font-black tracking-tight ${theme === 'minimal' ? 'text-primary' : 'text-white text-shadow-sm'}`}>
+                  ) : null}
+
+                  <div
+                    className={cn(
+                      'mt-5 text-3xl font-black tracking-tight',
+                      theme === 'minimal' ? 'text-violet-600' : 'text-white',
+                    )}
+                  >
                     ₦{price.toLocaleString()}
                   </div>
                 </div>
 
-                <div className={`py-4 px-6 z-10 flex items-center justify-between backdrop-blur-md ${theme === 'minimal' ? 'bg-zinc-50 border-t border-zinc-100' : 'bg-black/20'}`}>
+                <div
+                  className={cn(
+                    'z-10 flex items-center justify-between px-6 py-4 backdrop-blur-md',
+                    theme === 'minimal' ? 'border-t border-zinc-100 bg-zinc-50' : 'bg-black/20',
+                  )}
+                >
                   <div className="flex items-center gap-2">
                     {profile.logo_data_url ? (
-                      <img src={profile.logo_data_url} alt="Logo" className="w-6 h-6 rounded-md object-cover" />
+                      <img src={profile.logo_data_url} alt="Logo" className="h-6 w-6 rounded-md object-cover" />
                     ) : (
-                      <div className="w-6 h-6 rounded-md bg-primary text-white flex items-center justify-center text-[10px] font-bold">VS</div>
+                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-violet-500 text-[10px] font-bold text-white">
+                        VS
+                      </div>
                     )}
-                    <span className="font-bold text-sm tracking-tight">{shopName}</span>
+                    <span className="text-sm font-bold tracking-tight">{shopName}</span>
                   </div>
-                  {profile.phone && (
-                    <div className={`text-xs font-medium ${theme === 'minimal' ? 'text-zinc-500' : 'text-white/80'}`}>
+                  {profile.phone ? (
+                    <div className={cn('text-xs font-medium', theme === 'minimal' ? 'text-zinc-500' : 'text-white/80')}>
                       {profile.phone}
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
 
-            {busy && (
-              <p className="mt-3 text-center text-xs text-zinc-500 dark:text-zinc-400">Preparing flyer for sharing…</p>
-            )}
+            {busy ? (
+              <p className="mt-3 text-center text-xs text-shell-muted">Preparing flyer for sharing…</p>
+            ) : null}
           </div>
 
-          <div className={`${modalSheetFooter} flex flex-col gap-2 sm:flex-row sm:gap-3`}>
-            <button
+          <div className={cn(modalSheetFooter, 'flex flex-col gap-2 border-shell-line sm:flex-row sm:gap-3')}>
+            <Button
               type="button"
+              variant="outline"
               onClick={handleShare}
               disabled={!ready}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white py-3 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+              className="flex-1 border-shell-line bg-shell-surface text-shell-ink hover:bg-shell-surface-2"
             >
               {busy ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
               Share
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => {
                 if (capture.status === 'ready') triggerPngDownload(capture.blob);
               }}
               disabled={!ready}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-60"
+              className="flex-1 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
             >
               {busy ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-              Save Image
-            </button>
+              Save image
+            </Button>
           </div>
         </div>
       </div>

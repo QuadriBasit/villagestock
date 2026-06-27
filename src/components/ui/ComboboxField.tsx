@@ -14,14 +14,14 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/Popover'
 import { Label } from '@/components/ui/Label';
 import { cn } from '@/lib/utils';
 
-const labelCls = 'mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200';
-const errorCls = 'mt-1 text-xs text-red-500';
+const labelCls = 'mb-1 block text-sm font-medium text-shell-muted';
+const errorCls = 'mt-1 text-xs text-red-400';
 
 const baseInputCls =
-  'h-11 w-full rounded-xl border bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm shadow-zinc-900/[0.04] ring-offset-white transition-[color,box-shadow] focus:outline-none focus:ring-2 focus:ring-offset-0 dark:bg-zinc-900/95 dark:text-zinc-100 dark:ring-offset-zinc-950';
+  'shell-inset-field h-11 w-full rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-2 text-sm text-shell-ink shadow-sm transition-[color,box-shadow] focus:outline-none focus:ring-2 focus:ring-violet-400/12';
 
 const optionBtnCls =
-  'flex w-full cursor-pointer select-none items-center rounded-lg px-2 py-2 text-left text-sm outline-none transition-colors hover:bg-zinc-100 focus-visible:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus-visible:bg-zinc-800';
+  'flex w-full cursor-pointer select-none items-center rounded-lg px-2 py-2 text-left text-sm outline-none transition-colors hover:bg-shell-surface-2 focus-visible:bg-shell-surface-2';
 
 export type ComboboxFieldProps = {
   id: string;
@@ -113,10 +113,10 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
 
   const modeClass =
     trimmed.length === 0
-      ? 'border-zinc-200 focus:border-primary focus:ring-primary/25 dark:border-zinc-700 dark:focus:ring-primary/30'
+      ? 'border-shell-line focus:border-violet-400/45 focus:ring-violet-400/12'
       : matchesPreset
-        ? 'border-primary/50 bg-primary/[0.07] ring-1 ring-primary/30 focus:border-primary focus:ring-primary/30 dark:bg-primary/12 dark:ring-primary/35'
-        : 'border-dashed border-amber-500/45 bg-amber-50/50 focus:border-amber-600 focus:ring-amber-400/25 dark:border-amber-500/40 dark:bg-amber-500/10 dark:focus:border-amber-500 dark:focus:ring-amber-500/20';
+        ? 'border-violet-400/50 bg-violet-500/10 ring-1 ring-violet-400/30 focus:border-violet-400 focus:ring-violet-400/30'
+        : 'border-dashed border-amber-500/45 bg-amber-500/10 focus:border-amber-500 focus:ring-amber-500/20';
 
   const showList = options.length > 0 && open;
   const listboxId = `${id}-listbox`;
@@ -212,7 +212,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
                 type="button"
                 tabIndex={-1}
                 aria-label={`Clear ${label}`}
-                className="absolute right-10 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                className="absolute right-10 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
                 onMouseDown={e => {
                   e.preventDefault();
                   clearBlurTimer();
@@ -228,7 +228,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
               type="button"
               tabIndex={-1}
               aria-label={`Show suggestions for ${label}`}
-              className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+              className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
               onMouseDown={e => {
                 e.preventDefault();
                 clearBlurTimer();
@@ -263,7 +263,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
               e.preventDefault();
             }
           }}
-          className="rounded-xl border-zinc-200 p-0 dark:border-zinc-700"
+          className="rounded-xl border-shell-line p-0"
           style={popoverWidth ? { width: popoverWidth } : undefined}
         >
           <div
@@ -273,7 +273,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
             className="max-h-[min(18rem,70vh)] touch-pan-y overflow-y-auto overscroll-y-contain p-1 outline-none [-webkit-overflow-scrolling:touch]"
           >
             {filtered.length === 0 ? (
-              <div className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+              <div className="py-6 text-center text-sm text-shell-muted">
                 No matches — your custom text will be saved.
               </div>
             ) : (
@@ -289,8 +289,8 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
                   aria-selected={i === highlight}
                   className={cn(
                     optionBtnCls,
-                    i === highlight && 'bg-zinc-100 dark:bg-zinc-800',
-                    trimmed.toLowerCase() === opt.toLowerCase() && 'bg-primary/10 dark:bg-primary/15'
+                    i === highlight && 'bg-shell-surface-2',
+                    trimmed.toLowerCase() === opt.toLowerCase() && 'bg-violet-500/10'
                   )}
                                    tabIndex={-1}
                   onMouseEnter={() => setHighlight(i)}
@@ -303,7 +303,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
                   <Check
                     strokeWidth={2}
                     className={cn(
-                      'mr-2 size-4 shrink-0 text-primary',
+                      'mr-2 size-4 shrink-0 text-violet-300',
                       trimmed.toLowerCase() === opt.toLowerCase() ? 'opacity-100' : 'opacity-0'
                     )}
                     aria-hidden
@@ -316,7 +316,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
         </PopoverContent>
       </Popover>
       {emptyHint && !trimmed && !error && (
-        <p id={`${id}-hint`} className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+        <p id={`${id}-hint`} className="mt-1 text-[11px] text-shell-muted">
           {emptyHint}
         </p>
       )}
@@ -325,7 +325,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
           id={`${id}-mode`}
           className={cn(
             'mt-1 text-[11px] font-medium',
-            matchesPreset ? 'text-primary dark:text-violet-300' : 'text-amber-700 dark:text-amber-300'
+            matchesPreset ? 'text-violet-300' : 'text-amber-300'
           )}
         >
           {matchesPreset ? 'Quick list — suggestions match your text' : 'Custom name — saved as you typed'}

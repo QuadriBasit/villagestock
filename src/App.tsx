@@ -7,6 +7,7 @@ import { useIsAdminUser } from '@/hooks/useIsAdminUser';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { ShopAccessProvider, ShopSyncEffects } from '@/context/ShopAccessContext';
 import { ShopLocationProvider } from '@/context/ShopLocationContext';
+import { AppLoadingScreen } from '@/components/ui/AppLoadingScreen';
 
 const AppLayout = lazy(() => import('@/components/layout/AppLayout'));
 const AuthPage = lazy(() => import('@/pages/AuthPage'));
@@ -39,7 +40,7 @@ const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuthStore();
-  if (isLoading) return <div className="flex h-screen items-center justify-center text-primary">Loading...</div>;
+  if (isLoading) return <AppLoadingScreen />;
   if (!user) return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
@@ -50,10 +51,10 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   const q = useBusinessProfileQuery(shopStatus === 'ready' ? shopOwnerId ?? undefined : undefined);
   const { data: isAdmin, isLoading: adminLoading } = useIsAdminUser(user?.id);
   if (user && (shopStatus === 'loading' || shopStatus === 'idle')) {
-    return <div className="flex h-screen items-center justify-center text-primary">Loading…</div>;
+    return <AppLoadingScreen />;
   }
   if (q.status === 'pending' || (user && adminLoading)) {
-    return <div className="flex h-screen items-center justify-center text-primary">Loading...</div>;
+    return <AppLoadingScreen />;
   }
   if (isAdmin) {
     return <Navigate to="/admin" replace />;
@@ -76,21 +77,19 @@ function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuthStore();
   const { data: isAdmin, isLoading: checking } = useIsAdminUser(user?.id);
   if (isLoading || (user && checking)) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-100 text-slate-600 text-sm">Loading admin…</div>
-    );
+    return <AppLoadingScreen label="Loading admin…" />;
   }
   if (!user) {
     return <Navigate to="/admin/login" replace />;
   }
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 px-6 text-center">
-        <p className="text-slate-900 font-heading font-semibold">Admin access only</p>
-        <p className="text-slate-500 text-sm mt-2 max-w-sm">
+      <div className="flex min-h-svh flex-col items-center justify-center bg-shell-bg px-6 text-center">
+        <p className="font-display font-semibold text-shell-ink">Admin access only</p>
+        <p className="mt-2 max-w-sm text-sm text-shell-muted">
           This account is not in the admin roster. Use the main app to manage your shop.
         </p>
-        <a href="/auth" className="mt-6 text-primary font-medium text-sm hover:underline">
+        <a href="/auth" className="mt-6 text-sm font-medium text-violet-300 hover:underline">
           Retailer sign-in
         </a>
       </div>
@@ -100,11 +99,7 @@ function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function RouteFallback() {
-  return (
-    <div className="flex h-screen items-center justify-center bg-surface text-primary">
-      Loading…
-    </div>
-  );
+  return <AppLoadingScreen />;
 }
 
 function RetailAppProviders({ children }: { children: ReactNode }) {

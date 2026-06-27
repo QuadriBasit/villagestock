@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
-import { useAuthStore } from '@/store/auth';
-import { useShopAccess } from '@/context/ShopAccessContext';
-import { useShopLocation } from '@/context/ShopLocationContext';
 import { AlertTriangle, CheckCircle2, Package, XCircle, ChevronRight, Pencil } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
+import { useStockAlerts } from '@/hooks/useStockAlerts';
+import {
+  stockAlertBadgeClass,
+  stockAlertLabel,
+  type StockAlertKind,
+  type StockAlertTone,
+} from '@/lib/stockAlerts';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard, StatGrid } from '@/components/ui/StatCard';
 import { Badge } from '@/components/ui/Badge';
@@ -16,46 +18,19 @@ import { DashboardSectionHead } from '@/components/dashboard/DashboardSectionHea
 import { AlertsSkeletonList } from '@/components/ui/Skeleton';
 import type { InventoryItem } from '@/types';
 
-const CRITICAL_FLOOR = 3;
+const KIND_BY_TONE: Record<StockAlertTone, StockAlertKind> = {
+  error: 'out_of_stock',
+  last_unit: 'last_unit',
+  warning: 'low_stock',
+};
 
 export default function AlertsPage() {
-  const { user } = useAuthStore();
-  const { shopOwnerId } = useShopAccess();
-  const { activeLocationId, ready: locationReady } = useShopLocation();
   const navigate = useNavigate();
+  const { alerts, isLoading } = useStockAlerts();
 
-  const alerts = useLiveQuery(async () => {
-    if (!user || !shopOwnerId || !locationReady || !activeLocationId) return null;
-    const items = await db.inventory_items
-      .where('user_id')
-      .equals(shopOwnerId)
-      .filter(i => !i.deleted && i.location_id === activeLocationId)
-      .toArray();
+  if (isLoading) return <AlertsSkeletonList />;
 
-    const nonSerialized = items.filter(i => i.mode === 'non_serialized');
-    const outOfStock = nonSerialized.filter(i => i.quantity === 0);
-    const lowStock = nonSerialized.filter(
-      i => i.quantity > 0 && i.quantity <= Math.max(i.low_stock_threshold, CRITICAL_FLOOR),
-    );
-
-    const serializedInStock = items.filter(i => i.mode === 'serialized' && i.status === 'in_stock');
-    const modelMap = new Map<string, InventoryItem[]>();
-    for (const item of serializedInStock) {
-      const key = `${item.brand}||${item.name}`;
-      if (!modelMap.has(key)) modelMap.set(key, []);
-      modelMap.get(key)!.push(item);
-    }
-    const lastUnits = [...modelMap.values()]
-      .filter(units => units.length === 1)
-      .map(units => units[0]);
-
-    return { lowStock, outOfStock, lastUnits };
-  }, [user?.id, shopOwnerId, activeLocationId, locationReady]);
-
-  if (alerts === undefined) return <AlertsSkeletonList />;
-
-  const { lowStock = [], outOfStock = [], lastUnits = [] } = alerts ?? {};
-  const total = lowStock.length + outOfStock.length + lastUnits.length;
+  const { lowStock, outOfStock, lastUnits, total } = alerts;
 
   if (total === 0) {
     return (
@@ -151,8 +126,6 @@ export default function AlertsPage() {
   );
 }
 
-type AlertTone = 'error' | 'warning' | 'last_unit';
-
 function AlertSection({
   title,
   count,
@@ -162,7 +135,7 @@ function AlertSection({
 }: {
   title: string;
   count: number;
-  tone: AlertTone;
+  tone: StockAlertTone;
   items: InventoryItem[];
   onEdit: (id: string) => void;
 }) {
@@ -183,9 +156,10 @@ function AlertSection({
   );
 }
 
-function AlertRow({ item, tone, onEdit }: { item: InventoryItem; tone: AlertTone; onEdit: () => void }) {
+function AlertRow({ item, tone, onEdit }: { item: InventoryItem; tone: StockAlertTone; onEdit: () => void }) {
   const isSerialized = item.mode === 'serialized';
-  const badge = alertBadge(item, tone);
+  const kind = KIND_BY_TONE[tone];
+  const badgeText = stockAlertLabel(kind, item);
 
   return (
     <button
@@ -202,7 +176,7 @@ function AlertRow({ item, tone, onEdit }: { item: InventoryItem; tone: AlertTone
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold tabular-nums text-violet-200">{formatCurrency(item.price)}</span>
-          <Badge className={badge.className}>{badge.text}</Badge>
+          <Badge className={stockAlertBadgeClass(tone, item)}>{badgeText}</Badge>
         </div>
       </div>
       <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-violet-400">
@@ -212,28 +186,4 @@ function AlertRow({ item, tone, onEdit }: { item: InventoryItem; tone: AlertTone
       </span>
     </button>
   );
-}
-
-function alertBadge(item: InventoryItem, tone: AlertTone) {
-  if (tone === 'last_unit') {
-    return {
-      text: 'Last unit',
-      className: 'border-orange-500/25 bg-orange-500/10 text-orange-300',
-    };
-  }
-  if (tone === 'error') {
-    return {
-      text: 'Empty',
-      className: 'border-red-500/25 bg-red-500/10 text-red-300',
-    };
-  }
-  const isCritical = item.quantity < CRITICAL_FLOOR;
-  return {
-    text: isCritical
-      ? `Only ${item.quantity} left`
-      : `${item.quantity} left · min ${item.low_stock_threshold}`,
-    className: isCritical
-      ? 'border-orange-500/25 bg-orange-500/10 text-orange-300'
-      : 'border-amber-500/25 bg-amber-500/10 text-amber-300',
-  };
 }

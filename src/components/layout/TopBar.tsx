@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Menu, Search, ShoppingCart, Truck } from 'lucide-react';
+import { Menu, Search, ShoppingCart, Truck } from 'lucide-react';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
-import { useSyncStatus } from '@/hooks/useSyncStatus';
 import { useAuthStore } from '@/store/auth';
 import { signOutApp } from '@/lib/signOutApp';
 import { PAGE_TITLES } from '@/config/navigation';
 import { useSidebarLayout } from './SidebarLayoutContext';
 import { CommandPalette } from './CommandPalette';
+import { NotificationsDropdown } from './NotificationsDropdown';
 import { AppBrand } from './AppBrand';
-import { Button } from '@/components/ui/Button';
+import { settingsBtnPrimary } from '@/components/settings/settingsUi';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,7 @@ function ShellIconButton({
     <button
       type="button"
       className={cn(
-        'relative grid size-[38px] shrink-0 place-items-center rounded-[10px] border border-shell-line bg-shell-surface text-shell-muted transition-colors hover:border-violet-400/40 hover:text-shell-ink',
+        'relative grid size-[38px] shrink-0 place-items-center rounded-[10px] border border-shell-line bg-shell-surface text-shell-muted transition-colors shell-hover-accent hover:text-shell-ink',
         className
       )}
       {...props}
@@ -45,7 +45,6 @@ export default function TopBar() {
   const { locations, activeLocationId, setActiveLocationId, ready: locationReady } = useShopLocation();
   const { profile } = useBusinessProfile();
   const { setMobileOpen } = useSidebarLayout();
-  const { isOnline, pendingCount } = useSyncStatus();
   const [commandOpen, setCommandOpen] = useState(false);
 
   const isEditPage = location.pathname.includes('/edit');
@@ -69,11 +68,10 @@ export default function TopBar() {
   }, []);
 
   const accountInitial = (profile?.owner_name?.[0] ?? user?.email?.[0] ?? 'A').toUpperCase();
-  const showBadge = !isOnline || pendingCount > 0;
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-shell-line bg-[#0b0f1a]/82 px-3 py-3 backdrop-blur-md sm:gap-4 sm:px-[26px] max-lg:gap-2">
+      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-shell-line bg-shell-bg/82 px-3 py-3 backdrop-blur-md sm:gap-4 sm:px-[26px] max-lg:gap-2">
         <div className="flex min-w-0 items-center gap-3">
           <ShellIconButton className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
             <Menu size={20} />
@@ -114,7 +112,7 @@ export default function TopBar() {
           <button
             type="button"
             onClick={() => setCommandOpen(true)}
-            className="hidden h-[38px] w-60 items-center gap-2 rounded-[10px] border border-shell-line bg-shell-surface px-3 text-left text-shell-muted transition-colors hover:border-violet-400/40 hover:text-shell-ink md:flex"
+            className="hidden h-[38px] w-60 items-center gap-2 rounded-[10px] border border-shell-line bg-shell-surface px-3 text-left text-shell-muted transition-colors shell-hover-accent hover:text-shell-ink md:flex"
           >
             <Search size={16} className="shrink-0" />
             <span className="flex-1 text-[13.5px]">Search anything…</span>
@@ -123,20 +121,16 @@ export default function TopBar() {
             </kbd>
           </button>
 
-          <ShellIconButton onClick={() => navigate('/alerts')} aria-label="Alerts" badge={
-            showBadge ? (
-              <span className="absolute -right-1 -top-1 grid min-h-[17px] min-w-[17px] place-items-center rounded-full border-2 border-[#0b0f1a] bg-violet-400 px-1 font-mono text-[10.5px] font-bold text-[#160a2e]">
-                {pendingCount > 9 ? '9+' : pendingCount || '!'}
-              </span>
-            ) : undefined
-          }>
-            <Bell size={19} />
-          </ShellIconButton>
+          <NotificationsDropdown />
 
-          <Button size="sm" className="h-9 shrink-0 bg-violet-400 text-[#160a2e] hover:bg-violet-300" onClick={() => navigate('/till')}>
+          <button
+            type="button"
+            className={cn(settingsBtnPrimary, 'inline-flex h-9 shrink-0 items-center gap-2 px-3.5 text-sm')}
+            onClick={() => navigate('/till')}
+          >
             <ShoppingCart size={16} />
             <span className="hidden min-[561px]:inline">New sale</span>
-          </Button>
+          </button>
 
           <Popover>
             <PopoverTrigger asChild>

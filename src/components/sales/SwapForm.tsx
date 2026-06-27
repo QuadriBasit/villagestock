@@ -249,7 +249,7 @@ export default function SwapForm({
               </p>
             )}
             <section className={`${cardSection} space-y-4`}>
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-shell-muted uppercase tracking-wider">
                 Incoming Device
               </h3>
 
@@ -383,23 +383,23 @@ export default function SwapForm({
             </section>
 
             <section className={`${cardSection} space-y-4`}>
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-shell-muted uppercase tracking-wider">
                 Outgoing Device
               </h3>
               <div className={readonlyClass}>
                 {item.brand} {item.name}
               </div>
-              <div className="flex gap-2 flex-wrap text-xs text-muted">
-                <span className="bg-surface border border-border rounded-full px-2 py-0.5 capitalize">
+              <div className="flex gap-2 flex-wrap text-xs text-shell-muted">
+                <span className="bg-shell-surface-2/40 border border-shell-line rounded-full px-2 py-0.5 capitalize">
                   {item.category}
                 </span>
                 {item.serial_number && (
-                  <span className="bg-surface border border-border rounded-full px-2 py-0.5 font-mono">
+                  <span className="bg-shell-surface-2/40 border border-shell-line rounded-full px-2 py-0.5 font-mono">
                     S/N: {item.serial_number}
                   </span>
                 )}
                 {item.imei && (
-                  <span className="bg-surface border border-border rounded-full px-2 py-0.5 font-mono">
+                  <span className="bg-shell-surface-2/40 border border-shell-line rounded-full px-2 py-0.5 font-mono">
                     IMEI: {item.imei}
                   </span>
                 )}
@@ -432,21 +432,21 @@ export default function SwapForm({
             </section>
 
             <section className={`${cardSection} space-y-4`}>
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
+              <h3 className="text-xs font-semibold text-shell-muted uppercase tracking-wider">
                 Settlement
               </h3>
 
               <div className="rounded-xl border border-shell-line bg-shell-surface-2/40/90 px-4 py-3 /60">
                 {balance >= 0 ? (
                   <>
-                    <div className="text-xs text-muted">Balance to pay</div>
+                    <div className="text-xs text-shell-muted">Balance to pay</div>
                     <div className="font-display text-2xl font-bold text-violet-300">
                       {formatCurrency(balance)}
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="text-xs text-muted">Credit to customer</div>
+                    <div className="text-xs text-shell-muted">Credit to customer</div>
                     <div className="font-display text-2xl font-bold text-violet-300">
                       {formatCurrency(Math.abs(balance))}
                     </div>
@@ -598,19 +598,19 @@ export default function SwapForm({
           <div className={modalSheetFooter}>
             {completedSale ? (
               <div className="space-y-2">
-                <p className="text-center text-sm font-medium text-teal mb-1">
+                <p className="mb-1 text-center text-sm font-medium text-emerald-400">
                   ✓ Swap recorded — {completedSale.receipt_number}
                 </p>
                 <div className="flex gap-2">
                   <button
                     onClick={onSuccess}
-                    className="flex-1 border border-border text-muted rounded-xl py-3 text-sm font-medium hover:bg-surface transition-colors"
+                    className="flex-1 rounded-xl border border-shell-line py-3 text-sm font-medium text-shell-muted transition-colors hover:bg-shell-surface-2/50"
                   >
                     Done
                   </button>
                   <button
                     onClick={() => setShowReceipt(true)}
-                    className="flex-1 bg-primary text-white rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary-dark transition-colors"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-400"
                   >
                     <ReceiptIcon size={16} /> View Receipt
                   </button>

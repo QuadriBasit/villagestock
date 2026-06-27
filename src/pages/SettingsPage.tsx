@@ -49,6 +49,7 @@ import {
   settingsBtnDanger,
   settingsRoleChip,
 } from '@/components/settings/settingsUi';
+import { applyShellAccent } from '@/lib/shellAccent';
 import { cn } from '@/lib/utils';
 
 const schema = z.object({
@@ -125,6 +126,10 @@ export default function SettingsPage() {
     effectiveReceiptTheme.text_color,
     effectiveReceiptTheme.paper_color,
   ]);
+
+  useEffect(() => {
+    applyShellAccent(receiptTheme.header_color || receiptTheme.accent_color);
+  }, [receiptTheme.header_color, receiptTheme.accent_color]);
 
   useEffect(() => {
     return () => {
@@ -258,7 +263,7 @@ export default function SettingsPage() {
               className={cn(
                 'flex flex-col items-center gap-1 rounded-xl border py-2.5 text-xs font-semibold transition-colors',
                 mode === id
-                  ? 'border-violet-400/40 bg-violet-400/10 text-violet-200'
+                  ? 'shell-accent-subtle shell-accent-subtle-border shell-accent-text-soft'
                   : 'border-shell-line bg-shell-surface-2/40 text-shell-muted hover:text-shell-ink',
               )}
             >

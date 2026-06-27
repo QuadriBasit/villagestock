@@ -47,7 +47,7 @@ export function TimePickerField({
     <div className={cn('space-y-1.5', className)}>
       {label ? (
         <Label
-          className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+          className="mb-1 block text-xs font-medium text-shell-muted"
           htmlFor={id ? `${id}_hour` : undefined}
         >
           {label}
