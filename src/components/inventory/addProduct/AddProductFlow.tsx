@@ -277,7 +277,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
     <ModalSheetPortal>
       <div className={cn(modalSheetBackdrop, 'bg-black/70')} onClick={handleClose}>
         <div
-          className="flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] max-w-[640px] flex-col overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-2xl sm:max-h-[min(90dvh,calc(100dvh-2rem))] sm:rounded-2xl"
+          className="flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] max-w-[640px] flex-col overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)] sm:max-h-[min(90dvh,calc(100dvh-2rem))] sm:rounded-2xl"
           onClick={e => e.stopPropagation()}
         >
           <div className={modalSheetHandle}>

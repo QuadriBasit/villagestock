@@ -81,7 +81,7 @@ export default function AdminLoginPage() {
         VillageStock operations dashboard. Retailer phone sign-in does not grant access here.
       </p>
 
-      <div className={cn(adminCard, 'w-full max-w-sm shadow-lg shadow-black/20')}>
+      <div className={cn(adminCard, 'w-full max-w-sm shadow-[var(--shadow-shell-elevated)]')}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-shell-muted" htmlFor="admin-email">

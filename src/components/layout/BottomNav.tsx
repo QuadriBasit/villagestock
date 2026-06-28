@@ -18,7 +18,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="bottom-nav-animated fixed bottom-[max(0.4rem,env(safe-area-inset-bottom,0px))] left-2.5 right-2.5 z-40 flex h-[3.45rem] items-center justify-around overflow-visible rounded-2xl border border-shell-line bg-shell-bg/92 px-1 shadow-lg shadow-black/20 backdrop-blur-xl lg:hidden"
+      className="bottom-nav-animated fixed bottom-[max(0.4rem,env(safe-area-inset-bottom,0px))] left-2.5 right-2.5 z-40 flex h-[3.45rem] items-center justify-around overflow-visible rounded-2xl border border-shell-line bg-shell-bg/92 px-1 shadow-[var(--shadow-shell-float)] backdrop-blur-xl lg:hidden"
       aria-label="Primary"
     >
       {LEFT_NAV.map(({ to, icon: Icon, label }) => (
@@ -31,7 +31,7 @@ export default function BottomNav() {
           onClick={() => !mutationsBlocked && navigate('/inventory?add=1')}
           disabled={mutationsBlocked}
           className={cn(
-            'relative z-[1] flex h-[3.1rem] w-[3.1rem] items-center justify-center rounded-full shadow-md ring-4 ring-shell-bg transition-transform active:scale-95',
+            'relative z-[1] flex h-[3.1rem] w-[3.1rem] items-center justify-center rounded-full ring-4 ring-shell-bg transition-transform active:scale-95',
             mutationsBlocked
               ? 'cursor-not-allowed bg-shell-surface-2 text-shell-muted opacity-50'
               : 'shell-accent-bg text-[#160a2e] hover:brightness-105',

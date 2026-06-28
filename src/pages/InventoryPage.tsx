@@ -37,6 +37,7 @@ import { CategoryThumb } from '@/components/inventory/CategoryThumb';
 import { StockLevelBar } from '@/components/inventory/StockLevelBar';
 import AddProductModal from '@/components/inventory/AddProductModal';
 import EditProductModal from '@/components/inventory/EditProductModal';
+import { shellSegmentBtn, shellSegmentTrack } from '@/components/settings/settingsUi';
 import {
   conditionLabel,
   getItemQty,
@@ -218,18 +219,13 @@ export default function InventoryPage() {
             autoComplete="off"
           />
         </div>
-        <div className="flex shrink-0 gap-1 rounded-xl border border-shell-line bg-shell-surface p-1">
+        <div className={shellSegmentTrack}>
           {CATEGORY_PILLS.map(cat => (
             <button
               key={cat.value}
               type="button"
               onClick={() => setFilters({ category: cat.value })}
-              className={cn(
-                'rounded-lg px-3 py-2 text-xs font-semibold transition-colors md:text-sm',
-                filters.category === cat.value
-                  ? 'bg-violet-400 text-[#160a2e]'
-                  : 'text-shell-muted hover:text-shell-ink',
-              )}
+              className={shellSegmentBtn(filters.category === cat.value)}
             >
               {cat.label}
             </button>
@@ -244,7 +240,7 @@ export default function InventoryPage() {
           className={cn(
             'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 font-medium transition-colors',
             filters.lowStockOnly
-              ? 'border-violet-400/40 bg-violet-400/10 text-violet-300'
+              ? 'shell-accent-subtle shell-accent-subtle-border shell-accent-text-soft'
               : 'border-shell-line bg-shell-surface hover:border-shell-line/80',
           )}
         >

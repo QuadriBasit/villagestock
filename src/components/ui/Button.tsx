@@ -8,10 +8,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'shell-accent-bg shadow-md shadow-black/20 hover:brightness-105',
+        default: 'shell-accent-bg hover:brightness-105',
         destructive: 'bg-red-600 text-white shadow-sm hover:bg-red-700',
         outline:
-          'border border-shell-line bg-shell-surface text-shell-ink shadow-sm hover:bg-shell-surface-2 hover:border-shell-muted/40',
+          'border border-shell-line bg-shell-surface text-shell-ink hover:bg-shell-surface-2 hover:border-shell-muted/40',
         secondary: 'bg-shell-surface-2 text-shell-ink hover:bg-shell-line/40',
         ghost: 'text-shell-ink hover:bg-shell-surface-2/80',
         link: 'shell-accent-text-soft underline-offset-4 hover:underline shadow-none',

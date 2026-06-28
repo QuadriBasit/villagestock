@@ -23,6 +23,7 @@ import {
 } from '@/lib/appNotifications';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { cn } from '@/lib/utils';
+import { shellIconBtn } from '@/components/settings/settingsUi';
 
 const KIND_ICON: Record<AppNotificationKind, LucideIcon> = {
   credit_overdue: AlertTriangle,
@@ -42,14 +43,7 @@ function ShellIconButton({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { badge?: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      className={cn(
-        'relative grid size-[38px] shrink-0 place-items-center rounded-[10px] border border-shell-line bg-shell-surface text-shell-muted transition-colors shell-hover-accent hover:text-shell-ink data-[state=open]:shell-accent-subtle-border data-[state=open]:text-shell-ink',
-        className,
-      )}
-      {...props}
-    >
+    <button type="button" className={cn(shellIconBtn, className)} {...props}>
       {children}
       {badge}
     </button>
@@ -78,7 +72,7 @@ export function NotificationsDropdown() {
           aria-label="Notifications"
           badge={
             showBadge ? (
-              <span className="shell-accent-bg absolute -right-1 -top-1 grid min-h-[17px] min-w-[17px] place-items-center rounded-full border-2 border-[#0b0f1a] px-1 font-mono text-[10.5px] font-bold">
+              <span className="shell-accent-bg absolute -right-1 -top-1 grid min-h-[17px] min-w-[17px] place-items-center rounded-full ring-2 ring-shell-bg px-1 font-mono text-[10.5px] font-bold">
                 {badgeCount > 9 ? '9+' : badgeCount}
               </span>
             ) : undefined
@@ -91,7 +85,7 @@ export function NotificationsDropdown() {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-[min(100vw-1.5rem,24rem)] overflow-hidden border-shell-line bg-shell-surface p-0 text-shell-ink shadow-xl"
+        className="w-[min(100vw-1.5rem,24rem)] overflow-hidden border-shell-line bg-shell-surface p-0 text-shell-ink shadow-[var(--shadow-shell-elevated)]"
       >
         <div className="flex items-center justify-between gap-3 border-b border-shell-line px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">

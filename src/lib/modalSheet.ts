@@ -7,7 +7,7 @@ export const modalSheetBackdrop =
 
 /** `min-h-0` lets the panel shrink inside the flex backdrop so `max-h` + body scroll work (avoids top/bottom clipping on desktop). */
 const panelBase =
-  'flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] flex-col overflow-hidden border border-zinc-200/90 bg-white shadow-2xl ring-1 ring-black/[0.04] dark:border-zinc-700 dark:bg-zinc-900 dark:ring-white/[0.06] rounded-t-[1.25rem] sm:max-h-[min(85dvh,calc(100dvh-3rem),920px)] sm:rounded-2xl sm:shrink-0';
+  'flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] flex-col overflow-hidden border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)] rounded-t-[1.25rem] sm:max-h-[min(85dvh,calc(100dvh-3rem),920px)] sm:rounded-2xl sm:shrink-0';
 
 /** Receipt / narrow */
 export const modalSheetPanelSm = `${panelBase} max-w-sm sm:max-w-md`;

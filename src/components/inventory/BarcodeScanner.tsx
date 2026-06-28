@@ -207,7 +207,7 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
         aria-modal="true"
         aria-label="Scan barcode or QR code"
       >
-        <div className="my-auto w-full max-w-sm shrink-0 overflow-hidden rounded-xl border border-shell-line bg-shell-surface shadow-2xl">
+        <div className="my-auto w-full max-w-sm shrink-0 overflow-hidden rounded-xl border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)]">
           <div className="flex items-center justify-between border-b border-shell-line px-4 py-3">
             <div className="flex items-center gap-2 font-display text-sm font-semibold text-shell-ink">
               <Camera size={18} className="text-violet-300" aria-hidden />

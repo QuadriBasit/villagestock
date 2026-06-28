@@ -107,7 +107,7 @@ export default function RecordPurchaseModal({
     <ModalSheetPortal>
       <div className={cn(modalSheetBackdrop, 'bg-black/70')} onClick={onClose}>
         <div
-          className="flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] max-w-xl flex-col overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-2xl sm:max-h-[min(85dvh,calc(100dvh-3rem))] sm:rounded-2xl"
+          className="flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] max-w-xl flex-col overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)] sm:max-h-[min(85dvh,calc(100dvh-3rem))] sm:rounded-2xl"
           onClick={e => e.stopPropagation()}
         >
           <div className={modalSheetHandle}>

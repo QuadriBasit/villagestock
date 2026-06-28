@@ -29,7 +29,7 @@ export default function ConfirmDialog({
     <ModalSheetPortal>
       <div className={cn(modalSheetBackdrop, 'bg-black/60')} onClick={onCancel}>
         <div
-          className="w-full max-w-sm overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-2xl sm:rounded-2xl"
+          className="w-full max-w-sm overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)] sm:rounded-2xl"
           onClick={e => e.stopPropagation()}
         >
           <div className="flex flex-col items-center px-6 pb-4 pt-6 text-center">

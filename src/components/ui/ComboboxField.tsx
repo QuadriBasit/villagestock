@@ -18,7 +18,7 @@ const labelCls = 'mb-1 block text-sm font-medium text-shell-muted';
 const errorCls = 'mt-1 text-xs text-red-400';
 
 const baseInputCls =
-  'shell-inset-field h-11 w-full rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-2 text-sm text-shell-ink shadow-sm transition-[color,box-shadow] focus:outline-none focus:ring-2 focus:ring-violet-400/12';
+  'shell-inset-field h-11 w-full rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-2 text-sm text-shell-ink transition-[color,box-shadow] focus:outline-none focus:ring-2 focus:ring-violet-400/12';
 
 const optionBtnCls =
   'flex w-full cursor-pointer select-none items-center rounded-lg px-2 py-2 text-left text-sm outline-none transition-colors hover:bg-shell-surface-2 focus-visible:bg-shell-surface-2';

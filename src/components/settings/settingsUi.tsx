@@ -31,6 +31,19 @@ export const settingsRoleChip = (active: boolean) =>
       : 'border-shell-line bg-shell-surface-2/30 text-shell-muted hover:bg-shell-surface-2/60 hover:text-shell-ink',
   );
 
+/** Inset pill row — category filters, no card shadow */
+export const shellSegmentTrack =
+  'flex shrink-0 gap-1 overflow-x-auto rounded-full border border-shell-line bg-shell-surface-2/50 p-1 shadow-none';
+
+export const shellSegmentBtn = (active: boolean) =>
+  cn(
+    'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors md:text-sm',
+    active ? 'shell-accent-bg' : 'text-shell-muted hover:text-shell-ink',
+  );
+
+export const shellIconBtn =
+  'relative grid size-[38px] shrink-0 place-items-center rounded-[10px] border border-shell-line bg-shell-surface-2/50 text-shell-muted shadow-none transition-colors shell-hover-accent hover:text-shell-ink data-[state=open]:shell-accent-subtle-border data-[state=open]:text-shell-ink';
+
 export function SettingsCard({
   icon: Icon,
   title,
@@ -89,7 +102,7 @@ export function SettingsToggle({
       >
         <span
           className={cn(
-            'absolute top-0.5 size-5 rounded-full bg-white shadow transition-[left]',
+            'absolute top-0.5 size-5 rounded-full bg-white transition-[left]',
             checked ? 'left-[18px]' : 'left-0.5',
           )}
         />

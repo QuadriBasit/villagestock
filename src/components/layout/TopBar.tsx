@@ -11,7 +11,7 @@ import { useSidebarLayout } from './SidebarLayoutContext';
 import { CommandPalette } from './CommandPalette';
 import { NotificationsDropdown } from './NotificationsDropdown';
 import { AppBrand } from './AppBrand';
-import { settingsBtnPrimary } from '@/components/settings/settingsUi';
+import { settingsBtnPrimary, shellIconBtn } from '@/components/settings/settingsUi';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { cn } from '@/lib/utils';
@@ -23,14 +23,7 @@ function ShellIconButton({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { badge?: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      className={cn(
-        'relative grid size-[38px] shrink-0 place-items-center rounded-[10px] border border-shell-line bg-shell-surface text-shell-muted transition-colors shell-hover-accent hover:text-shell-ink',
-        className
-      )}
-      {...props}
-    >
+    <button type="button" className={cn(shellIconBtn, className)} {...props}>
       {children}
       {badge}
     </button>

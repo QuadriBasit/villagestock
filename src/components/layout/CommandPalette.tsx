@@ -77,7 +77,7 @@ export function CommandPalette({ open, onClose, onNewSale }: CommandPaletteProps
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-xl border border-shell-line bg-shell-surface shadow-2xl"
+        className="w-full max-w-lg overflow-hidden rounded-xl border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)]"
         onClick={e => e.stopPropagation()}
       >
         <Command shouldFilter={false}>
