@@ -27,4 +27,4 @@ export const modalSheetHeader =
 export const modalSheetBodyScroll = 'min-h-0 flex-1 overflow-y-auto px-5 py-4';
 
 export const modalSheetFooter =
-  'shrink-0 border-t border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950/90';
+  'shrink-0 border-t border-shell-line bg-shell-surface px-5 py-4';

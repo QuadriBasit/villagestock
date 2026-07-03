@@ -43,6 +43,7 @@ const ACTION_MAP: Record<string, ActionMeta> = {
   'swap.completed': { label: 'Swap completed', icon: ArrowRightLeft, category: 'sales' },
   'credit.created': { label: 'Credit created', icon: CreditCard, category: 'money' },
   'credit.payment_recorded': { label: 'Credit payment', icon: CreditCard, category: 'money' },
+  'credit.payment_removed': { label: 'Credit payment removed', icon: CreditCard, category: 'money' },
   'purchase.recorded': { label: 'Purchase recorded', icon: Wallet, category: 'money' },
   'expense.recorded': { label: 'Expense logged', icon: DollarSign, category: 'money' },
   'cashup.closed': { label: 'Cash-up closed', icon: Wallet, category: 'money' },

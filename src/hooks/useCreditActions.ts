@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
-import { buildCreditPayment, getCreditStatus } from '@/hooks/useCredits';
+import { buildCreditPayment, computeCreditFromPayments, getCreditStatus } from '@/hooks/useCredits';
 import type { CreditRecord, CreditRecordInput, PaymentMethod } from '@/types';
 
 export function useCreditActions() {
@@ -68,19 +68,11 @@ export function useCreditActions() {
     if (!existing) throw new Error('Credit not found');
 
     const payments = [...existing.payments, buildCreditPayment(amount, date, method)];
-    const amountPaid = existing.amount_paid + amount;
-    const balanceOwed = Math.max(0, existing.total_amount - amountPaid);
-    const status = balanceOwed <= 0
-      ? 'paid'
-      : amountPaid > 0
-      ? (new Date(existing.due_date) < new Date() ? 'overdue' : 'partially_paid')
-      : getCreditStatus(balanceOwed, existing.due_date);
+    const totals = computeCreditFromPayments(existing, payments);
 
     const updated: Partial<CreditRecord> = {
-      amount_paid: amountPaid,
-      balance_owed: balanceOwed,
+      ...totals,
       payments,
-      status,
       sync_status: 'pending',
     };
 
@@ -102,12 +94,55 @@ export function useCreditActions() {
           customer: existing.customer_name,
           amount,
           date,
-          balance_remaining: balanceOwed,
+          balance_remaining: totals.balance_owed,
         },
         actorLabel,
       });
     }
   }
 
-  return { createCreditRecord, recordPayment };
+  async function removeCreditPayment(creditId: string, paymentIndex: number): Promise<void> {
+    if (!user || !shopOwnerId) throw new Error('Not authenticated');
+    const existing = await db.credit_records.get(creditId);
+    if (!existing) throw new Error('Credit not found');
+    if (paymentIndex < 0 || paymentIndex >= existing.payments.length) {
+      throw new Error('Payment not found');
+    }
+
+    const removed = existing.payments[paymentIndex];
+    const payments = existing.payments.filter((_, index) => index !== paymentIndex);
+    const totals = computeCreditFromPayments(existing, payments);
+
+    const updated: Partial<CreditRecord> = {
+      ...totals,
+      payments,
+      sync_status: 'pending',
+    };
+
+    await db.credit_records.update(creditId, updated);
+    const latest = await db.credit_records.get(creditId);
+    if (latest) {
+      await queueSync('credit_records', 'update', latest as unknown as Record<string, unknown>);
+    }
+    await flushSyncQueue();
+    if (actorUserId) {
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
+      void logShopAudit({
+        businessId: shopOwnerId,
+        actorUserId,
+        action: 'credit.payment_removed',
+        entityType: 'credit_record',
+        entityId: creditId,
+        metadata: {
+          customer: existing.customer_name,
+          amount: removed.amount,
+          date: removed.date,
+          balance_remaining: totals.balance_owed,
+        },
+        actorLabel,
+      });
+    }
+  }
+
+  return { createCreditRecord, recordPayment, removeCreditPayment };
 }

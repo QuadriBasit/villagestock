@@ -64,3 +64,20 @@ export function useCreditRecord(id: string) {
 export function buildCreditPayment(amount: number, date: string, method?: PaymentMethod): CreditPayment {
   return { amount, date, method };
 }
+
+export function computeCreditFromPayments(
+  record: Pick<CreditRecord, 'total_amount' | 'due_date'>,
+  payments: CreditPayment[],
+): Pick<CreditRecord, 'amount_paid' | 'balance_owed' | 'status'> {
+  const amountPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const balanceOwed = Math.max(0, record.total_amount - amountPaid);
+  const status =
+    balanceOwed <= 0
+      ? 'paid'
+      : amountPaid > 0
+        ? new Date(record.due_date) < new Date()
+          ? 'overdue'
+          : 'partially_paid'
+        : getCreditStatus(balanceOwed, record.due_date);
+  return { amount_paid: amountPaid, balance_owed: balanceOwed, status };
+}
