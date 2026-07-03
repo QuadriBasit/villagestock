@@ -407,7 +407,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                 ) : null}
                 <APLabel label="Condition">
                   <APSeg
-                    options={['New', 'Used'] as const}
+                    options={['New', 'Used', 'UK Used', 'Refurb'] as const}
                     value={state.condition}
                     onChange={v => set({ condition: v })}
                   />

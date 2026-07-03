@@ -9,7 +9,7 @@ import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import { saleBlockedMissingIdentifiers } from '@/lib/serializedIdentifiers';
-import { defaultWarrantyMonths } from '@/lib/warranty';
+import { getShopWarrantyPolicy, stockConditionFromItem, warrantyCoverFor } from '@/lib/warranty';
 import type { SalesRecord, SalesRecordInput } from '@/types';
 
 export function useSalesActions() {
@@ -29,6 +29,16 @@ export function useSalesActions() {
     if (idBlock) throw new Error(idBlock);
 
     const receipt_number = await generateReceiptNumber(shopOwnerId);
+    const itemPre = await db.inventory_items.get(input.item_id);
+    const warrantyPolicy = await getShopWarrantyPolicy();
+    const stockCondition =
+      input.item_stock_condition ??
+      stockConditionFromItem(
+        itemPre ?? { description: undefined, category: input.item_category },
+      );
+    const warrantyCover =
+      input.warranty_cover ??
+      warrantyCoverFor(warrantyPolicy, input.item_category, stockCondition);
 
     const record: SalesRecord = {
       ...input,
@@ -38,7 +48,14 @@ export function useSalesActions() {
       sale_type: input.sale_type ?? 'sale',
       payment_status: input.payment_status ?? 'paid',
       device_details: input.device_details,
-      warranty_months: input.warranty_months ?? defaultWarrantyMonths(input.item_category),
+      item_stock_condition: input.item_stock_condition ?? stockCondition,
+      warranty_cover: warrantyCover,
+      warranty_months:
+        warrantyCover.unit === 'months'
+          ? warrantyCover.value
+          : warrantyCover.value > 0
+            ? undefined
+            : 0,
       receipt_number,
       sync_status: 'pending',
     };

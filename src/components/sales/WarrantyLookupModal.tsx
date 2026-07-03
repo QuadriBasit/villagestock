@@ -14,7 +14,8 @@ import {
 import type { SalesRecord } from "@/types";
 import {
   formatIdentifierDisplay,
-  getWarrantyMonths,
+  getSaleWarrantyCover,
+  formatWarrantyCover,
   identifierLabel,
   lookupSaleByIdentifier,
   normalizeIdentifier,
@@ -58,7 +59,7 @@ export default function WarrantyLookupModal({
   if (!open) return null;
 
   const warranty = match ? saleWarrantyStatus(match) : null;
-  const months = match ? getWarrantyMonths(match) : 0;
+  const cover = match ? getSaleWarrantyCover(match) : { value: 0, unit: 'days' as const };
   const idKind = match ? identifierLabel(match) : null;
   const idCode = match ? saleIdentifier(match) : undefined;
   const codeLabel = norm.length === 15 ? "IMEI" : "code";
@@ -186,15 +187,15 @@ export default function WarrantyLookupModal({
                   <LookupRow
                     label="Warranty"
                     value={
-                      months
-                        ? `${months} month${months === 1 ? "" : "s"}`
+                      cover.value
+                        ? formatWarrantyCover(cover)
                         : "None"
                     }
                   />
                   <LookupRow
                     label={warranty.active ? "Cover ends" : "Expired"}
                     value={
-                      months
+                      cover.value
                         ? `${warranty.label}${warranty.active ? ` · ${warranty.leftDays}d left` : ""}`
                         : "—"
                     }
@@ -224,7 +225,7 @@ export default function WarrantyLookupModal({
                   <Button
                     variant="outline"
                     className="h-10 border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
-                    disabled={!months}
+                    disabled={!cover.value}
                     onClick={() => {
                       onWarranty(match);
                       onClose();

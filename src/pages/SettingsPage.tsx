@@ -17,6 +17,7 @@ import {
   LogOut,
   FileBarChart2,
   ChevronRight,
+  Shield,
   // CreditCard,
   Sun,
   Moon,
@@ -32,8 +33,9 @@ import { useTheme, type ThemeMode } from '@/components/theme/ThemeProvider';
 import { useEffect, useState, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import type { ShopProfile, ReceiptTheme } from '@/types';
+import type { ShopProfile, ReceiptTheme, Category, WarrantyPolicy, WarrantyDuration } from '@/types';
 import { Checkbox } from '@/components/ui/Checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { ColorPickerField } from '@/components/ui/ColorPickerField';
 import { DEFAULT_RECEIPT_THEME } from '@/hooks/useShopProfile';
@@ -50,7 +52,16 @@ import {
   settingsRoleChip,
 } from '@/components/settings/settingsUi';
 import { applyShellAccent } from '@/lib/shellAccent';
+import {
+  DEFAULT_WARRANTY_POLICY,
+  mergeWarrantyPolicy,
+  WARRANTY_CATEGORY_LABELS,
+  WARRANTY_STOCK_CONDITIONS,
+  WARRANTY_STOCK_CONDITION_LABELS,
+} from '@/lib/warranty';
 import { cn } from '@/lib/utils';
+
+const WARRANTY_CATEGORIES = Object.keys(WARRANTY_CATEGORY_LABELS) as Category[];
 
 const schema = z.object({
   shop_name: z.string().min(1, 'Shop name is required'),
@@ -112,11 +123,19 @@ export default function SettingsPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [saved, setSaved] = useState(false);
   const [themeSaved, setThemeSaved] = useState(false);
+  const [warrantyPolicy, setWarrantyPolicy] = useState<WarrantyPolicy>(
+    mergeWarrantyPolicy(profile.warranty_policy),
+  );
+  const [warrantySaved, setWarrantySaved] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [receiptTheme, setReceiptTheme] = useState<ReceiptTheme>(
     profile.receipt_theme ?? DEFAULT_RECEIPT_THEME
   );
   const effectiveReceiptTheme = profile.receipt_theme ?? DEFAULT_RECEIPT_THEME;
+
+  useEffect(() => {
+    setWarrantyPolicy(mergeWarrantyPolicy(profile.warranty_policy));
+  }, [profile.warranty_policy]);
 
   useEffect(() => {
     setReceiptTheme(effectiveReceiptTheme);
@@ -176,6 +195,7 @@ export default function SettingsPage() {
       logo_data_url: profile.logo_data_url,
       logo_path: profile.logo_path,
       receipt_theme: receiptTheme,
+      warranty_policy: warrantyPolicy,
     };
     await saveProfile(updated, { logoFile });
     setLogoFile(null);
@@ -466,6 +486,123 @@ export default function SettingsPage() {
             Reset colors
           </button>
           {themeSaved && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-teal/10 px-3 py-2 text-xs font-medium text-teal-dark dark:text-teal-300">
+              <CheckCircle size={14} />
+              Saved
+            </span>
+          )}
+        </div>
+      </section>
+
+      <section className={`${panelClass} space-y-3`}>
+        <div className="mb-0.5 flex items-center gap-2">
+          <Shield size={18} className="text-violet-300" />
+          <h3 className="font-display font-semibold text-shell-ink">Warranty &amp; returns</h3>
+        </div>
+        <p className="-mt-1 text-xs text-shell-muted">
+          Set return/warranty cover by product type and stock condition (new, used, UK used, refurb).
+          Use days or months — e.g. 7 days, 14 days, 1 month. New sales pick this up automatically.
+        </p>
+
+        <div className="overflow-x-auto rounded-xl border border-shell-line">
+          <table className="min-w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-shell-line bg-shell-surface-2/50">
+                <th className="px-3 py-2.5 font-semibold text-shell-muted">Category</th>
+                {WARRANTY_STOCK_CONDITIONS.map(condition => (
+                  <th key={condition} className="px-3 py-2.5 font-semibold text-shell-muted">
+                    {WARRANTY_STOCK_CONDITION_LABELS[condition]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {WARRANTY_CATEGORIES.map(category => (
+                <tr key={category} className="border-b border-shell-line/80 last:border-b-0">
+                  <td className="px-3 py-2.5 font-medium text-shell-ink">
+                    {WARRANTY_CATEGORY_LABELS[category]}
+                  </td>
+                  {WARRANTY_STOCK_CONDITIONS.map(condition => {
+                    const cover = warrantyPolicy[category][condition];
+                    return (
+                      <td key={condition} className="px-2 py-2">
+                        <div className="flex min-w-[7.5rem] items-center gap-1.5">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={36}
+                            inputMode="numeric"
+                            className={cn(fieldClass, 'w-14 px-2 py-2 text-center')}
+                            value={cover.value}
+                            onChange={e => {
+                              const value = Math.max(0, Math.min(36, Number(e.target.value) || 0));
+                              setWarrantyPolicy(current => ({
+                                ...current,
+                                [category]: {
+                                  ...current[category],
+                                  [condition]: { ...current[category][condition], value },
+                                },
+                              }));
+                            }}
+                          />
+                          <Select
+                            value={cover.unit}
+                            onValueChange={(unit: WarrantyDuration['unit']) =>
+                              setWarrantyPolicy(current => ({
+                                ...current,
+                                [category]: {
+                                  ...current[category],
+                                  [condition]: {
+                                    ...current[category][condition],
+                                    unit,
+                                  },
+                                },
+                              }))
+                            }
+                          >
+                            <SelectTrigger className="h-10 min-w-[4.5rem] border-shell-line bg-shell-surface-2/40 px-2 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="days">Days</SelectItem>
+                              <SelectItem value="months">Months</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              await saveProfile({
+                ...profile,
+                receipt_theme: profile.receipt_theme ?? receiptTheme,
+                warranty_policy: warrantyPolicy,
+              });
+              setWarrantySaved(true);
+              toast.success('Warranty policy saved');
+              setTimeout(() => setWarrantySaved(false), 2500);
+            }}
+            className={settingsBtnPrimary}
+          >
+            Save warranty policy
+          </button>
+          <button
+            type="button"
+            onClick={() => setWarrantyPolicy(DEFAULT_WARRANTY_POLICY)}
+            className={settingsBtnOutline}
+          >
+            Reset to defaults
+          </button>
+          {warrantySaved && (
             <span className="inline-flex items-center gap-1 rounded-full bg-teal/10 px-3 py-2 text-xs font-medium text-teal-dark dark:text-teal-300">
               <CheckCircle size={14} />
               Saved

@@ -2,7 +2,7 @@ import type { Category, DeviceCondition } from '@/types';
 
 export type ProductCat = 'Phone' | 'Laptop' | 'Accessory';
 
-export type IntakeCondition = 'New' | 'Used';
+export type IntakeCondition = 'New' | 'Used' | 'UK Used' | 'Refurb';
 
 export type VariantRow = {
   label: string;

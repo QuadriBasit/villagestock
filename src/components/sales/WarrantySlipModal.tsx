@@ -12,7 +12,8 @@ import { useShopProfile } from "@/hooks/useShopProfile";
 import type { SalesRecord } from "@/types";
 import {
   formatIdentifierDisplay,
-  getWarrantyMonths,
+  formatWarrantyCover,
+  getSaleWarrantyCover,
   identifierLabel,
   saleIdentifier,
   saleWarrantyStatus,
@@ -32,7 +33,7 @@ export default function WarrantySlipModal({
 
   if (!sale) return null;
 
-  const months = getWarrantyMonths(sale);
+  const cover = getSaleWarrantyCover(sale);
   const warranty = saleWarrantyStatus(sale);
   const idKind = identifierLabel(sale);
   const idCode = saleIdentifier(sale);
@@ -86,8 +87,7 @@ export default function WarrantySlipModal({
                 Warranty slip
               </h2>
               <p className="text-xs text-shell-muted">
-                {sale.receipt_number} · {months} month{months === 1 ? "" : "s"}{" "}
-                cover
+                {sale.receipt_number} · {formatWarrantyCover(cover)} cover
               </p>
             </div>
             <button
@@ -142,7 +142,7 @@ export default function WarrantySlipModal({
                     Cover
                   </p>
                   <p className="mt-1 font-display text-2xl font-bold">
-                    {months} mo
+                    {formatWarrantyCover(cover)}
                   </p>
                 </div>
                 <div>
@@ -150,7 +150,7 @@ export default function WarrantySlipModal({
                     Valid until
                   </p>
                   <p className="mt-1 font-display text-lg font-bold">
-                    {months ? warranty.label : "—"}
+                    {cover.value ? warranty.label : "—"}
                   </p>
                 </div>
               </div>

@@ -237,8 +237,11 @@ export interface SalesRecord {
   trade_in_item_brand?: string;
   trade_in_value?: number;
   balance_paid?: number;
-  /** Months of shop warranty included with this sale (0 = none). */
+  /** @deprecated Legacy month-only field; prefer warranty_cover */
   warranty_months?: number;
+  /** Shop warranty / return window for this sale */
+  warranty_cover?: WarrantyDuration;
+  item_stock_condition?: WarrantyStockCondition;
   // Return tracking
   returned?: boolean;
   return_id?: string;
@@ -511,6 +514,26 @@ export type PurchaseRecordInput = Omit<PurchaseRecord, 'id' | 'user_id' | 'creat
 
 // ─── Shop Profile ─────────────────────────────────────────────────────────────
 
+export interface ReceiptTheme {
+  header_color: string;
+  accent_color: string;
+  text_color: string;
+  paper_color: string;
+}
+
+/** Stock intake label — stored at the start of item `description`. */
+export type WarrantyStockCondition = 'new' | 'used' | 'uk_used' | 'refurb';
+
+export type WarrantyDurationUnit = 'days' | 'months';
+
+export type WarrantyDuration = {
+  value: number;
+  unit: WarrantyDurationUnit;
+};
+
+/** Warranty / return cover per category and stock condition. */
+export type WarrantyPolicy = Record<Category, Record<WarrantyStockCondition, WarrantyDuration>>;
+
 export interface ShopProfile {
   shop_name: string;
   address: string;
@@ -518,13 +541,7 @@ export interface ShopProfile {
   logo_data_url?: string;
   logo_path?: string;
   receipt_theme?: ReceiptTheme;
-}
-
-export interface ReceiptTheme {
-  header_color: string;
-  accent_color: string;
-  text_color: string;
-  paper_color: string;
+  warranty_policy?: WarrantyPolicy;
 }
 
 export interface AppSetting<T = string> {

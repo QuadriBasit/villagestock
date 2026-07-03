@@ -7,6 +7,7 @@ import { useShopAccess } from '@/context/ShopAccessContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import type { ShopProfile, BusinessProfile, ReceiptTheme } from '@/types';
+import { mergeWarrantyPolicy } from '@/lib/warranty';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { TRIAL_PLACEHOLDER } from '@/lib/trial';
 import { supabase, isOnline } from '@/lib/supabase';
@@ -69,6 +70,7 @@ export function useShopProfile() {
         ...DEFAULT_RECEIPT_THEME,
         ...(legacy?.receipt_theme ?? {}),
       },
+      warranty_policy: mergeWarrantyPolicy(legacy?.warranty_policy),
     };
   }, [bpQuery, legacySetting]);
 

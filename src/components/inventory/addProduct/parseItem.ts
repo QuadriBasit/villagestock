@@ -23,7 +23,9 @@ export function supportsWizardEdit(category: Category): boolean {
 function parseIntakeCondition(descParts: string[]): IntakeCondition {
   const head = descParts[0];
   if (head === 'New') return 'New';
-  if (head === 'Used' || head === 'UK Used' || head === 'Refurb') return 'Used';
+  if (head === 'UK Used') return 'UK Used';
+  if (head === 'Refurb') return 'Refurb';
+  if (head === 'Used') return 'Used';
   return 'Used';
 }
 

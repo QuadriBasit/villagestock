@@ -7,6 +7,18 @@ import { X, Loader2, ShoppingCart, Receipt as ReceiptIcon } from "lucide-react";
 import { useSalesActions } from "@/hooks/useSalesActions";
 import { useTradingGateState } from "@/hooks/useStockSessions";
 import { useCreditActions } from "@/hooks/useCreditActions";
+import { useShopProfile } from "@/hooks/useShopProfile";
+import {
+  decodeWarrantyCoverKey,
+  encodeWarrantyCoverKey,
+  formatWarrantyCover,
+  mergeWarrantyPolicy,
+  stockConditionFromItem,
+  WARRANTY_COVER_PRESETS,
+  WARRANTY_STOCK_CONDITION_LABELS,
+  warrantyCoverFor,
+  warrantyCoversEqual,
+} from "@/lib/warranty";
 import {
   modalSheetBackdrop,
   modalSheetFooter,
@@ -53,6 +65,7 @@ const schema = z.object({
   due_date: z.string().optional(),
   sold_at: z.string().min(1),
   quantity_sold: z.coerce.number().int().positive().optional(),
+  warranty_cover_key: z.string().min(1),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -99,8 +112,15 @@ const itemPillMono = `${itemMetaPill} border-shell-line bg-shell-surface-2/40 fo
 export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
   const { recordSale } = useSalesActions();
   const { createCreditRecord } = useCreditActions();
+  const { profile } = useShopProfile();
   const tradingGate = useTradingGateState();
   const { canViewProfit } = useShopAccess();
+  const shopWarrantyCover = warrantyCoverFor(
+    mergeWarrantyPolicy(profile.warranty_policy),
+    item.category,
+    stockConditionFromItem(item),
+  );
+  const shopWarrantyKey = encodeWarrantyCoverKey(shopWarrantyCover);
   const [completedSale, setCompletedSale] = useState<SalesRecord | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -137,8 +157,13 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
       amount_paid: 0,
       sold_at: toLocalDatetimeValue(new Date()),
       quantity_sold: 1,
+      warranty_cover_key: shopWarrantyKey,
     },
   });
+
+  useEffect(() => {
+    setValue("warranty_cover_key", shopWarrantyKey);
+  }, [shopWarrantyKey, setValue]);
 
   const salePrice = watch("sale_price") ?? item.price;
   const qtySold = isSerialized ? 1 : (watch("quantity_sold") ?? 1);
@@ -195,6 +220,8 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
         customer_phone: data.customer_phone || undefined,
         quantity_sold: qtySold,
         sold_at: new Date(data.sold_at).toISOString(),
+        item_stock_condition: stockConditionFromItem(item),
+        warranty_cover: decodeWarrantyCoverKey(data.warranty_cover_key),
       });
       if (data.payment_status === "credit") {
         await createCreditRecord({
@@ -437,6 +464,39 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
                     </Select>
                   )}
                 />
+              </div>
+
+              <div>
+                <label className={labelClass} htmlFor="warranty_cover_key">
+                  Warranty / return window
+                </label>
+                <Controller
+                  name="warranty_cover_key"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="warranty_cover_key" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {WARRANTY_COVER_PRESETS.map(cover => {
+                          const key = encodeWarrantyCoverKey(cover);
+                          const isDefault = warrantyCoversEqual(cover, shopWarrantyCover);
+                          return (
+                            <SelectItem key={key} value={key}>
+                              {formatWarrantyCover(cover)}
+                              {isDefault ? " (shop default)" : ""}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <p className="mt-1 text-[11px] text-shell-muted">
+                  {WARRANTY_STOCK_CONDITION_LABELS[stockConditionFromItem(item)]} {item.category} · shop
+                  default: {formatWarrantyCover(shopWarrantyCover)}
+                </p>
               </div>
 
               {paymentStatus === "credit" && (

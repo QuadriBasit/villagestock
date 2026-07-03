@@ -10,7 +10,7 @@ import {
   type ShopProfile,
 } from "@/types";
 import { formatCurrency } from "@/lib/utils";
-import { getWarrantyMonths, saleWarrantyStatus } from "@/lib/warranty";
+import { getSaleWarrantyCover, saleWarrantyStatus, formatWarrantyCover } from "@/lib/warranty";
 
 const PAYMENT_LABELS: Record<string, string> = {
   cash: "Cash",
@@ -103,7 +103,7 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
       overrides?.text_color || shop.receipt_theme?.text_color || RC.dark;
     const paperColor =
       overrides?.paper_color || shop.receipt_theme?.paper_color || RC.white;
-    const warrantyMonths = getWarrantyMonths(sale);
+    const warrantyCover = getSaleWarrantyCover(sale);
     const warranty = saleWarrantyStatus(sale);
     const mutedColor =
       textColor === RC.dark ? RC.muted : withAlpha(textColor, 0.68);
@@ -640,7 +640,7 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
 
         {/* Footer */}
         <div style={{ padding: "20px 24px", textAlign: "center" }}>
-          {warrantyMonths > 0 ? (
+          {warrantyCover.value > 0 ? (
             <p
               style={{
                 fontSize: 12,
@@ -649,8 +649,7 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
                 fontWeight: 600,
               }}
             >
-              Warranty: {warrantyMonths} month{warrantyMonths === 1 ? "" : "s"}{" "}
-              — valid until {warranty.label}
+              Warranty: {formatWarrantyCover(warrantyCover)} — valid until {warranty.label}
             </p>
           ) : (
             <p style={{ fontSize: 11, color: mutedColor, margin: "0 0 8px" }}>

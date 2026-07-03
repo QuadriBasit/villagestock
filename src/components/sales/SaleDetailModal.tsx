@@ -12,7 +12,8 @@ import {
 import type { PaymentMethod, SalesRecord } from "@/types";
 import {
   formatIdentifierDisplay,
-  getWarrantyMonths,
+  formatWarrantyCover,
+  getSaleWarrantyCover,
   identifierLabel,
   saleIdentifier,
   saleWarrantyStatus,
@@ -50,7 +51,7 @@ export default function SaleDetailModal({
     sale.payment_status === "credit" && (sale.balance_owed ?? 0) > 0;
   const paid = sale.amount_paid ?? total - (sale.balance_owed ?? 0);
   const warranty = saleWarrantyStatus(sale);
-  const months = getWarrantyMonths(sale);
+  const cover = getSaleWarrantyCover(sale);
   const idKind = identifierLabel(sale);
   const idCode = saleIdentifier(sale);
   const soldDate = new Date(sale.sold_at).toLocaleString("en-NG", {
@@ -149,8 +150,8 @@ export default function SaleDetailModal({
               <DetailRow
                 label="Warranty"
                 value={
-                  months
-                    ? `${months} month${months === 1 ? "" : "s"} · ${
+                  cover.value
+                    ? `${formatWarrantyCover(cover)} · ${
                         warranty.active
                           ? `${warranty.leftDays}d left`
                           : "expired"
@@ -186,7 +187,7 @@ export default function SaleDetailModal({
                 variant="outline"
                 className="h-10 border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
                 onClick={() => onWarranty(sale)}
-                disabled={!months}
+                disabled={!cover.value}
               >
                 <Shield size={16} />
                 Warranty slip
@@ -228,7 +229,7 @@ export default function SaleDetailModal({
               >
                 {sale.returned ? "Returned" : owing ? "Owing" : "Paid"}
               </Badge>
-              {months > 0 ? (
+              {cover.value > 0 ? (
                 <Badge
                   className={
                     warranty.active
