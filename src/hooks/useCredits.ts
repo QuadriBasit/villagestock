@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
-import type { CreditPayment, CreditsSummary, CreditStatus, PaymentMethod } from '@/types';
+import type { CreditPayment, CreditRecord, CreditsSummary, CreditStatus, PaymentMethod } from '@/types';
 
 export function getCreditStatus(balanceOwed: number, dueDate: string): CreditStatus {
   if (balanceOwed <= 0) return 'paid';

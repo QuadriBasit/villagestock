@@ -29,13 +29,10 @@ export function useSalesActions() {
     if (idBlock) throw new Error(idBlock);
 
     const receipt_number = await generateReceiptNumber(shopOwnerId);
-    const itemPre = await db.inventory_items.get(input.item_id);
     const warrantyPolicy = await getShopWarrantyPolicy();
     const stockCondition =
       input.item_stock_condition ??
-      stockConditionFromItem(
-        itemPre ?? { description: undefined, category: input.item_category },
-      );
+      stockConditionFromItem(itemPre);
     const warrantyCover =
       input.warranty_cover ??
       warrantyCoverFor(warrantyPolicy, input.item_category, stockCondition);
