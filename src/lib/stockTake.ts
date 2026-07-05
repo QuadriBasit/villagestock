@@ -19,6 +19,7 @@ export function sessionDiscrepancies(session: StockSession): number {
 }
 
 export function sessionLines(session: StockSession): number {
+  if (session.expected_closing_ids?.length) return session.expected_closing_ids.length;
   return session.opening_snapshot_ids.length;
 }
 

@@ -7,13 +7,10 @@ import { useReturnActions } from "@/hooks/useReturnActions";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useAuthStore } from "@/store/auth";
-import {
-  modalSheetBackdrop,
-  modalSheetFooter,
-  modalSheetHandle,
-  modalSheetPanelMd,
-} from "@/lib/modalSheet";
-import { ModalSheetPortal } from "@/components/ui/ModalSheetPortal";
+import { modalSheetFooter, modalSheetPanelMd } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -153,32 +150,18 @@ export default function ReturnForm({
 
   return (
     <ModalSheetPortal>
-      <div className={modalSheetBackdrop} onClick={onClose}>
-        <div
-          className={cn(
+      <ModalSheetFrame onClose={onClose} panelClassName={cn(
             modalSheetPanelMd,
             "border-shell-line bg-shell-surface",
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-
-          <div className={salesModalHeader}>
+          )}>
+<div className={salesModalHeader}>
             <div className="flex items-center gap-2">
               <RotateCcw size={18} className="text-violet-300" />
               <h2 className="font-display text-base font-bold text-shell-ink">
                 Process Return
               </h2>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1.5 text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
-            >
-              <X size={18} />
-            </button>
+            <ModalSheetClose />
           </div>
 
           <div className={salesModalBody}>
@@ -425,8 +408,8 @@ export default function ReturnForm({
               )}
             </button>
           </div>
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

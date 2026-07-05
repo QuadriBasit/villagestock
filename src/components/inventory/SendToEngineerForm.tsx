@@ -2,19 +2,15 @@ import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Wrench, X } from 'lucide-react';
+import { Loader2, Wrench } from 'lucide-react';
 import { useEngineerNames } from '@/hooks/useRepairs';
 import { useRepairActions } from '@/hooks/useRepairActions';
 import { useTradingGateState } from '@/hooks/useStockSessions';
 import type { InventoryItem } from '@/types';
-import {
-  modalSheetBackdrop,
-  modalSheetBodyScroll,
-  modalSheetHandle,
-  modalSheetHeader,
-  modalSheetPanelMd,
-} from '@/lib/modalSheet';
+import { modalSheetBodyScroll, modalSheetHeader, modalSheetPanelMd } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
@@ -86,29 +82,16 @@ export default function SendToEngineerForm({
 
   return (
     <ModalSheetPortal>
-      <div className={modalSheetBackdrop} onClick={onClose}>
-        <div
-          className={cn(
+      <ModalSheetFrame onClose={onClose} panelClassName={cn(
             modalSheetPanelMd,
             'border-shell-line bg-shell-surface ring-shell-line/40 dark:border-shell-line dark:bg-shell-surface',
-          )}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-          <div className={cn(modalSheetHeader, 'border-shell-line')}>
+          )}>
+<div className={cn(modalSheetHeader, 'border-shell-line')}>
             <div className="flex items-center gap-2">
               <Wrench size={18} className="text-violet-300" />
               <h2 className="font-display text-base font-bold text-shell-ink">Send for repair</h2>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1.5 text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
-            >
-              <X size={18} />
-            </button>
+            <ModalSheetClose />
           </div>
           <form
             onSubmit={handleSubmit(onSubmit)}
@@ -228,8 +211,8 @@ export default function SendToEngineerForm({
               </button>
             </div>
           </form>
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

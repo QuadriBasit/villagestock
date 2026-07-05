@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import {
-  X,
   Share2,
   Download,
   Loader2,
@@ -9,16 +8,10 @@ import {
   RotateCcw,
 } from "lucide-react";
 import Receipt, { type ReceiptOverrides } from "./Receipt";
-import {
-  modalSheetBackdrop,
-  modalSheetBodyScroll,
-  modalSheetFooter,
-  modalSheetHandle,
-  modalSheetHeader,
-  modalSheetPanelSm,
-} from "@/lib/modalSheet";
-import { ModalSheetPortal } from "@/components/ui/ModalSheetPortal";
-import { cn } from "@/lib/utils";
+import { modalSheetBodyScroll, modalSheetFooter, modalSheetHeader, modalSheetPanelSm } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { useShopProfile } from "@/hooks/useShopProfile";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -286,16 +279,8 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
 
   return (
     <ModalSheetPortal>
-      <div
-        className={cn(modalSheetBackdrop, "bg-black/60 dark:bg-black/70")}
-        onClick={onClose}
-      >
-        <div className={modalSheetPanelSm} onClick={(e) => e.stopPropagation()}>
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-
-          <div className={modalSheetHeader}>
+      <ModalSheetFrame onClose={onClose} panelClassName={modalSheetPanelSm} backdropClassName="bg-black/60 dark:bg-black/70">
+<div className={modalSheetHeader}>
             <h2 className="font-display text-base font-bold text-shell-ink">
               Receipt
             </h2>
@@ -308,13 +293,7 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
               >
                 <PencilLine size={18} />
               </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-full p-1.5 text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
-              >
-                <X size={18} />
-              </button>
+              <ModalSheetClose className="rounded-full" />
             </div>
           </div>
 
@@ -578,8 +557,8 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
               </>
             )}
           </div>
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

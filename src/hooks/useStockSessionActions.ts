@@ -63,7 +63,7 @@ export function useStockSessionActions() {
         (i) =>
           !i.deleted &&
           i.mode === 'serialized' &&
-          i.status === 'in_stock' &&
+          (i.status === 'in_stock' || i.status === 'reserved') &&
           i.location_id === activeLocationId
       )
       .toArray();
@@ -146,9 +146,9 @@ export function useStockSessionActions() {
       });
 
       const fresh = await db.stock_sessions.get(sessionId);
-      const checklistItems = expectedIds
-        .map((id) => items.find((i) => i.id === id))
-        .filter((i): i is InventoryItem => !!i);
+      const checklistItems = (
+        await Promise.all(expectedIds.map((id) => db.inventory_items.get(id)))
+      ).filter((i): i is InventoryItem => !!i && !i.deleted);
 
       return { session: fresh!, expectedIds, summary, checklistItems };
     },

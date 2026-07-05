@@ -1,13 +1,11 @@
 import { useRef } from "react";
-import { Download, Printer, X } from "lucide-react";
-import { ModalSheetPortal } from "@/components/ui/ModalSheetPortal";
+import { Download, Printer } from "lucide-react";
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from "@/components/ui/ModalSheetClose";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
-import {
-  modalSheetBackdrop,
-  modalSheetBodyScroll,
-  modalSheetHandle,
-} from "@/lib/modalSheet";
+import { modalSheetBodyScroll, modalSheetPanelMd } from '@/lib/modalSheet';
 import { useShopProfile } from "@/hooks/useShopProfile";
 import type { SalesRecord } from "@/types";
 import {
@@ -72,16 +70,8 @@ export default function WarrantySlipModal({
 
   return (
     <ModalSheetPortal>
-      <div className={cn(modalSheetBackdrop, "bg-black/70")} onClick={onClose}>
-        <div
-          className="flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] max-w-xl flex-col overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)] sm:max-h-[min(85dvh,calc(100dvh-3rem))] sm:rounded-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-
-          <div className="flex shrink-0 items-center justify-between border-b border-shell-line px-5 py-4">
+      <ModalSheetFrame onClose={onClose} panelClassName={cn(modalSheetPanelMd, 'max-w-xl')} backdropClassName="bg-black/70">
+<div className="flex shrink-0 items-center justify-between border-b border-shell-line px-5 py-4">
             <div>
               <h2 className="font-display text-lg font-semibold text-shell-ink">
                 Warranty slip
@@ -90,14 +80,7 @@ export default function WarrantySlipModal({
                 {sale.receipt_number} · {formatWarrantyCover(cover)} cover
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="shell-inset-field rounded-lg p-1.5 text-shell-muted hover:bg-shell-surface-2 hover:text-shell-ink"
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
+            <ModalSheetClose onClick={onClose} />
           </div>
 
           <div
@@ -180,8 +163,8 @@ export default function WarrantySlipModal({
               Download
             </Button>
           </div>
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

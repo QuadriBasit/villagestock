@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check, Loader2, Wrench, X } from 'lucide-react';
+import { Check, Loader2, Wrench } from 'lucide-react';
 import { useInventoryItem } from '@/hooks/useInventory';
 import { useInventoryActions } from '@/hooks/useInventoryActions';
 import { useEngineerNames } from '@/hooks/useRepairs';
@@ -15,11 +15,13 @@ import {
 import { ComboboxField } from '@/components/ui/ComboboxField';
 import { suggestedNamesForCategoryAndBrand } from '@/lib/devicePresets';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { CategoryThumb } from '@/components/inventory/CategoryThumb';
 import { cn, formatCurrency } from '@/lib/utils';
-import { modalSheetBackdrop, modalSheetHandle } from '@/lib/modalSheet';
+import { modalSheetPanelLg } from '@/lib/modalSheet';
 import {
   buildIntakeItems,
   buildSingleIntakeItem,
@@ -275,26 +277,11 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
 
   return (
     <ModalSheetPortal>
-      <div className={cn(modalSheetBackdrop, 'bg-black/70')} onClick={handleClose}>
-        <div
-          className="flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] max-w-[640px] flex-col overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)] sm:max-h-[min(90dvh,calc(100dvh-2rem))] sm:rounded-2xl"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-
-          <div className="shrink-0 px-5 pt-4 pb-0">
+      <ModalSheetFrame onClose={handleClose} panelClassName={cn(modalSheetPanelLg, 'max-w-[640px] sm:max-h-[min(90dvh,calc(100dvh-2rem))]')} backdropClassName="bg-black/70">
+<div className="shrink-0 px-5 pt-4 pb-0">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg font-semibold text-shell-ink">{title}</h2>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="shell-inset-field grid size-8 place-items-center rounded-lg text-shell-muted hover:bg-shell-surface-2 hover:text-shell-ink"
-                aria-label="Close"
-              >
-                <X size={17} />
-              </button>
+              <ModalSheetClose onClick={handleClose} className="size-8" />
             </div>
             {!saved ? <StepProgress steps={steps} step={step} /> : null}
           </div>
@@ -847,8 +834,8 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
               </Button>
             </div>
           ) : null}
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

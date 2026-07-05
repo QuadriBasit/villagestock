@@ -139,6 +139,89 @@ html {
   }
 }
 
+/* Bottom-sheet modals — slide up on mobile, subtle zoom on desktop */
+@keyframes modal-sheet-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-sheet-slide-up {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes modal-sheet-zoom-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.modal-sheet-backdrop {
+  animation: modal-sheet-backdrop-in 0.22s ease-out both;
+}
+
+.modal-sheet-panel {
+  animation: modal-sheet-slide-up 0.34s cubic-bezier(0.32, 0.72, 0, 1) both;
+  will-change: transform;
+}
+
+.modal-sheet-panel--dragging {
+  animation: none;
+}
+
+.modal-sheet-panel--closing {
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .modal-sheet-panel--closing {
+    animation: modal-sheet-zoom-out 0.24s cubic-bezier(0.4, 0, 1, 1) both;
+  }
+
+  .modal-sheet-backdrop--closing {
+    animation: modal-sheet-backdrop-out 0.24s ease both;
+  }
+}
+
+@keyframes modal-sheet-zoom-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.98);
+  }
+}
+
+@keyframes modal-sheet-backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (min-width: 640px) {
+  .modal-sheet-panel {
+    animation: modal-sheet-zoom-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
 body {
   margin: 0;
   font-family: var(--font-body);
@@ -417,6 +500,17 @@ html:not(.dark) .app-shell {
   --line: #e2e8f0;
   --ink: #0f172a;
   --muted: #64748b;
+  --color-shell-bg: #eef2f7;
+  --color-shell-surface: #ffffff;
+  --color-shell-surface-2: #f8fafc;
+  --color-shell-line: #e2e8f0;
+  --color-shell-ink: #0f172a;
+  --color-shell-muted: #64748b;
+}
+
+/* Modals/sheets render through a portal on document.body — outside .app-shell —
+   so the light shell tokens must also live at the root, or overlays stay dark. */
+html:not(.dark) {
   --color-shell-bg: #eef2f7;
   --color-shell-surface: #ffffff;
   --color-shell-surface-2: #f8fafc;

@@ -56,7 +56,7 @@ export function DashboardAnalytics({
               ))}
             </div>
           </div>
-          <div className="h-[220px] w-full md:h-[260px]">
+          <div className="flex min-h-[220px] w-full flex-col md:min-h-[260px]">
             {isLoading ? (
               <div className="flex h-full items-center justify-center text-sm text-shell-muted">Loading chart…</div>
             ) : (
@@ -65,6 +65,8 @@ export function DashboardAnalytics({
                 isDark={isDark}
                 color="#a78bfa"
                 valueFormatter={compactCurrency}
+                showRecentSummary
+                maxXLabels={5}
               />
             )}
           </div>

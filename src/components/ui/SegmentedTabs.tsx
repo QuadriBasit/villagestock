@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { shellSegmentBtn, shellSegmentTrack } from '@/components/settings/settingsUi';
 
@@ -17,14 +18,15 @@ export function SegmentedTabs<T extends string>({
   return (
     <div className={cn(shellSegmentTrack, className)}>
       {options.map(opt => (
-        <button
+        <Button
           key={opt.value}
           type="button"
+          variant="ghost"
           onClick={() => onChange(opt.value)}
-          className={shellSegmentBtn(value === opt.value)}
+          className={cn(shellSegmentBtn(value === opt.value), 'h-auto shadow-none active:scale-100')}
         >
           {opt.label}
-        </button>
+        </Button>
       ))}
     </div>
   );

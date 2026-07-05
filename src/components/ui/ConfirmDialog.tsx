@@ -1,8 +1,28 @@
 import { Trash2, X } from 'lucide-react';
-import { modalSheetBackdrop } from '@/lib/modalSheet';
+import { modalSheetPanelSm } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
 import { Button } from '@/components/ui/Button';
+import { useModalSheetClose } from '@/hooks/useSheetDragDismiss';
 import { cn } from '@/lib/utils';
+import type { ReactNode } from 'react';
+
+function ConfirmCancelButton({
+  onCancel,
+  className,
+  children,
+}: {
+  onCancel: () => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  const requestClose = useModalSheetClose(onCancel);
+  return (
+    <Button type="button" variant="ghost" onClick={requestClose} className={className}>
+      {children}
+    </Button>
+  );
+}
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -27,11 +47,7 @@ export default function ConfirmDialog({
 
   return (
     <ModalSheetPortal>
-      <div className={cn(modalSheetBackdrop, 'bg-black/60')} onClick={onCancel}>
-        <div
-          className="w-full max-w-sm overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)] sm:rounded-2xl"
-          onClick={e => e.stopPropagation()}
-        >
+      <ModalSheetFrame onClose={onCancel} panelClassName={modalSheetPanelSm} backdropClassName="bg-black/60">
           <div className="flex flex-col items-center px-6 pb-4 pt-6 text-center">
             <div
               className={cn(
@@ -50,14 +66,12 @@ export default function ConfirmDialog({
           </div>
 
           <div className="grid grid-cols-2 border-t border-shell-line">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onCancel}
+            <ConfirmCancelButton
+              onCancel={onCancel}
               className="h-auto rounded-none border-r border-shell-line py-3.5 text-sm font-medium text-shell-muted hover:bg-shell-surface-2 hover:text-shell-ink"
             >
               Cancel
-            </Button>
+            </ConfirmCancelButton>
             <Button
               type="button"
               variant="ghost"
@@ -72,8 +86,8 @@ export default function ConfirmDialog({
               {confirmLabel}
             </Button>
           </div>
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

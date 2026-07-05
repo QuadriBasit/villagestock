@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Check, Plus, X } from 'lucide-react';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
+import { ChoiceGrid } from '@/components/ui/ChoiceGrid';
 import { Button } from '@/components/ui/Button';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Input } from '@/components/ui/Input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { purchaseOrderLabel, purchaseOwed } from '@/lib/purchasing';
 import { cn, formatCurrency } from '@/lib/utils';
-import { modalSheetBackdrop, modalSheetBodyScroll, modalSheetHandle } from '@/lib/modalSheet';
+import { modalSheetBodyScroll, modalSheetPanelMd } from '@/lib/modalSheet';
 import type { ContactRecord, PaymentMethod, PurchaseLine, PurchaseRecord, PurchaseTerms } from '@/types';
 
 const TERMS_OPTIONS: { value: PurchaseTerms; label: string }[] = [
@@ -105,30 +108,15 @@ export default function RecordPurchaseModal({
 
   return (
     <ModalSheetPortal>
-      <div className={cn(modalSheetBackdrop, 'bg-black/70')} onClick={onClose}>
-        <div
-          className="flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] max-w-xl flex-col overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)] sm:max-h-[min(85dvh,calc(100dvh-3rem))] sm:rounded-2xl"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-
-          <div className="flex items-center justify-between border-b border-shell-line px-5 py-4">
+      <ModalSheetFrame onClose={onClose} panelClassName={cn(modalSheetPanelMd, 'max-w-xl')} backdropClassName="bg-black/70">
+<div className="flex items-center justify-between border-b border-shell-line px-5 py-4">
             <div>
               <h2 className="font-display text-lg font-semibold text-shell-ink">
                 {done ? 'Purchase recorded' : 'Record purchase'}
               </h2>
               {!done ? <p className="text-xs text-shell-muted">Stock bought in from a supplier</p> : null}
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="shell-inset-field rounded-lg p-1.5 text-shell-muted hover:bg-shell-surface-2 hover:text-shell-ink"
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
+            <ModalSheetClose onClick={onClose} />
           </div>
 
           <div className={cn(modalSheetBodyScroll, 'px-5 py-4')}>
@@ -194,50 +182,41 @@ export default function RecordPurchaseModal({
                           onValueChange={v => setLine(index, { unit_cost: v ?? 0 })}
                           className="h-10"
                         />
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="icon"
                           onClick={() =>
                             setLines(current =>
                               current.length > 1 ? current.filter((_, i) => i !== index) : current
                             )
                           }
                           disabled={lines.length <= 1}
-                          className="grid size-7 place-items-center rounded-lg text-shell-muted hover:bg-shell-surface-2 hover:text-shell-ink disabled:opacity-35"
+                          className="size-7 rounded-lg text-shell-muted hover:text-shell-ink disabled:opacity-35"
                           aria-label="Remove line"
                         >
                           <X size={14} />
-                        </button>
+                        </Button>
                       </div>
                     ))}
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="link"
+                    className="mt-2 h-auto p-0 text-xs font-semibold text-violet-300 hover:text-violet-200"
                     onClick={() => setLines(current => [...current, { name: '', qty: 1, unit_cost: 0 }])}
-                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-violet-300 hover:text-violet-200"
                   >
                     <Plus size={14} />
                     Add line
-                  </button>
+                  </Button>
                 </div>
 
                 <Field label="Terms">
-                  <div className="grid grid-cols-3 divide-x divide-shell-line overflow-hidden rounded-lg border border-shell-line">
-                    {TERMS_OPTIONS.map(opt => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setTerms(opt.value)}
-                        className={cn(
-                          'px-2 py-2.5 text-xs font-medium transition-colors',
-                          terms === opt.value
-                            ? 'bg-shell-surface-2 text-shell-ink'
-                            : 'text-shell-muted hover:bg-shell-surface-2/40 hover:text-shell-ink'
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+                  <ChoiceGrid
+                    options={TERMS_OPTIONS}
+                    value={terms}
+                    onChange={setTerms}
+                  />
                 </Field>
 
                 {terms === 'partial' ? (
@@ -248,23 +227,11 @@ export default function RecordPurchaseModal({
 
                 {terms !== 'credit' ? (
                   <Field label="Method">
-                    <div className="grid grid-cols-3 divide-x divide-shell-line overflow-hidden rounded-lg border border-shell-line">
-                      {PAY_OPTIONS.map(opt => (
-                        <button
-                          key={opt}
-                          type="button"
-                          onClick={() => setMethod(opt)}
-                          className={cn(
-                            'px-2 py-2.5 text-xs font-medium transition-colors',
-                            method === opt
-                              ? 'bg-shell-surface-2 text-shell-ink'
-                              : 'text-shell-muted hover:bg-shell-surface-2/40 hover:text-shell-ink'
-                          )}
-                        >
-                          {PAY_LABELS[opt]}
-                        </button>
-                      ))}
-                    </div>
+                    <ChoiceGrid
+                      options={PAY_OPTIONS.map(opt => ({ value: opt, label: PAY_LABELS[opt] }))}
+                      value={method}
+                      onChange={setMethod}
+                    />
                   </Field>
                 ) : null}
 
@@ -286,8 +253,8 @@ export default function RecordPurchaseModal({
               </div>
             )}
           </div>
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

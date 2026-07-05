@@ -1,14 +1,9 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { X, Share2, Download, Loader2, Image as ImageIcon } from 'lucide-react';
-import {
-  modalSheetBackdrop,
-  modalSheetBodyScroll,
-  modalSheetFooter,
-  modalSheetHandle,
-  modalSheetHeader,
-  modalSheetPanelSm,
-} from '@/lib/modalSheet';
+import { Share2, Download, Loader2, Image as ImageIcon } from 'lucide-react';
+import { modalSheetBodyScroll, modalSheetFooter, modalSheetHeader, modalSheetPanelSm } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useShopProfile } from '@/hooks/useShopProfile';
@@ -160,27 +155,13 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
 
   return (
     <ModalSheetPortal>
-      <div className={cn(modalSheetBackdrop, 'bg-black/70')} onClick={onClose}>
-        <div
-          className={cn(modalSheetPanelSm, 'border-shell-line bg-shell-surface shadow-none')}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-
-          <div className={cn(modalSheetHeader, 'border-shell-line')}>
+      <ModalSheetFrame onClose={onClose} panelClassName={cn(modalSheetPanelSm, 'border-shell-line bg-shell-surface shadow-none')} backdropClassName="bg-black/70">
+<div className={cn(modalSheetHeader, 'border-shell-line')}>
             <h2 className="flex items-center gap-2 font-display text-base font-semibold text-shell-ink">
               <ImageIcon size={18} className="text-violet-300" />
               Share promo flyer
             </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1.5 text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
-            >
-              <X size={18} />
-            </button>
+            <ModalSheetClose />
           </div>
 
           <div className={cn(modalSheetBodyScroll, 'bg-shell-surface-2/25 px-4 py-4')}>
@@ -323,8 +304,8 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
               Save image
             </Button>
           </div>
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

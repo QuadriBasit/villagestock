@@ -54,7 +54,7 @@ export function AnalyticsTrendCard({ days, onDaysChange }: AnalyticsTrendCardPro
         </div>
       </div>
 
-      <div className="h-[220px] w-full">
+      <div className="h-[240px] w-full min-h-0">
         {isLoading ? (
           <div className="flex h-full items-center justify-center text-sm text-shell-muted">Loading chart…</div>
         ) : (
@@ -63,14 +63,9 @@ export function AnalyticsTrendCard({ days, onDaysChange }: AnalyticsTrendCardPro
             isDark={isDark}
             color="#a78bfa"
             valueFormatter={compactCurrency}
+            maxXLabels={days === 7 ? 4 : 5}
           />
         )}
-      </div>
-
-      <div className="mt-2 flex justify-between text-[11px] text-shell-muted">
-        {series.filter((_, index) => index % Math.max(1, Math.ceil(series.length / 5)) === 0).map(point => (
-          <span key={point.date}>{point.label}</span>
-        ))}
       </div>
     </Card>
   );

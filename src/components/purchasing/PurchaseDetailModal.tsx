@@ -1,5 +1,7 @@
-import { Box, Phone, X } from 'lucide-react';
+import { Box, Phone } from 'lucide-react';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
@@ -9,7 +11,7 @@ import {
   purchaseOwed,
   purchaseStatusLabel,
 } from '@/lib/purchasing';
-import { modalSheetBackdrop, modalSheetBodyScroll, modalSheetHandle } from '@/lib/modalSheet';
+import { modalSheetBodyScroll, modalSheetPanelMd } from '@/lib/modalSheet';
 import type { ContactRecord, PurchaseRecord } from '@/types';
 
 type PurchaseDetailModalProps = {
@@ -33,16 +35,8 @@ export default function PurchaseDetailModal({
 
   return (
     <ModalSheetPortal>
-      <div className={cn(modalSheetBackdrop, 'bg-black/70')} onClick={onClose}>
-        <div
-          className="flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] max-w-lg flex-col overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)] sm:max-h-[min(85dvh,calc(100dvh-3rem))] sm:rounded-2xl"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-
-          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-shell-line px-5 py-4">
+      <ModalSheetFrame onClose={onClose} panelClassName={modalSheetPanelMd} backdropClassName="bg-black/70">
+<div className="flex shrink-0 items-start justify-between gap-3 border-b border-shell-line px-5 py-4">
             <div className="min-w-0">
               <h2 className="font-display text-lg font-semibold text-shell-ink">
                 Purchase {purchaseOrderLabel(purchase)}
@@ -51,14 +45,7 @@ export default function PurchaseDetailModal({
                 {purchase.supplier_name} · {dateLabel}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="shell-inset-field rounded-lg p-1.5 text-shell-muted hover:bg-shell-surface-2 hover:text-shell-ink"
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
+            <ModalSheetClose onClick={onClose} />
           </div>
 
           <div className={cn(modalSheetBodyScroll, 'px-5 py-4')}>
@@ -128,8 +115,8 @@ export default function PurchaseDetailModal({
               ) : null}
             </div>
           </div>
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

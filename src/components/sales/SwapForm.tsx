@@ -6,18 +6,14 @@ import {
   ArrowRightLeft,
   Loader2,
   Receipt as ReceiptIcon,
-  X,
 } from "lucide-react";
 import { useSwapActions } from "@/hooks/useSwapActions";
 import { useTradingGateState } from "@/hooks/useStockSessions";
 import { useCreditActions } from "@/hooks/useCreditActions";
-import {
-  modalSheetBackdrop,
-  modalSheetFooter,
-  modalSheetHandle,
-  modalSheetPanelLg,
-} from "@/lib/modalSheet";
-import { ModalSheetPortal } from "@/components/ui/ModalSheetPortal";
+import { modalSheetFooter, modalSheetPanelLg } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Input } from "@/components/ui/Input";
 import { DatePickerField } from "@/components/ui/DatePickerField";
@@ -204,29 +200,15 @@ export default function SwapForm({
 
   return (
     <ModalSheetPortal>
-      <div className={modalSheetBackdrop} onClick={onClose}>
-        <div
-          className={cn(modalSheetPanelLg, 'border-shell-line bg-shell-surface')}
-          onClick={(event) => event.stopPropagation()}
-        >
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-
-          <div className={salesModalHeader}>
+      <ModalSheetFrame onClose={onClose} panelClassName={cn(modalSheetPanelLg, 'border-shell-line bg-shell-surface')}>
+<div className={salesModalHeader}>
             <div className="flex items-center gap-2">
               <ArrowRightLeft size={18} className="text-violet-300" />
               <h2 className="font-display text-base font-bold text-shell-ink">
                 Device Swap / Trade-In
               </h2>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1.5 text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
-            >
-              <X size={18} />
-            </button>
+            <ModalSheetClose />
           </div>
 
           <div className={salesModalBody}>
@@ -642,17 +624,17 @@ export default function SwapForm({
               </button>
             )}
           </div>
-        </div>
+        
+      </ModalSheetFrame>
 
-        {completedSale && showReceipt && (
-          <Suspense fallback={null}>
-            <ReceiptModal
-              sale={completedSale}
-              onClose={() => setShowReceipt(false)}
-            />
-          </Suspense>
-        )}
-      </div>
+      {completedSale && showReceipt && (
+        <Suspense fallback={null}>
+          <ReceiptModal
+            sale={completedSale}
+            onClose={() => setShowReceipt(false)}
+          />
+        </Suspense>
+      )}
     </ModalSheetPortal>
   );
 }

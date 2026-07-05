@@ -12,11 +12,9 @@ import {
   useTodayStockSessionState,
 } from '@/hooks/useStockSessions';
 import { hasStockAccountabilityPlan } from '@/lib/stockSessionUtils';
-import {
-  modalSheetBackdrop,
-  modalSheetHandle,
-} from '@/lib/modalSheet';
+import { modalSheetBodyScroll, modalSheetPanelMd } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import type { InventoryItem, MissingResolution } from '@/types';
 import { Button } from '@/components/ui/Button';
@@ -266,15 +264,8 @@ function ResolveMissingModal({
 
   return (
     <ModalSheetPortal>
-    <div className={modalSheetBackdrop} onClick={onClose}>
-      <div
-        className="max-h-[min(90vh,720px)] overflow-y-auto border border-shell-line bg-shell-surface p-0 shadow-none sm:max-h-[min(85vh,680px)] sm:rounded-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className={modalSheetHandle}>
-          <div className="h-1 w-10 rounded-full bg-shell-line" />
-        </div>
-        <div className="p-5">
+    <ModalSheetFrame onClose={onClose} panelClassName={modalSheetPanelMd}>
+<div className={cn(modalSheetBodyScroll, 'p-5 pt-4')}>
         <h3 className="font-display text-lg font-semibold text-shell-ink">Resolve missing device</h3>
         <p className="mt-1 text-sm text-shell-muted">{item.name}</p>
         {(item.imei || item.serial_number) && (
@@ -295,15 +286,16 @@ function ResolveMissingModal({
                 ['write_off', 'Write off'],
               ] as const
             ).map(([val, label]) => (
-              <button
+              <Button
                 key={val}
                 type="button"
+                variant="outline"
                 onClick={() => setResolution(val)}
                 className={cn(
-                  'flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition-colors',
+                  'h-auto w-full justify-start gap-2 rounded-xl px-3 py-2 text-left text-sm font-normal shadow-none active:scale-100',
                   resolution === val
                     ? 'border-violet-400/40 bg-violet-400/10 text-shell-ink'
-                    : 'border-shell-line text-shell-muted hover:bg-shell-surface-2 hover:text-shell-ink',
+                    : 'border-shell-line text-shell-muted hover:text-shell-ink',
                 )}
               >
                 <span
@@ -318,7 +310,7 @@ function ResolveMissingModal({
                   ) : null}
                 </span>
                 {label}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -355,8 +347,8 @@ function ResolveMissingModal({
           </Button>
         </div>
         </div>
-      </div>
-    </div>
+      
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

@@ -3,7 +3,7 @@ import { useShopAccess } from "@/context/ShopAccessContext";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { X, Loader2, ShoppingCart, Receipt as ReceiptIcon } from "lucide-react";
+import { Loader2, ShoppingCart, Receipt as ReceiptIcon } from "lucide-react";
 import { useSalesActions } from "@/hooks/useSalesActions";
 import { useTradingGateState } from "@/hooks/useStockSessions";
 import { useCreditActions } from "@/hooks/useCreditActions";
@@ -19,13 +19,10 @@ import {
   warrantyCoverFor,
   warrantyCoversEqual,
 } from "@/lib/warranty";
-import {
-  modalSheetBackdrop,
-  modalSheetFooter,
-  modalSheetHandle,
-  modalSheetPanelMd,
-} from "@/lib/modalSheet";
-import { ModalSheetPortal } from "@/components/ui/ModalSheetPortal";
+import { modalSheetFooter, modalSheetPanelMd } from '@/lib/modalSheet';
+import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import {
   Select,
   SelectContent,
@@ -266,26 +263,15 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
 
   return (
     <ModalSheetPortal>
-      <div className={modalSheetBackdrop} onClick={onClose}>
-        <div className={cn(modalSheetPanelMd, 'border-shell-line bg-shell-surface')} onClick={(e) => e.stopPropagation()}>
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-
-          <div className={salesModalHeader}>
+      <ModalSheetFrame onClose={onClose} panelClassName={cn(modalSheetPanelMd, 'border-shell-line bg-shell-surface')}>
+<div className={salesModalHeader}>
             <div className="flex items-center gap-2">
               <ShoppingCart size={18} className="text-violet-300" />
               <h2 className="font-display text-base font-bold text-shell-ink">
                 Record Sale
               </h2>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1.5 text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
-            >
-              <X size={18} />
-            </button>
+            <ModalSheetClose />
           </div>
 
           <div className={salesModalBody}>
@@ -674,17 +660,17 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
               </button>
             )}
           </div>
-        </div>
+        
+      </ModalSheetFrame>
 
-        {completedSale && showReceipt && (
-          <Suspense fallback={null}>
-            <ReceiptModal
-              sale={completedSale}
-              onClose={() => setShowReceipt(false)}
-            />
-          </Suspense>
-        )}
-      </div>
+      {completedSale && showReceipt && (
+        <Suspense fallback={null}>
+          <ReceiptModal
+            sale={completedSale}
+            onClose={() => setShowReceipt(false)}
+          />
+        </Suspense>
+      )}
     </ModalSheetPortal>
   );
 }

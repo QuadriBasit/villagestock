@@ -27,7 +27,8 @@ export default function DesktopSidebar() {
     <>
       <div
         className={cn(
-          'fixed inset-0 z-[55] bg-[#04070e]/60 transition-opacity lg:hidden',
+          /* z-45: above shell chrome (z-40), below modal overlays (z-50) */
+          'fixed inset-0 z-[45] bg-[#04070e]/60 transition-opacity lg:hidden',
           mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
         )}
         onClick={closeMobile}
@@ -35,8 +36,9 @@ export default function DesktopSidebar() {
       />
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-[60] flex h-full w-[252px] flex-col border-r border-shell-line bg-shell-surface transition-transform duration-200 ease-out lg:translate-x-0',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          /* lg:z-30 keeps desktop sidebar under modal backdrops; z-[46] when drawer open on mobile */
+          'fixed inset-y-0 left-0 z-30 flex h-full w-[252px] flex-col border-r border-shell-line bg-shell-surface transition-transform duration-200 ease-out lg:translate-x-0',
+          mobileOpen ? 'z-[46] translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="px-5 pb-[18px] pt-[22px]">

@@ -7,7 +7,6 @@ import {
   Loader2,
   Search,
   Truck,
-  X,
 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useShopAccess } from '@/context/ShopAccessContext';
@@ -16,14 +15,10 @@ import { useInventoryActions } from '@/hooks/useInventoryActions';
 import { getItemQty, itemSpecLine } from '@/lib/inventoryDisplay';
 import { getDeviceDetailsSearchText, type InventoryItem } from '@/types';
 import { cn } from '@/lib/utils';
-import {
-  modalSheetBackdrop,
-  modalSheetBodyScroll,
-  modalSheetHandle,
-  modalSheetHeader,
-  modalSheetPanelMd,
-} from '@/lib/modalSheet';
+import { modalSheetBodyScroll, modalSheetHeader, modalSheetPanelMd } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { CategoryThumb } from '@/components/inventory/CategoryThumb';
 import { Input } from '@/components/ui/Input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
@@ -131,18 +126,11 @@ export default function TransferStockModal({
 
   return (
     <ModalSheetPortal>
-      <div className={modalSheetBackdrop} onClick={onClose}>
-        <div
-          className={cn(
+      <ModalSheetFrame onClose={onClose} panelClassName={cn(
             modalSheetPanelMd,
             'border-shell-line bg-shell-surface ring-shell-line/40 dark:border-shell-line dark:bg-shell-surface',
-          )}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-          <div className={cn(modalSheetHeader, 'border-shell-line')}>
+          )}>
+<div className={cn(modalSheetHeader, 'border-shell-line')}>
             <div>
               <h3 className="font-display text-lg font-semibold text-shell-ink">
                 {done ? 'Transfer logged' : 'Transfer stock'}
@@ -151,13 +139,7 @@ export default function TransferStockModal({
                 <p className="text-sm text-shell-muted">Move units between your branches</p>
               ) : null}
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1.5 text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
-            >
-              <X size={18} />
-            </button>
+            <ModalSheetClose />
           </div>
 
           <div className={cn(modalSheetBodyScroll, 'space-y-4 bg-shell-surface-2/20')}>
@@ -322,8 +304,8 @@ export default function TransferStockModal({
               </div>
             )}
           </div>
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

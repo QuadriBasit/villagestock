@@ -25,7 +25,7 @@ export function AnalyticsProfitMixCard({ days }: AnalyticsProfitMixCardProps) {
           No profit data in this period.
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
           <SimpleDonutChart
             data={slices.map(slice => ({
               label: slice.cat,
@@ -33,13 +33,22 @@ export function AnalyticsProfitMixCard({ days }: AnalyticsProfitMixCardProps) {
               color: slice.color,
             }))}
             totalLabel={formatCurrency(total)}
+            showLegend={false}
           />
           <div className="flex w-full flex-1 flex-col gap-2.5">
             {slices.map(slice => (
-              <div key={slice.cat} className="flex items-center gap-2 text-[13px]">
-                <span className="size-2.5 shrink-0 rounded-full" style={{ background: slice.color }} />
-                <span className="flex-1 capitalize text-shell-ink">{slice.cat}</span>
-                <span className="font-mono font-semibold text-shell-muted">{slice.share}%</span>
+              <div key={slice.cat} className="space-y-1">
+                <div className="flex items-center gap-2 text-[13px]">
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ background: slice.color }} />
+                  <span className="flex-1 capitalize text-shell-ink">{slice.cat}</span>
+                  <span className="font-mono font-semibold text-shell-muted">{slice.share}%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-shell-surface-2">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${slice.share}%`, background: slice.color }}
+                  />
+                </div>
               </div>
             ))}
           </div>

@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, CreditCard, Loader2, Trash2, Users, Wallet, X } from 'lucide-react';
+import { AlertTriangle, CreditCard, Loader2, Trash2, Users, Wallet } from 'lucide-react';
 import { useCredits, useCreditRecord, useOutstandingCreditsSummary } from '@/hooks/useCredits';
 import { useCreditActions } from '@/hooks/useCreditActions';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard, StatGrid } from '@/components/ui/StatCard';
 import { Badge } from '@/components/ui/Badge';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
@@ -13,15 +14,9 @@ import { DateTimeField, toLocalDatetimeValue } from '@/components/ui/DateTimeFie
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { AlertsSkeletonList } from '@/components/ui/Skeleton';
 import type { CreditRecord, CreditStatus, PaymentMethod } from '@/types';
-import {
-  modalSheetBackdrop,
-  modalSheetBodyScroll,
-  modalSheetFooter,
-  modalSheetHandle,
-  modalSheetHeader,
-  modalSheetPanelMd,
-} from '@/lib/modalSheet';
+import { modalSheetBodyScroll, modalSheetFooter, modalSheetHeader, modalSheetPanelMd } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
 import { settingsBtnOutline, settingsField } from '@/components/settings/settingsUi';
 
 const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
@@ -254,29 +249,16 @@ function CreditDetailsModal({ creditId, onClose }: { creditId: string; onClose: 
 
   return (
     <ModalSheetPortal>
-      <div className={modalSheetBackdrop} onClick={onClose}>
-        <div
-          className={cn(
+      <ModalSheetFrame onClose={onClose} panelClassName={cn(
             modalSheetPanelMd,
             'border-shell-line bg-shell-surface ring-shell-line/40 dark:border-shell-line dark:bg-shell-surface',
-          )}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-          <div className={cn(modalSheetHeader, 'border-shell-line')}>
+          )}>
+<div className={cn(modalSheetHeader, 'border-shell-line')}>
             <div className="min-w-0">
               <h3 className="font-display text-lg font-semibold text-shell-ink">{record.customer_name}</h3>
               <p className="truncate text-sm text-shell-muted">{record.item_name}</p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1.5 text-shell-muted transition hover:bg-shell-surface-2 hover:text-shell-ink"
-            >
-              <X size={18} />
-            </button>
+            <ModalSheetClose onClick={onClose} />
           </div>
           <div className={cn(modalSheetBodyScroll, 'space-y-4 bg-shell-surface-2/20')}>
             <Card className="border-shell-line bg-shell-surface shadow-none">
@@ -431,8 +413,8 @@ function CreditDetailsModal({ creditId, onClose }: { creditId: string; onClose: 
             </Button>
           </div>
           ) : null}
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

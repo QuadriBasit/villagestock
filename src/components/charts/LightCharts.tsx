@@ -31,15 +31,20 @@ export function SimpleAreaChart({
   isDark,
   color = '#6C5CE7',
   valueFormatter = formatCurrency,
+  showRecentSummary = false,
+  maxXLabels = 5,
 }: {
   data: ValuePoint[];
   isDark: boolean;
   color?: string;
   valueFormatter?: (value: number) => string;
+  /** Show last 4 day tiles under the chart (needs extra vertical space). */
+  showRecentSummary?: boolean;
+  maxXLabels?: number;
 }) {
   const width = 560;
   const height = 220;
-  const padding = { top: 16, right: 12, bottom: 32, left: 44 };
+  const padding = { top: 16, right: 12, bottom: 36, left: 44 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
   const maxValue = Math.max(...data.map(point => point.value), 0);
@@ -47,7 +52,7 @@ export function SimpleAreaChart({
   const ticks = [topValue, topValue / 2, 0];
   const gridColor = isDark ? '#27272a' : '#e4e4e7';
   const axisColor = isDark ? '#a1a1aa' : '#71717a';
-  const labelStride = Math.max(1, Math.ceil(data.length / 6));
+  const labelStride = Math.max(1, Math.ceil(data.length / maxXLabels));
 
   const getX = (index: number) =>
     data.length <= 1 ? padding.left + chartWidth / 2 : padding.left + (index / (data.length - 1)) * chartWidth;
@@ -61,9 +66,19 @@ export function SimpleAreaChart({
       ? `${linePath} L ${getX(data.length - 1)} ${padding.top + chartHeight} L ${getX(0)} ${padding.top + chartHeight} Z`
       : '';
 
+  const labelIndices = data
+    .map((_, index) => index)
+    .filter(index => index % labelStride === 0 || index === data.length - 1);
+
   return (
-    <div className="space-y-3">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full overflow-visible" role="img" aria-label="Area chart">
+    <div className={showRecentSummary ? 'flex h-full min-h-0 flex-col gap-3' : 'h-full min-h-0'}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-full w-full overflow-hidden"
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        aria-label="Area chart"
+      >
         <defs>
           <linearGradient id="light-chart-fill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.35" />
@@ -86,32 +101,33 @@ export function SimpleAreaChart({
         {data.length > 0 && <path d={areaPath} fill="url(#light-chart-fill)" />}
         {data.length > 0 && <path d={linePath} fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />}
 
-        {data.map((point, index) => (
-          <g key={`${point.label}-${index}`}>
-            <circle cx={getX(index)} cy={getY(point.value)} r="3.5" fill={color} />
-            {(index % labelStride === 0 || index === data.length - 1) && (
-              <text
-                x={getX(index)}
-                y={height - 10}
-                textAnchor="middle"
-                fontSize="11"
-                fill={axisColor}
-              >
-                {point.label}
-              </text>
-            )}
-          </g>
-        ))}
+        {labelIndices.map(index => {
+          const point = data[index];
+          return (
+            <text
+              key={`${point.label}-${index}`}
+              x={getX(index)}
+              y={height - 8}
+              textAnchor="middle"
+              fontSize="10"
+              fill={axisColor}
+            >
+              {point.label}
+            </text>
+          );
+        })}
       </svg>
 
-      <div className="grid grid-cols-2 gap-2 text-xs text-shell-muted md:grid-cols-4">
-        {data.slice(-4).map(point => (
-          <div key={point.label} className="rounded-lg bg-shell-surface-2/40 px-2.5 py-2">
-            <p className="truncate">{point.label}</p>
-            <p className="mt-0.5 font-semibold text-shell-ink">{valueFormatter(point.value)}</p>
-          </div>
-        ))}
-      </div>
+      {showRecentSummary ? (
+        <div className="grid shrink-0 grid-cols-2 gap-2 text-xs text-shell-muted md:grid-cols-4">
+          {data.slice(-4).map(point => (
+            <div key={point.label} className="rounded-lg bg-shell-surface-2/40 px-2.5 py-2">
+              <p className="truncate">{point.label}</p>
+              <p className="mt-0.5 font-semibold text-shell-ink">{valueFormatter(point.value)}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -119,17 +135,19 @@ export function SimpleAreaChart({
 export function SimpleDonutChart({
   data,
   totalLabel,
+  showLegend = true,
 }: {
   data: DonutSlice[];
   totalLabel?: string;
+  showLegend?: boolean;
 }) {
   const total = data.reduce((sum, slice) => sum + slice.value, 0);
   const radius = 54;
   let startAngle = 0;
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="relative h-44 w-44">
+    <div className="flex w-full flex-col items-center gap-4">
+      <div className="relative h-36 w-36 shrink-0 sm:h-40 sm:w-40">
         <svg viewBox="0 0 140 140" className="h-full w-full" role="img" aria-label="Donut chart">
           <circle cx="70" cy="70" r={radius} fill="none" stroke="currentColor" strokeOpacity="0.08" strokeWidth="18" />
           {data.map(slice => {
@@ -150,34 +168,37 @@ export function SimpleDonutChart({
             );
           })}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold text-shell-ink">{total.toLocaleString()}</span>
-          {totalLabel && <span className="text-xs text-shell-muted">{totalLabel}</span>}
+        <div className="absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
+          <span className="text-lg font-bold leading-tight text-shell-ink sm:text-xl">
+            {totalLabel ?? total.toLocaleString()}
+          </span>
         </div>
       </div>
 
-      <div className="w-full space-y-2">
-        {data.map(slice => {
-          const percent = total > 0 ? (slice.value / total) * 100 : 0;
-          return (
-            <div key={slice.label} className="space-y-1">
-              <div className="flex items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: slice.color }} />
-                  <span className="capitalize text-shell-ink">{slice.label}</span>
+      {showLegend ? (
+        <div className="w-full space-y-2">
+          {data.map(slice => {
+            const percent = total > 0 ? (slice.value / total) * 100 : 0;
+            return (
+              <div key={slice.label} className="space-y-1">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: slice.color }} />
+                    <span className="capitalize text-shell-ink">{slice.label}</span>
+                  </div>
+                  <span className="text-shell-muted">{percent.toFixed(0)}%</span>
                 </div>
-                <span className="text-shell-muted">{percent.toFixed(0)}%</span>
+                <div className="h-2 rounded-full bg-shell-surface-2">
+                  <div
+                    className="h-2 rounded-full"
+                    style={{ width: `${percent}%`, backgroundColor: slice.color }}
+                  />
+                </div>
               </div>
-              <div className="h-2 rounded-full bg-shell-surface-2">
-                <div
-                  className="h-2 rounded-full"
-                  style={{ width: `${percent}%`, backgroundColor: slice.color }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

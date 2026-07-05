@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Check, Fuel, Utensils, Truck, X, Zap, Wallet, Package } from 'lucide-react';
+import { Check, Fuel, Utensils, Truck, Zap, Wallet, Package } from 'lucide-react';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
+import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
+import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
+import { ChoiceGrid } from '@/components/ui/ChoiceGrid';
 import { Button } from '@/components/ui/Button';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Input } from '@/components/ui/Input';
 import { cn, formatCurrency } from '@/lib/utils';
-import { modalSheetBackdrop, modalSheetBodyScroll, modalSheetHandle } from '@/lib/modalSheet';
+import { modalSheetBodyScroll, modalSheetPanelMd } from '@/lib/modalSheet';
 import type { ExpenseCategory, PaymentMethod } from '@/types';
 
 const EXPENSE_CATS: {
@@ -82,30 +85,15 @@ export default function AddExpenseModal({ open, onClose, onSave }: AddExpenseMod
 
   return (
     <ModalSheetPortal>
-      <div className={cn(modalSheetBackdrop, 'bg-black/70')} onClick={onClose}>
-        <div
-          className="flex min-h-0 w-full max-h-[min(92dvh,calc(100dvh-1.5rem))] max-w-lg flex-col overflow-hidden rounded-t-[1.25rem] border border-shell-line bg-shell-surface shadow-[var(--shadow-shell-elevated)] sm:max-h-[min(85dvh,calc(100dvh-3rem))] sm:rounded-2xl"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className={modalSheetHandle}>
-            <div className="h-1 w-10 rounded-full bg-shell-line" />
-          </div>
-
-          <div className="flex items-center justify-between border-b border-shell-line px-5 py-4">
+      <ModalSheetFrame onClose={onClose} panelClassName={modalSheetPanelMd} backdropClassName="bg-black/70">
+<div className="flex items-center justify-between border-b border-shell-line px-5 py-4">
             <div>
               <h2 className="font-display text-lg font-semibold text-shell-ink">
                 {done ? 'Expense logged' : 'Record expense'}
               </h2>
               {!done ? <p className="text-xs text-shell-muted">Money leaving the shop today</p> : null}
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="shell-inset-field rounded-lg p-1.5 text-shell-muted hover:bg-shell-surface-2 hover:text-shell-ink"
-              aria-label="Close"
-            >
-              <X size={18} />
-            </button>
+            <ModalSheetClose onClick={onClose} />
           </div>
 
           <div className={cn(modalSheetBodyScroll, 'space-y-4 px-5 py-4')}>
@@ -140,20 +128,21 @@ export default function AddExpenseModal({ open, onClose, onSave }: AddExpenseMod
                       const Icon = c.icon;
                       const on = cat === c.key;
                       return (
-                        <button
+                        <Button
                           key={c.key}
                           type="button"
+                          variant="outline"
                           onClick={() => setCat(c.key)}
                           className={cn(
-                            'flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left text-xs font-medium transition-colors',
+                            'h-auto justify-start gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-medium shadow-none active:scale-100',
                             on
                               ? 'border-violet-400/50 bg-violet-400/10 text-shell-ink'
-                              : 'border-shell-line bg-shell-surface-2/30 text-shell-muted hover:text-shell-ink'
+                              : 'border-shell-line bg-shell-surface-2/30 text-shell-muted hover:text-shell-ink',
                           )}
                         >
                           <Icon size={16} className={c.tone} />
                           {c.label}
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>
@@ -180,23 +169,11 @@ export default function AddExpenseModal({ open, onClose, onSave }: AddExpenseMod
 
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-shell-muted">Paid with</p>
-                  <div className="grid grid-cols-3 divide-x divide-shell-line overflow-hidden rounded-lg border border-shell-line">
-                    {PAY_OPTIONS.map(m => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setMethod(m)}
-                        className={cn(
-                          'py-2.5 text-xs font-medium transition-colors',
-                          method === m
-                            ? 'bg-shell-surface-2 text-shell-ink'
-                            : 'text-shell-muted hover:bg-shell-surface-2/40 hover:text-shell-ink'
-                        )}
-                      >
-                        {PAY_LABELS[m]}
-                      </button>
-                    ))}
-                  </div>
+                  <ChoiceGrid
+                    options={PAY_OPTIONS.map(m => ({ value: m, label: PAY_LABELS[m] }))}
+                    value={method}
+                    onChange={setMethod}
+                  />
                 </div>
 
                 {method === 'cash' && amount > 0 ? (
@@ -216,8 +193,8 @@ export default function AddExpenseModal({ open, onClose, onSave }: AddExpenseMod
               </>
             )}
           </div>
-        </div>
-      </div>
+        
+      </ModalSheetFrame>
     </ModalSheetPortal>
   );
 }

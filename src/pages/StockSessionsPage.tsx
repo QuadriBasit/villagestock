@@ -55,7 +55,7 @@ export default function StockSessionsPage() {
           !i.deleted &&
           i.location_id === activeLocationId &&
           i.mode === 'serialized' &&
-          i.status === 'in_stock'
+          (i.status === 'in_stock' || i.status === 'reserved')
       )
       .toArray();
     return rows.length;
