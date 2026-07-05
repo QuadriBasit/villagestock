@@ -1,4 +1,6 @@
 import type { Category, DeviceCondition } from '@/types';
+import type { NetworkState } from '@/lib/networkLock';
+import { blankNetworkState } from '@/lib/networkLock';
 
 export type ProductCat = 'Phone' | 'Laptop' | 'Accessory';
 
@@ -45,6 +47,7 @@ export type AddProductState = {
   track: boolean;
   serials: Record<string, string[]>;
   faults: string[];
+  network: NetworkState;
 };
 
 export const INTAKE_FAULTS = [
@@ -127,6 +130,7 @@ export function blankAddProductState(engineerDefault = ''): AddProductState {
     track: true,
     serials: {},
     faults: [],
+    network: blankNetworkState(),
   };
 }
 

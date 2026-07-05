@@ -5,6 +5,7 @@ import {
   type AppleMobileDeviceDetails,
   type InventoryItemInput,
 } from '@/types';
+import { blankNetworkState, formatNetworkDescription, mobileNetworkDeviceDetails } from '@/lib/networkLock';
 import { normalizeImeiDigits } from '@/lib/serializedIdentifiers';
 import {
   CAT_META,
@@ -28,6 +29,10 @@ function buildDescription(state: AddProductState, variant: VariantRow): string |
   if (state.cat !== 'Accessory' && variant.label !== 'Stock' && variant.label !== 'Standard') {
     parts.push(variant.label);
   }
+  if (state.cat === 'Phone') {
+    const networkDesc = formatNetworkDescription(mobileNetworkDeviceDetails(state.network));
+    if (networkDesc) parts.push(networkDesc);
+  }
   return parts.length ? parts.join(' · ') : undefined;
 }
 
@@ -38,6 +43,7 @@ function buildAppleMobileDetails(state: AddProductState, variant: VariantRow): A
     color: variant.attrs.color,
     battery_health: state.insp.batteryHealth,
     biometric_status: state.insp.faceId ? 'working' : 'not_working',
+    ...mobileNetworkDeviceDetails(state.network),
     ...(state.insp.display === 'Changed' ? { important_display_message: true, mdm_idm: true } : {}),
     ...(state.insp.battery === 'Changed'
       ? { important_battery_message: true, mdm_ibm: true, serviced_battery_third_party: state.insp.batteryHealth < 80 }
@@ -65,6 +71,9 @@ function buildDeviceDetails(state: AddProductState, variant: VariantRow) {
   const brand = state.brand;
   if (isAppleMobileDevice(brand, category)) return buildAppleMobileDetails(state, variant);
   if (isAppleLaptopDevice(brand, category)) return buildAppleLaptopDetails(state, variant);
+  if (state.cat === 'Phone' && state.network.status) {
+    return mobileNetworkDeviceDetails(state.network);
+  }
   return undefined;
 }
 
@@ -143,6 +152,7 @@ export function flowSteps(state: AddProductState): string[] {
     'Identify',
     hasVariants ? 'Variants' : 'Stock',
     ...(tracks ? ['Serials'] : []),
+    ...(state.cat === 'Phone' ? ['Network'] : []),
     ...(inspect ? ['Inspect'] : []),
     'Review',
   ];
@@ -198,5 +208,6 @@ export function resetForCategory(cat: ProductCat, engineerDefault: string): AddP
     track: cat !== 'Accessory',
     serials: {},
     faults: [],
+    network: blankNetworkState(),
   };
 }

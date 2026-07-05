@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check, Loader2, Wrench } from 'lucide-react';
+import { Check, Loader2, ScanLine, Wrench } from 'lucide-react';
+import { normalizeImeiDigits } from '@/lib/serializedIdentifiers';
 import { useInventoryItem } from '@/hooks/useInventory';
 import { useInventoryActions } from '@/hooks/useInventoryActions';
 import { useEngineerNames } from '@/hooks/useRepairs';
@@ -35,6 +36,7 @@ import {
 import { itemToAddProductState } from './parseItem';
 import {
   APLabel,
+  APChoiceStack,
   APMoney,
   APMsg,
   APMulti,
@@ -49,6 +51,15 @@ import {
   VariantTable,
 } from './ui';
 import {
+  ESIM_STATUS_OPTIONS,
+  formatNetworkSummary,
+  networkStateIsComplete,
+  NETWORK_STATUS_OPTIONS,
+  networkStatusNeedsSimConfig,
+  SIM_CONFIG_OPTIONS,
+  simConfigNeedsEsimStatus,
+} from '@/lib/networkLock';
+import {
   blankAddProductState,
   CAT_META,
   INTAKE_FAULTS,
@@ -56,6 +67,10 @@ import {
   syncVariantsForEdit,
   type AddProductState,
 } from './types';
+
+const BarcodeScanner = lazy(() => import('@/components/inventory/BarcodeScanner'));
+
+type ScanTarget = { label: string; index: number };
 
 type AddProductFlowProps = {
   open: boolean;
@@ -87,6 +102,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [scanTarget, setScanTarget] = useState<ScanTarget | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -98,6 +114,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
     setSaving(false);
     setSaveError(null);
     setLoadError(null);
+    setScanTarget(null);
   }, [open, engineerDefault, isEdit]);
 
   const existingProductItems = useLiveQuery(async () => {
@@ -189,6 +206,26 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
     });
   };
 
+  const findNextEmptySerial = (): ScanTarget | null => {
+    for (const v of state.variants) {
+      const codes = codesOf(v.label);
+      for (let k = 0; k < v.qty; k++) {
+        if (!(codes[k] || '').trim()) return { label: v.label, index: k };
+      }
+    }
+    return null;
+  };
+
+  const handleScan = (raw: string) => {
+    if (!scanTarget) return;
+    const trimmed = raw.trim();
+    if (trimmed) {
+      const value = idType === 'IMEI' ? normalizeImeiDigits(trimmed) : trimmed;
+      setSerial(scanTarget.label, scanTarget.index, value);
+    }
+    setScanTarget(null);
+  };
+
   const setVar = (i: number, patch: Partial<(typeof state.variants)[0]>) => {
     set({ variants: state.variants.map((v, j) => (j === i ? { ...v, ...patch } : v)) });
   };
@@ -210,6 +247,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
       const v = state.variants[0];
       return Boolean(v && v.qty > 0 && v.price > 0);
     }
+    if (cur === 'Network') return networkStateIsComplete(state.network);
     return true;
   };
 
@@ -276,6 +314,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
   const title = saved ? (isEdit ? 'Product updated' : 'Product added') : isEdit ? 'Edit product' : 'Add product';
 
   return (
+    <>
     <ModalSheetPortal>
       <ModalSheetFrame onClose={handleClose} panelClassName={cn(modalSheetPanelLg, 'max-w-[640px] sm:max-h-[min(90dvh,calc(100dvh-2rem))]')} backdropClassName="bg-black/70">
 <div className="shrink-0 px-5 pt-4 pb-0">
@@ -470,10 +509,25 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
               </>
             ) : cur === 'Serials' ? (
               <>
-                <p className="-mt-1 text-[13px] leading-relaxed text-shell-muted">
-                  Enter the {idType} for each unit. You can scan or type them now, or leave blanks and fill them in
-                  later from the product page.
-                </p>
+                <div className="-mt-1 flex items-start justify-between gap-3">
+                  <p className="text-[13px] leading-relaxed text-shell-muted">
+                    Enter the {idType} for each unit. You can scan or type them now, or leave blanks and fill them in
+                    later from the product page.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => {
+                      const next = findNextEmptySerial();
+                      if (next) setScanTarget(next);
+                    }}
+                  >
+                    <ScanLine size={14} />
+                    Scan
+                  </Button>
+                </div>
                 {state.variants.map(v => (
                   <div key={v.label} className="overflow-hidden rounded-xl border border-shell-line">
                     <div className="flex items-center justify-between bg-shell-surface-2/60 px-3.5 py-2">
@@ -492,8 +546,18 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                             inputMode={idType === 'IMEI' ? 'numeric' : 'text'}
                             maxLength={idType === 'IMEI' ? 17 : 24}
                             placeholder={idType === 'IMEI' ? '15-digit IMEI' : 'Serial number'}
-                            className="font-mono text-[13.5px]"
+                            className="flex-1 font-mono text-[13.5px]"
                           />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="size-10 shrink-0"
+                            onClick={() => setScanTarget({ label: v.label, index: k })}
+                            aria-label={`Scan ${idType} ${k + 1} for ${v.label}`}
+                          >
+                            <ScanLine size={18} />
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -551,6 +615,61 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                     placeholder="e.g. D1"
                   />
                 </APLabel>
+              </>
+            ) : cur === 'Network' ? (
+              <>
+                <p className="-mt-1 text-[13px] leading-relaxed text-shell-muted">
+                  How is this phone unlocked, and what SIM setup does it have? This goes on the listing and sale
+                  receipt so staff can disclose it at checkout.
+                </p>
+                <APLabel label="Unlock status">
+                  <APChoiceStack
+                    options={NETWORK_STATUS_OPTIONS}
+                    value={state.network.status}
+                    onChange={status =>
+                      set({
+                        network: {
+                          status,
+                          simConfig: networkStatusNeedsSimConfig(status) ? state.network.simConfig : '',
+                          esimStatus: '',
+                        },
+                      })
+                    }
+                  />
+                </APLabel>
+                {state.network.status ? (
+                  <>
+                    <APLabel
+                      label="SIM configuration"
+                      hint={
+                        networkStatusNeedsSimConfig(state.network.status) ? 'required for locked phones' : 'optional'
+                      }
+                    >
+                      <APChoiceStack
+                        options={SIM_CONFIG_OPTIONS}
+                        value={state.network.simConfig}
+                        onChange={simConfig =>
+                          set({
+                            network: {
+                              ...state.network,
+                              simConfig,
+                              esimStatus: simConfigNeedsEsimStatus(simConfig) ? state.network.esimStatus : '',
+                            },
+                          })
+                        }
+                      />
+                    </APLabel>
+                    {simConfigNeedsEsimStatus(state.network.simConfig) ? (
+                      <APLabel label="eSIM activation" hint="iPhone 14+ and newer">
+                        <APChoiceStack
+                          options={ESIM_STATUS_OPTIONS}
+                          value={state.network.esimStatus}
+                          onChange={esimStatus => set({ network: { ...state.network, esimStatus } })}
+                        />
+                      </APLabel>
+                    ) : null}
+                  </>
+                ) : null}
               </>
             ) : cur === 'Inspect' ? (
               <>
@@ -714,6 +833,9 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                       <Badge variant="outline">{state.condition}</Badge>
                       {idm ? <Badge className="bg-amber-400/15 text-amber-300">IDM</Badge> : null}
                       {tracks ? <Badge className="bg-sky-400/15 text-sky-300">{idType} tracked</Badge> : null}
+                      {state.cat === 'Phone' && formatNetworkSummary(state.network) ? (
+                        <Badge className="bg-indigo-400/15 text-indigo-200">{formatNetworkSummary(state.network)}</Badge>
+                      ) : null}
                     </div>
                     <p className="mt-1 font-display text-[17px] font-semibold text-shell-ink">
                       {state.model || 'Untitled'}
@@ -837,5 +959,11 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
         
       </ModalSheetFrame>
     </ModalSheetPortal>
+    {scanTarget ? (
+      <Suspense fallback={null}>
+        <BarcodeScanner onScan={handleScan} onClose={() => setScanTarget(null)} />
+      </Suspense>
+    ) : null}
+  </>
   );
 }

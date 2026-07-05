@@ -5,6 +5,42 @@ export function normalizeImeiDigits(raw: string | undefined | null): string {
   return String(raw ?? '').replace(/\D/g, '');
 }
 
+/** Keys for matching a scanned value against inventory identifiers. */
+export function normalizeScanLookupKeys(raw: string): string[] {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  const keys = new Set<string>([trimmed.toLowerCase()]);
+  const digits = normalizeImeiDigits(trimmed);
+  if (digits.length >= 8) keys.add(digits);
+  return [...keys];
+}
+
+export function inventoryItemLookupKeys(
+  item: Pick<InventoryItem, 'imei' | 'serial_number' | 'barcode'>
+): string[] {
+  const keys = new Set<string>();
+  const imei = normalizeImeiDigits(item.imei);
+  if (imei) keys.add(imei);
+  const sn = (item.serial_number ?? '').trim().toLowerCase();
+  if (sn) keys.add(sn);
+  const barcode = (item.barcode ?? '').trim().toLowerCase();
+  if (barcode) keys.add(barcode);
+  return [...keys];
+}
+
+/** Find a checklist row whose IMEI, S/N, or barcode matches the scan. */
+export function findItemByScannedValue<T extends Pick<InventoryItem, 'imei' | 'serial_number' | 'barcode'>>(
+  items: T[],
+  scanned: string
+): T | undefined {
+  const scanKeys = normalizeScanLookupKeys(scanned);
+  if (scanKeys.length === 0) return undefined;
+  return items.find(item => {
+    const itemKeys = inventoryItemLookupKeys(item);
+    return itemKeys.some(k => scanKeys.includes(k));
+  });
+}
+
 /** ITU E.212 IMEI is 15 digits; allow14–17 to cover entry typos / IMEISV. */
 export function isPlausibleImei(digits: string): boolean {
   return digits.length >= 14 && digits.length <= 17;

@@ -19,6 +19,14 @@ import {
   isPlausibleImei,
   normalizeImeiDigits,
 } from '@/lib/serializedIdentifiers';
+import {
+  ESIM_STATUS_OPTIONS,
+  mobileNetworkDeviceDetails,
+  NETWORK_STATUS_OPTIONS,
+  networkStateFromDeviceDetails,
+  SIM_CONFIG_OPTIONS,
+  simConfigNeedsEsimStatus,
+} from '@/lib/networkLock';
 import {cn} from '@/lib/utils';
 import {ComboboxField} from '@/components/ui/ComboboxField';
 import {
@@ -39,7 +47,6 @@ import type {
   Category,
   DeviceCondition,
   AppleICloudStatus,
-  AppleCarrierLock,
   AppleBiometricStatus,
   MacKeyboardStatus,
   MacScreenCondition,
@@ -84,6 +91,28 @@ const baseSchema = {
     z
       .enum(['factory_unlocked', 'network_locked', 'esim_only', 'dual_sim'])
       .optional(),
+  ),
+  network_status: z.preprocess(
+    v => (v === '' ? undefined : v),
+    z
+      .enum(['factory_unlocked', 'worldwide_unlocked', 'chip_locked', 'carrier_locked'])
+      .optional(),
+  ),
+  sim_configuration: z.preprocess(
+    v => (v === '' ? undefined : v),
+    z
+      .enum([
+        'physical_sim_only',
+        'esim_only',
+        'physical_plus_esim',
+        'dual_physical_sim',
+        'inbuilt_chip',
+      ])
+      .optional(),
+  ),
+  esim_status: z.preprocess(
+    v => (v === '' ? undefined : v),
+    z.enum(['esim_unlocked', 'esim_locked_wifi_only']).optional(),
   ),
   biometric_status: z.preprocess(
     v => (v === '' ? undefined : v),
@@ -198,12 +227,21 @@ const ICLOUD_OPTIONS: {value: AppleICloudStatus; label: string}[] = [
   {value: 'find_my_off', label: 'Find My Off'},
 ];
 
-const CARRIER_OPTIONS: {value: AppleCarrierLock; label: string}[] = [
-  {value: 'factory_unlocked', label: 'Factory Unlocked'},
-  {value: 'network_locked', label: 'Network Locked'},
-  {value: 'esim_only', label: 'eSIM Only'},
-  {value: 'dual_sim', label: 'Dual SIM'},
-];
+
+const NETWORK_STATUS_FORM_OPTIONS = NETWORK_STATUS_OPTIONS.map(o => ({
+  value: o.value,
+  label: o.label,
+}));
+
+const SIM_CONFIG_FORM_OPTIONS = SIM_CONFIG_OPTIONS.map(o => ({
+  value: o.value,
+  label: o.label,
+}));
+
+const ESIM_STATUS_FORM_OPTIONS = ESIM_STATUS_OPTIONS.map(o => ({
+  value: o.value,
+  label: o.label,
+}));
 
 const BIOMETRIC_OPTIONS: {value: AppleBiometricStatus; label: string}[] = [
   {value: 'working', label: 'Working'},
@@ -279,6 +317,13 @@ export default function ItemForm({
   const [scanTarget, setScanTarget] = useState<ScanTarget | null>(null);
   const [savedCount, setSavedCount] = useState(0);
   const deviceDetails = defaultValues?.deviceDetails;
+  const parsedNetwork = networkStateFromDeviceDetails(
+    deviceDetails &&
+      typeof deviceDetails === 'object' &&
+      ('network_status' in deviceDetails || 'carrier_lock' in deviceDetails)
+      ? deviceDetails
+      : undefined,
+  );
 
   const {
     register,
@@ -311,6 +356,9 @@ export default function ItemForm({
         deviceDetails && 'carrier_lock' in deviceDetails
           ? deviceDetails.carrier_lock
           : undefined,
+      network_status: parsedNetwork.status || undefined,
+      sim_configuration: parsedNetwork.simConfig || undefined,
+      esim_status: parsedNetwork.esimStatus || undefined,
       biometric_status:
         deviceDetails && 'biometric_status' in deviceDetails
           ? deviceDetails.biometric_status
@@ -381,6 +429,9 @@ export default function ItemForm({
   const showAppleMobileFields = isAppleMobileDevice(brand, category);
   const showAppleLaptopFields = isAppleLaptopDevice(brand, category);
 
+  const networkStatus = watch('network_status');
+  const simConfiguration = watch('sim_configuration');
+
   const handleScan = (value: string) => {
     if (scanTarget) setValue(scanTarget, value);
     setScanTarget(null);
@@ -404,8 +455,12 @@ export default function ItemForm({
             battery_health: data.battery_health,
             battery_cycle_count: data.battery_cycle_count,
             icloud_lock_status: data.icloud_lock_status,
-            carrier_lock: data.carrier_lock,
             biometric_status: data.biometric_status,
+            ...mobileNetworkDeviceDetails({
+              status: data.network_status ?? '',
+              simConfig: data.sim_configuration ?? '',
+              esimStatus: data.esim_status ?? '',
+            }),
             storage: data.storage as
               | '64GB'
               | '128GB'
@@ -471,7 +526,9 @@ export default function ItemForm({
       battery_health: data.battery_health,
       battery_cycle_count: data.battery_cycle_count,
       icloud_lock_status: data.icloud_lock_status,
-      carrier_lock: data.carrier_lock,
+      network_status: data.network_status,
+      sim_configuration: data.sim_configuration,
+      esim_status: data.esim_status,
       biometric_status: data.biometric_status,
       important_battery_message: data.important_battery_message,
       important_display_message: data.important_display_message,
@@ -898,19 +955,19 @@ export default function ItemForm({
                 />
               </div>
             </div>
-            <div className='grid grid-cols-2 gap-3'>
+            <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
               <Controller
-                name='carrier_lock'
+                name='network_status'
                 control={control}
                 render={({field}) => (
                   <OptionalStringSelect
-                    id='carrier_lock'
-                    label='Carrier Lock'
+                    id='network_status'
+                    label='Network / unlock'
                     labelClassName={labelClass}
-                    placeholder='Select option'
+                    placeholder='Select unlock status'
                     value={field.value}
                     onChange={field.onChange}
-                    options={CARRIER_OPTIONS}
+                    options={NETWORK_STATUS_FORM_OPTIONS}
                   />
                 )}
               />
@@ -930,6 +987,42 @@ export default function ItemForm({
                 )}
               />
             </div>
+            {networkStatus ? (
+              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                <Controller
+                  name='sim_configuration'
+                  control={control}
+                  render={({field}) => (
+                    <OptionalStringSelect
+                      id='sim_configuration'
+                      label='SIM configuration'
+                      labelClassName={labelClass}
+                      placeholder='Select SIM setup'
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={SIM_CONFIG_FORM_OPTIONS}
+                    />
+                  )}
+                />
+                {simConfigNeedsEsimStatus(simConfiguration ?? '') ? (
+                  <Controller
+                    name='esim_status'
+                    control={control}
+                    render={({field}) => (
+                      <OptionalStringSelect
+                        id='esim_status'
+                        label='eSIM activation'
+                        labelClassName={labelClass}
+                        placeholder='Select eSIM status'
+                        value={field.value}
+                        onChange={field.onChange}
+                        options={ESIM_STATUS_FORM_OPTIONS}
+                      />
+                    )}
+                  />
+                ) : null}
+              </div>
+            ) : null}
             <div className='grid grid-cols-2 gap-3'>
               <Controller
                 name='storage'

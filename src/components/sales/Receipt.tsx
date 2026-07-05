@@ -11,6 +11,7 @@ import {
 } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { getSaleWarrantyCover, saleWarrantyStatus, formatWarrantyCover } from "@/lib/warranty";
+import { formatNetworkDescription } from "@/lib/networkLock";
 
 const PAYMENT_LABELS: Record<string, string> = {
   cash: "Cash",
@@ -307,15 +308,14 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
                   mutedColor={mutedColor}
                 />
               )}
-            {"carrier_lock" in sale.device_details! &&
-              sale.device_details.carrier_lock && (
+            {formatNetworkDescription(sale.device_details as AppleMobileDeviceDetails) ? (
                 <Row
-                  label="Carrier Lock"
-                  value={readableValue(sale.device_details.carrier_lock)}
+                  label="Network"
+                  value={formatNetworkDescription(sale.device_details as AppleMobileDeviceDetails)!}
                   textColor={textColor}
                   mutedColor={mutedColor}
                 />
-              )}
+              ) : null}
             {"biometric_status" in sale.device_details! &&
               sale.device_details.biometric_status && (
                 <Row

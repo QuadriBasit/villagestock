@@ -32,6 +32,44 @@ export function APLabel({
   );
 }
 
+export function APChoiceStack<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly { value: T; label: string; hint?: string }[];
+  value: T | '';
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {options.map(o => {
+        const on = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            className={cn(
+              'rounded-[11px] border px-3.5 py-2.5 text-left transition-colors',
+              on
+                ? 'border-violet-400/40 bg-violet-400/10'
+                : 'border-shell-line bg-shell-surface-2/40 hover:border-shell-muted/40',
+            )}
+          >
+            <span className={cn('block text-[13.5px] font-semibold', on ? 'text-violet-200' : 'text-shell-ink')}>
+              {o.label}
+            </span>
+            {o.hint ? (
+              <span className="mt-0.5 block text-[11.5px] leading-snug text-shell-muted">{o.hint}</span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function APSeg<T extends string>({
   options,
   value,

@@ -8,6 +8,7 @@ import {
   type ProductCat,
   type VariantRow,
 } from './types';
+import { networkStateFromDeviceDetails } from '@/lib/networkLock';
 
 export function categoryToProductCat(category: Category): ProductCat | null {
   if (category === 'phones' || category === 'tablets') return 'Phone';
@@ -140,6 +141,10 @@ export function itemToAddProductState(item: InventoryItem, engineerDefault = '')
     insp: parseInspection(item),
     track,
     serials: serialCode ? { [label]: [serialCode] } : {},
+    network:
+      cat === 'Phone' && dd && typeof dd === 'object'
+        ? networkStateFromDeviceDetails(dd as Parameters<typeof networkStateFromDeviceDetails>[0])
+        : base.network,
   };
 }
 

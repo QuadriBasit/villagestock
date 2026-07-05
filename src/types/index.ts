@@ -27,6 +27,18 @@ export type CreditStatus = 'pending' | 'partially_paid' | 'paid' | 'overdue';
 export type RepairStatus = 'sent' | 'in_progress' | 'completed' | 'collected';
 export type AppleICloudStatus = 'clean' | 'ibm' | 'idm' | 'icm' | 'icloud_locked' | 'find_my_on' | 'find_my_off';
 export type AppleCarrierLock = 'factory_unlocked' | 'network_locked' | 'esim_only' | 'dual_sim';
+export type NetworkUnlockStatus =
+  | 'factory_unlocked'
+  | 'worldwide_unlocked'
+  | 'chip_locked'
+  | 'carrier_locked';
+export type SimConfiguration =
+  | 'physical_sim_only'
+  | 'esim_only'
+  | 'physical_plus_esim'
+  | 'dual_physical_sim'
+  | 'inbuilt_chip';
+export type EsimActivationStatus = 'esim_unlocked' | 'esim_locked_wifi_only';
 export type AppleBiometricStatus = 'working' | 'not_working';
 export type MacKeyboardStatus = 'working' | 'faulty_keys' | 'replaced';
 export type MacScreenCondition = 'perfect' | 'minor_scratches' | 'cracked' | 'replaced';
@@ -35,7 +47,11 @@ export interface AppleMobileDeviceDetails {
   battery_health?: number;
   battery_cycle_count?: number;
   icloud_lock_status?: AppleICloudStatus;
+  /** Legacy unlock field — prefer `network_status` + SIM fields on new rows. */
   carrier_lock?: AppleCarrierLock;
+  network_status?: NetworkUnlockStatus;
+  sim_configuration?: SimConfiguration;
+  esim_status?: EsimActivationStatus;
   biometric_status?: AppleBiometricStatus;
   storage?: '64GB' | '128GB' | '256GB' | '512GB' | '1TB';
   color?: string;

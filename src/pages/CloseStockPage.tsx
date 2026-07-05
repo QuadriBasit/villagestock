@@ -1,12 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Check, ChevronLeft, Loader2, ScanLine, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { useStockSessionActions } from '@/hooks/useStockSessionActions';
 import type { InventoryItem, StockSessionSummary } from '@/types';
+import { findItemByScannedValue } from '@/lib/serializedIdentifiers';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Textarea } from '@/components/ui/Textarea';
 import { cn } from '@/lib/utils';
+
+const BarcodeScanner = lazy(() => import('@/components/inventory/BarcodeScanner'));
 
 export default function CloseStockPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -22,6 +26,7 @@ export default function CloseStockPage() {
   const [missingNotes, setMissingNotes] = useState<Record<string, string>>({});
   const [closing, setClosing] = useState(false);
   const [doneMessage, setDoneMessage] = useState<string | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!sessionId) return;
@@ -57,6 +62,21 @@ export default function CloseStockPage() {
       else next.add(id);
       return next;
     });
+  };
+
+  const handleScan = (raw: string) => {
+    setScanOpen(false);
+    const match = findItemByScannedValue(checklistItems, raw);
+    if (!match) {
+      toast.error('No matching device on this checklist');
+      return;
+    }
+    if (checked.has(match.id)) {
+      toast.message(`${match.name} already confirmed`);
+      return;
+    }
+    setChecked(prev => new Set(prev).add(match.id));
+    toast.success(`${match.name} confirmed`);
   };
 
   const onConfirmClose = async () => {
@@ -150,8 +170,16 @@ export default function CloseStockPage() {
       ) : null}
 
       <div>
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-shell-muted">On-hand checklist</p>
-        <p className="mb-3 text-xs text-shell-muted">Tap each row when the device is present.</p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-shell-muted">On-hand checklist</p>
+            <p className="text-xs text-shell-muted">Tap each row or scan IMEI / S/N to confirm.</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => setScanOpen(true)}>
+            <ScanLine size={14} />
+            Scan device
+          </Button>
+        </div>
         <div className="space-y-2">
           {checklistItems.map(item => {
             const ok = checked.has(item.id);
@@ -244,6 +272,12 @@ export default function CloseStockPage() {
           )}
         </Button>
       </div>
+
+      {scanOpen ? (
+        <Suspense fallback={null}>
+          <BarcodeScanner onScan={handleScan} onClose={() => setScanOpen(false)} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }
