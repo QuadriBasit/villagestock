@@ -16,6 +16,12 @@ const AdminLayout = lazy(() => import('@/components/admin/AdminLayout'));
 const AdminLoginPage = lazy(() => import('@/pages/admin/AdminLoginPage'));
 const AdminOverviewPage = lazy(() => import('@/pages/admin/AdminOverviewPage'));
 const AdminBusinessesPage = lazy(() => import('@/pages/admin/AdminBusinessesPage'));
+const AdminSubscriptionsPage = lazy(() => import('@/pages/admin/AdminSubscriptionsPage'));
+const AdminTrialsPage = lazy(() => import('@/pages/admin/AdminTrialsPage'));
+const AdminRevenuePage = lazy(() => import('@/pages/admin/AdminRevenuePage'));
+const AdminActivityPage = lazy(() => import('@/pages/admin/AdminActivityPage'));
+const AdminHealthPage = lazy(() => import('@/pages/admin/AdminHealthPage'));
+const AdminSignupsPage = lazy(() => import('@/pages/admin/AdminSignupsPage'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const InventoryPage = lazy(() => import('@/pages/InventoryPage'));
 const AddItemPage = lazy(() => import('@/pages/AddItemPage'));
@@ -195,6 +201,12 @@ export default function App() {
         >
           <Route index element={<AdminOverviewPage />} />
           <Route path="businesses" element={<AdminBusinessesPage />} />
+          <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
+          <Route path="trials" element={<AdminTrialsPage />} />
+          <Route path="revenue" element={<AdminRevenuePage />} />
+          <Route path="activity" element={<AdminActivityPage />} />
+          <Route path="health" element={<AdminHealthPage />} />
+          <Route path="signups" element={<AdminSignupsPage />} />
         </Route>
         <Route
           path="/onboarding"

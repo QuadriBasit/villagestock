@@ -3,6 +3,7 @@ import { Search, RefreshCw, X, Building2 } from 'lucide-react';
 import { useAdminDashboardSnapshot } from '@/hooks/useAdminDashboardSnapshot';
 import { cn, formatDate } from '@/lib/utils';
 import type { AdminBusinessRow } from '@/types/admin';
+import { AdminBusinessPlanPanel } from '@/components/admin/AdminBusinessPlanPanel';
 import { Input } from '@/components/ui/Input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -142,7 +143,7 @@ export default function AdminBusinessesPage() {
 
       {selected ? (
         <div className={adminModalOverlay} role="dialog" onClick={() => setSelected(null)}>
-          <div className={adminModalPanel} onClick={e => e.stopPropagation()}>
+          <div className={cn(adminModalPanel, 'max-w-xl')} onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3 border-b border-shell-line p-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/30 bg-violet-400/10">
@@ -173,6 +174,9 @@ export default function AdminBusinessesPage() {
               <DetailRow label="Account disabled" value={selected.account_disabled ? 'Yes' : 'No'} />
               <DetailRow label="Inventory items (excl. deleted)" value={String(selected.inventory_count)} />
               <DetailRow label="Sales records" value={String(selected.sales_count)} />
+              <div className="pt-3">
+                <AdminBusinessPlanPanel business={selected} compact />
+              </div>
             </div>
           </div>
         </div>
