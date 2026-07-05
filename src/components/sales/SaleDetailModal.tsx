@@ -1,10 +1,16 @@
-import { Receipt, Shield, RotateCcw, Wallet, Share2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { Loader2, Receipt, Shield, RotateCcw, Wallet, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
 import { ModalSheetClose } from "@/components/ui/ModalSheetClose";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { DateTimeField, toLocalDatetimeValue } from "@/components/ui/DateTimeField";
 import { CategoryThumb } from "@/components/inventory/CategoryThumb";
+import { useSalesActions } from "@/hooks/useSalesActions";
+import { db } from "@/lib/db";
 import { cn, formatCurrency } from "@/lib/utils";
 import { modalSheetBodyScroll, modalSheetPanelMd } from '@/lib/modalSheet';
 import type { PaymentMethod, SalesRecord } from "@/types";
@@ -42,17 +48,30 @@ export default function SaleDetailModal({
   onReturn,
   onRecordPayment,
 }: SaleDetailModalProps) {
-  if (!sale) return null;
+  const { updateSaleSoldAt } = useSalesActions();
+  const liveSale = useLiveQuery(() => (sale ? db.sales_records.get(sale.id) : undefined), [sale?.id]) ?? sale;
+  const [soldAt, setSoldAt] = useState(
+    liveSale ? toLocalDatetimeValue(new Date(liveSale.sold_at)) : toLocalDatetimeValue(new Date()),
+  );
+  const [savingDate, setSavingDate] = useState(false);
 
-  const total = sale.sale_price * sale.quantity_sold;
+  useEffect(() => {
+    if (liveSale) {
+      setSoldAt(toLocalDatetimeValue(new Date(liveSale.sold_at)));
+    }
+  }, [liveSale?.id, liveSale?.sold_at]);
+
+  if (!sale || !liveSale) return null;
+
+  const total = liveSale.sale_price * liveSale.quantity_sold;
   const owing =
-    sale.payment_status === "credit" && (sale.balance_owed ?? 0) > 0;
-  const paid = sale.amount_paid ?? total - (sale.balance_owed ?? 0);
-  const warranty = saleWarrantyStatus(sale);
-  const cover = getSaleWarrantyCover(sale);
-  const idKind = identifierLabel(sale);
-  const idCode = saleIdentifier(sale);
-  const soldDate = new Date(sale.sold_at).toLocaleString("en-NG", {
+    liveSale.payment_status === "credit" && (liveSale.balance_owed ?? 0) > 0;
+  const paid = liveSale.amount_paid ?? total - (liveSale.balance_owed ?? 0);
+  const warranty = saleWarrantyStatus(liveSale);
+  const cover = getSaleWarrantyCover(liveSale);
+  const idKind = identifierLabel(liveSale);
+  const idCode = saleIdentifier(liveSale);
+  const soldDate = new Date(liveSale.sold_at).toLocaleString("en-NG", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -60,13 +79,25 @@ export default function SaleDetailModal({
     minute: "2-digit",
   });
 
+  const saveSoldAt = async () => {
+    setSavingDate(true);
+    try {
+      await updateSaleSoldAt(liveSale.id, new Date(soldAt).toISOString());
+      toast.success("Sale date updated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update sale date");
+    } finally {
+      setSavingDate(false);
+    }
+  };
+
   return (
     <ModalSheetPortal>
       <ModalSheetFrame onClose={onClose} panelClassName={modalSheetPanelMd} backdropClassName="bg-black/70">
 <div className="flex shrink-0 items-start justify-between gap-3 border-b border-shell-line px-5 py-4">
             <div className="min-w-0">
               <h2 className="truncate font-display text-lg font-semibold text-shell-ink">
-                {sale.receipt_number}
+                {liveSale.receipt_number}
               </h2>
               <p className="mt-0.5 text-xs text-shell-muted">{soldDate}</p>
             </div>
@@ -157,11 +188,30 @@ export default function SaleDetailModal({
               />
             </div>
 
+            <div className="mt-4 space-y-3 rounded-lg border border-shell-line bg-shell-surface-2/20 p-3.5">
+              <DateTimeField
+                id="sale_sold_at"
+                label="Date & time of sale"
+                hint="Backdate if this sale was recorded late."
+                value={soldAt}
+                onChange={setSoldAt}
+              />
+              <Button
+                variant="outline"
+                className="w-full border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
+                onClick={() => void saveSoldAt()}
+                disabled={savingDate}
+              >
+                {savingDate ? <Loader2 size={16} className="animate-spin" /> : null}
+                Save sale date
+              </Button>
+            </div>
+
             <div className="mt-4 grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
                 className="h-10 border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
-                onClick={() => onReceipt(sale)}
+                onClick={() => onReceipt(liveSale)}
               >
                 <Receipt size={16} />
                 Receipt
@@ -169,7 +219,7 @@ export default function SaleDetailModal({
               <Button
                 variant="outline"
                 className="h-10 border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
-                onClick={() => onWarranty(sale)}
+                onClick={() => onWarranty(liveSale)}
                 disabled={!cover.value}
               >
                 <Shield size={16} />
@@ -178,8 +228,8 @@ export default function SaleDetailModal({
               <Button
                 variant="outline"
                 className="h-10 border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
-                onClick={() => onReturn(sale)}
-                disabled={!!sale.returned}
+                onClick={() => onReturn(liveSale)}
+                disabled={!!liveSale.returned}
               >
                 <RotateCcw size={16} />
                 Return / RMA
@@ -187,7 +237,7 @@ export default function SaleDetailModal({
               {owing ? (
                 <Button
                   className="h-10 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
-                  onClick={() => onRecordPayment?.(sale)}
+                  onClick={() => onRecordPayment?.(liveSale)}
                 >
                   <Wallet size={16} />
                   Record payment
@@ -195,7 +245,7 @@ export default function SaleDetailModal({
               ) : (
                 <Button
                   className="h-10 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
-                  onClick={() => onReceipt(sale)}
+                  onClick={() => onReceipt(liveSale)}
                 >
                   <Share2 size={16} />
                   Send receipt

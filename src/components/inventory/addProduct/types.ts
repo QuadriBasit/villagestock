@@ -1,6 +1,7 @@
 import type { Category, DeviceCondition } from '@/types';
 import type { NetworkState } from '@/lib/networkLock';
 import { blankNetworkState } from '@/lib/networkLock';
+import { toLocalDatetimeValue } from '@/components/ui/DateTimeField';
 
 export type ProductCat = 'Phone' | 'Laptop' | 'Accessory';
 
@@ -48,6 +49,7 @@ export type AddProductState = {
   serials: Record<string, string[]>;
   faults: string[];
   network: NetworkState;
+  stockedAt: string;
 };
 
 export const INTAKE_FAULTS = [
@@ -131,6 +133,7 @@ export function blankAddProductState(engineerDefault = ''): AddProductState {
     serials: {},
     faults: [],
     network: blankNetworkState(),
+    stockedAt: toLocalDatetimeValue(new Date()),
   };
 }
 

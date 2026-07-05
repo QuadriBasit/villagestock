@@ -14,6 +14,7 @@ import {
   fetchExistingProductItems,
 } from '@/lib/existingProductIntake';
 import { ComboboxField } from '@/components/ui/ComboboxField';
+import { DateTimeField } from '@/components/ui/DateTimeField';
 import { suggestedNamesForCategoryAndBrand } from '@/lib/devicePresets';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
@@ -257,15 +258,20 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
     try {
       if (isEdit && itemId) {
         const input = buildSingleIntakeItem(state);
-        await updateItem(itemId, input, { deferIdentifiers: true });
+        await updateItem(
+          itemId,
+          { ...input, created_at: new Date(state.stockedAt).toISOString() },
+          { deferIdentifiers: true },
+        );
         setSaved({ count: 1, units: 1, engineer: null });
         return;
       }
 
       const inputs = buildIntakeItems(state);
+      const stockedAtIso = new Date(state.stockedAt).toISOString();
       const ids: string[] = [];
       for (const input of inputs) {
-        ids.push(await addItem(input, { deferIdentifiers: true }));
+        ids.push(await addItem(input, { deferIdentifiers: true, stockedAt: stockedAtIso }));
       }
 
       let engineerSent: string | null = null;
@@ -910,6 +916,14 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                     ) : null}
                   </div>
                 ) : null}
+
+                <DateTimeField
+                  id="stocked_at"
+                  label="Date added to stock"
+                  hint="Backdate if you collected or bought this stock earlier — used for stock-takes and reports."
+                  value={state.stockedAt}
+                  onChange={v => set({ stockedAt: v })}
+                />
 
                 {saveError ? (
                   <p className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm text-red-300">

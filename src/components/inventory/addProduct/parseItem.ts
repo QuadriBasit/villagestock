@@ -9,6 +9,7 @@ import {
   type VariantRow,
 } from './types';
 import { networkStateFromDeviceDetails } from '@/lib/networkLock';
+import { toLocalDatetimeValue } from '@/components/ui/DateTimeField';
 
 export function categoryToProductCat(category: Category): ProductCat | null {
   if (category === 'phones' || category === 'tablets') return 'Phone';
@@ -145,6 +146,7 @@ export function itemToAddProductState(item: InventoryItem, engineerDefault = '')
       cat === 'Phone' && dd && typeof dd === 'object'
         ? networkStateFromDeviceDetails(dd as Parameters<typeof networkStateFromDeviceDetails>[0])
         : base.network,
+    stockedAt: toLocalDatetimeValue(new Date(item.created_at)),
   };
 }
 

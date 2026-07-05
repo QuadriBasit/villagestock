@@ -16,7 +16,10 @@ export function useInventoryActions() {
   const { shopOwnerId, actorUserId, actorAllowedLocationIds } = useShopAccess();
   const { activeLocationId, ready: locationReady } = useShopLocation();
 
-  async function addItem(input: InventoryItemInput, options?: { deferIdentifiers?: boolean }): Promise<string> {
+  async function addItem(
+    input: InventoryItemInput,
+    options?: { deferIdentifiers?: boolean; stockedAt?: string },
+  ): Promise<string> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
     // await assertTrialAllowsMutations(shopOwnerId);
@@ -27,7 +30,12 @@ export function useInventoryActions() {
       if (idErr) throw new Error(idErr);
     }
 
-    const now = new Date().toISOString();
+    const stockedAtRaw = options?.stockedAt?.trim();
+    const stockedAtParsed = stockedAtRaw ? new Date(stockedAtRaw) : null;
+    if (stockedAtParsed && Number.isNaN(stockedAtParsed.getTime())) {
+      throw new Error('Invalid stock date');
+    }
+    const now = stockedAtParsed?.toISOString() ?? new Date().toISOString();
 
     if (mode === 'non_serialized') {
       const existing = await db.inventory_items
@@ -83,7 +91,7 @@ export function useInventoryActions() {
 
   async function updateItem(
     id: string,
-    changes: Partial<InventoryItemInput>,
+    changes: Partial<InventoryItemInput & { created_at?: string }>,
     options?: { deferIdentifiers?: boolean },
   ): Promise<void> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
@@ -91,16 +99,26 @@ export function useInventoryActions() {
     const existing = await db.inventory_items.get(id);
     if (!existing) throw new Error('Item not found');
     const now = new Date().toISOString();
-    const { location_id, ...rest } = changes as Partial<InventoryItemInput> & {
+    const { location_id, created_at, ...rest } = changes as Partial<InventoryItemInput> & {
       location_id?: string;
+      created_at?: string;
     };
     void location_id;
-    const merged = { ...existing, ...rest };
+    if (created_at !== undefined) {
+      const parsed = new Date(created_at);
+      if (Number.isNaN(parsed.getTime())) throw new Error('Invalid stock date');
+    }
+    const merged = { ...existing, ...rest, ...(created_at !== undefined ? { created_at } : null) };
     if (!options?.deferIdentifiers) {
       const idErr = inventoryMissingRequiredIdentifiers(merged.category, merged.imei, merged.serial_number);
       if (idErr) throw new Error(idErr);
     }
-    const updates = { ...rest, updated_at: now, sync_status: 'pending' as const };
+    const updates = {
+      ...rest,
+      ...(created_at !== undefined ? { created_at: new Date(created_at).toISOString() } : null),
+      updated_at: now,
+      sync_status: 'pending' as const,
+    };
     await db.inventory_items.update(id, updates);
     const updated = await db.inventory_items.get(id);
     if (updated) {

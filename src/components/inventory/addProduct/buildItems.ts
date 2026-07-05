@@ -6,6 +6,7 @@ import {
   type InventoryItemInput,
 } from '@/types';
 import { blankNetworkState, formatNetworkDescription, mobileNetworkDeviceDetails } from '@/lib/networkLock';
+import { toLocalDatetimeValue } from '@/components/ui/DateTimeField';
 import { normalizeImeiDigits } from '@/lib/serializedIdentifiers';
 import {
   CAT_META,
@@ -209,5 +210,6 @@ export function resetForCategory(cat: ProductCat, engineerDefault: string): AddP
     serials: {},
     faults: [],
     network: blankNetworkState(),
+    stockedAt: toLocalDatetimeValue(new Date()),
   };
 }

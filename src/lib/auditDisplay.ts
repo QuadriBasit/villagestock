@@ -39,6 +39,7 @@ type ActionMeta = { label: string; icon: LucideIcon; category: Exclude<AuditCate
 
 const ACTION_MAP: Record<string, ActionMeta> = {
   'sale.recorded': { label: 'Sale recorded', icon: ShoppingCart, category: 'sales' },
+  'sale.sold_at_updated': { label: 'Sale date updated', icon: ShoppingCart, category: 'sales' },
   'return.processed': { label: 'Return processed', icon: RotateCcw, category: 'sales' },
   'swap.completed': { label: 'Swap completed', icon: ArrowRightLeft, category: 'sales' },
   'credit.created': { label: 'Credit created', icon: CreditCard, category: 'money' },

@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db, generateReceiptNumber } from '@/lib/db';
-import { flushSyncQueue } from '@/lib/sync';
+import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { assertTradingAllowedForStockPolicy } from '@/lib/stockTradingGate';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
@@ -409,5 +409,36 @@ export function useSalesActions() {
     };
   }
 
-  return { recordSale, checkoutQuickTill };
+  async function updateSaleSoldAt(saleId: string, soldAt: string): Promise<void> {
+    if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+    const existing = await db.sales_records.get(saleId);
+    if (!existing) throw new Error('Sale not found');
+    const parsed = new Date(soldAt);
+    if (Number.isNaN(parsed.getTime())) throw new Error('Invalid sale date');
+
+    const iso = parsed.toISOString();
+    await db.sales_records.update(saleId, { sold_at: iso, sync_status: 'pending' });
+    const latest = await db.sales_records.get(saleId);
+    if (latest) {
+      await queueSync('sales_records', 'update', latest as unknown as Record<string, unknown>);
+    }
+    await flushSyncQueue();
+
+    const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
+    void logShopAudit({
+      businessId: shopOwnerId,
+      actorUserId,
+      action: 'sale.sold_at_updated',
+      entityType: 'sales_record',
+      entityId: saleId,
+      metadata: {
+        receipt: existing.receipt_number,
+        item: existing.item_name,
+        sold_at: iso,
+      },
+      actorLabel,
+    });
+  }
+
+  return { recordSale, checkoutQuickTill, updateSaleSoldAt };
 }

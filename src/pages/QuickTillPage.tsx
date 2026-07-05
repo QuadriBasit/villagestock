@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { DatePickerField } from '@/components/ui/DatePickerField';
+import { DateTimeField, toLocalDatetimeValue } from '@/components/ui/DateTimeField';
 import { Input } from '@/components/ui/Input';
 import { CategoryThumb } from '@/components/inventory/CategoryThumb';
 import { settingsField } from '@/components/settings/settingsUi';
@@ -111,6 +112,7 @@ export default function QuickTillPage() {
   const [payTerms, setPayTerms] = useState<PayTerms>('paid');
   const [amountPaidTotal, setAmountPaidTotal] = useState(0);
   const [dueDate, setDueDate] = useState(defaultDueDate);
+  const [soldAt, setSoldAt] = useState(() => toLocalDatetimeValue(new Date()));
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [done, setDone] = useState<{
@@ -209,7 +211,7 @@ export default function QuickTillPage() {
     }
 
     setCheckingOut(true);
-    const soldAt = new Date().toISOString();
+    const soldAtIso = new Date(soldAt).toISOString();
     const dueIso = dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : undefined;
     const lineTotals = lines.map(lineTotal);
     const paidShares = payTerms === 'paid' ? lineTotals : allocatePaid(paidNow, lineTotals);
@@ -229,7 +231,7 @@ export default function QuickTillPage() {
         customerName: name,
         customerPhone: phone,
         dueIso,
-        soldAt,
+        soldAt: soldAtIso,
       });
 
       setDone({ total, profit, receipt: lastReceipt, owed: owedTotal > 0 ? owedTotal : undefined });
@@ -249,6 +251,7 @@ export default function QuickTillPage() {
     setPayTerms('paid');
     setAmountPaidTotal(0);
     setDueDate(defaultDueDate());
+    setSoldAt(toLocalDatetimeValue(new Date()));
     setCheckoutError(null);
     setQ('');
   };
@@ -356,6 +359,8 @@ export default function QuickTillPage() {
             onAmountPaidTotalChange={setAmountPaidTotal}
             dueDate={dueDate}
             onDueDateChange={setDueDate}
+            soldAt={soldAt}
+            onSoldAtChange={setSoldAt}
             paidNow={paidNow}
             balanceOwed={balanceOwed}
             checkoutError={checkoutError}
@@ -393,6 +398,8 @@ function TillCartPanel({
   onAmountPaidTotalChange,
   dueDate,
   onDueDateChange,
+  soldAt,
+  onSoldAtChange,
   paidNow,
   balanceOwed,
   checkoutError,
@@ -423,6 +430,8 @@ function TillCartPanel({
   onAmountPaidTotalChange: (value: number) => void;
   dueDate: string;
   onDueDateChange: (value: string) => void;
+  soldAt: string;
+  onSoldAtChange: (value: string) => void;
   paidNow: number;
   balanceOwed: number;
   checkoutError: string | null;
@@ -655,6 +664,18 @@ function TillCartPanel({
                 </button>
               );
             })}
+          </div>
+        </TillPanelSection>
+
+        <TillPanelSection label="Sale date">
+          <div className="p-3">
+            <DateTimeField
+              id="till-sold-at"
+              label="Date & time of sale"
+              hint="Backdate if the sale happened earlier."
+              value={soldAt}
+              onChange={onSoldAtChange}
+            />
           </div>
         </TillPanelSection>
 
