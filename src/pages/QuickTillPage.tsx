@@ -7,7 +7,6 @@ import { useShopLocation } from '@/context/ShopLocationContext';
 import { useSalesActions } from '@/hooks/useSalesActions';
 import { useContacts } from '@/hooks/useContacts';
 import { useTradingGateState } from '@/hooks/useStockSessions';
-import { useCreditActions } from '@/hooks/useCreditActions';
 import { getItemQty, itemSpecLine } from '@/lib/inventoryDisplay';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { Category, ContactRecord, InventoryItem, PaymentMethod } from '@/types';
@@ -89,8 +88,7 @@ function maxQty(item: InventoryItem): number {
 export default function QuickTillPage() {
   const { shopOwnerId, canViewProfit } = useShopAccess();
   const { activeLocationId, ready: locationReady } = useShopLocation();
-  const { recordSale } = useSalesActions();
-  const { createCreditRecord } = useCreditActions();
+  const { checkoutQuickTill } = useSalesActions();
   const { contacts } = useContacts('customer');
   const tradingGate = useTradingGateState();
 
@@ -215,60 +213,26 @@ export default function QuickTillPage() {
     const dueIso = dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : undefined;
     const lineTotals = lines.map(lineTotal);
     const paidShares = payTerms === 'paid' ? lineTotals : allocatePaid(paidNow, lineTotals);
-    let lastReceipt: string | undefined;
-    let totalOwed = 0;
 
     try {
-      for (let i = 0; i < lines.length; i++) {
-        const { item, qty } = lines[i];
-        const qtySold = item.mode === 'serialized' ? 1 : qty;
-        const lineAmt = lineTotals[i];
-        const linePaid = paidShares[i] ?? 0;
-        const lineOwed = Math.max(0, lineAmt - linePaid);
-        totalOwed += lineOwed;
+      const checkoutLines = lines.map((line, i) => ({
+        item: line.item,
+        qty: line.qty,
+        lineAmt: lineTotals[i],
+        linePaid: paidShares[i] ?? 0,
+        lineOwed: Math.max(0, lineTotals[i] - (paidShares[i] ?? 0)),
+      }));
 
-        const record = await recordSale({
-          item_id: item.id,
-          item_name: item.name,
-          item_category: item.category,
-          item_brand: item.brand,
-          item_mode: item.mode,
-          sale_price: item.price,
-          cost_price: item.cost_price ?? 0,
-          payment_method: payMethod,
-          payment_status: lineOwed > 0 ? 'credit' : 'paid',
-          amount_paid: linePaid,
-          balance_owed: lineOwed,
-          due_date: lineOwed > 0 ? dueIso : undefined,
-          customer_name: name || undefined,
-          customer_phone: phone || undefined,
-          sold_at: soldAt,
-          serial_number: item.serial_number,
-          imei: item.imei,
-          device_details: item.deviceDetails,
-          quantity_sold: qtySold,
-          profit: (item.price - (item.cost_price ?? 0)) * qtySold,
-        });
-        lastReceipt = record.receipt_number;
+      const { lastReceipt, totalOwed: owedTotal } = await checkoutQuickTill({
+        lines: checkoutLines,
+        payMethod,
+        customerName: name,
+        customerPhone: phone,
+        dueIso,
+        soldAt,
+      });
 
-        if (lineOwed > 0) {
-          await createCreditRecord({
-            sale_id: record.id,
-            customer_name: name,
-            customer_phone: phone,
-            item_name: item.name,
-            total_amount: lineAmt,
-            amount_paid: linePaid,
-            due_date: dueIso!,
-            payments:
-              linePaid > 0
-                ? [{ amount: linePaid, date: soldAt, method: payMethod }]
-                : [],
-            notes: undefined,
-          });
-        }
-      }
-      setDone({ total, profit, receipt: lastReceipt, owed: totalOwed > 0 ? totalOwed : undefined });
+      setDone({ total, profit, receipt: lastReceipt, owed: owedTotal > 0 ? owedTotal : undefined });
       setCart({});
     } catch (e) {
       setCheckoutError(e instanceof Error ? e.message : 'Could not complete sale.');

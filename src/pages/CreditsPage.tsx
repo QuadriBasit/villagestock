@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, CreditCard, Loader2, Trash2, Users, Wallet } from 'lucide-react';
+import { toast } from 'sonner';
 import { useCredits, useCreditRecord, useOutstandingCreditsSummary } from '@/hooks/useCredits';
 import { useCreditActions } from '@/hooks/useCreditActions';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
@@ -227,6 +228,9 @@ function CreditDetailsModal({ creditId, onClose }: { creditId: string; onClose: 
       await recordPayment(record.id, amount, new Date(date).toISOString(), method);
       setAmount(undefined);
       setDate(toLocalDatetimeValue(new Date()));
+      toast.success('Payment recorded');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not record payment');
     } finally {
       setIsSaving(false);
     }
@@ -242,6 +246,9 @@ function CreditDetailsModal({ creditId, onClose }: { creditId: string; onClose: 
     setRemovingIndex(paymentIndex);
     try {
       await removeCreditPayment(record.id, paymentIndex);
+      toast.success('Payment removed');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not remove payment');
     } finally {
       setRemovingIndex(null);
     }

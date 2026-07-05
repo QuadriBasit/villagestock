@@ -2,14 +2,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, generateReceiptNumber } from '@/lib/db';
 import { flushSyncQueue } from '@/lib/sync';
 import { assertTradingAllowedForStockPolicy } from '@/lib/stockTradingGate';
-// import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
+import { buildCreditPayment, getCreditStatus } from '@/lib/creditUtils';
 import { saleBlockedMissingIdentifiers } from '@/lib/serializedIdentifiers';
-import type { DeviceCondition, InventoryItem, PaymentMethod, PaymentStatus, SalesRecord, SwapRecord } from '@/types';
+import type { CreditRecord, DeviceCondition, InventoryItem, PaymentMethod, PaymentStatus, SalesRecord, SwapRecord } from '@/types';
 
 interface ProcessSwapInput {
   outgoingItem: InventoryItem;
@@ -131,10 +131,7 @@ export function useSwapActions() {
 
     await db.transaction(
       'rw',
-      db.inventory_items,
-      db.sales_records,
-      db.swap_records,
-      db.sync_queue,
+      [db.inventory_items, db.sales_records, db.swap_records, db.credit_records, db.sync_queue],
       async () => {
         await db.inventory_items.update(input.outgoingItem.id, {
           status: 'sold',
@@ -145,7 +142,14 @@ export function useSwapActions() {
         await db.sales_records.add(saleRecord);
         await db.swap_records.add(swapRecord);
 
-        await db.sync_queue.bulkAdd([
+        const syncRows: Array<{
+          id: string;
+          table: 'inventory_items' | 'sales_records' | 'swap_records' | 'credit_records';
+          operation: 'insert' | 'update';
+          payload: Record<string, unknown>;
+          created_at: string;
+          retries: number;
+        }> = [
           {
             id: uuidv4(),
             table: 'inventory_items',
@@ -183,7 +187,51 @@ export function useSwapActions() {
             created_at: now,
             retries: 0,
           },
-        ]);
+        ];
+
+        if (input.payment_status === 'credit' && input.due_date && input.customer_name && input.customer_phone) {
+          const totalAmount = Math.max(0, balancePaid);
+          const amountPaid = input.amount_paid ?? 0;
+          const balanceOwed = Math.max(0, totalAmount - amountPaid);
+          const creditRecord: CreditRecord = {
+            id: uuidv4(),
+            user_id: shopOwnerId,
+            location_id: activeLocationId,
+            sale_id: saleId,
+            customer_name: input.customer_name,
+            customer_phone: input.customer_phone,
+            item_name: `${input.outgoingItem.brand} ${input.outgoingItem.name}`.trim(),
+            total_amount: totalAmount,
+            amount_paid: amountPaid,
+            balance_owed: balanceOwed,
+            due_date: input.due_date,
+            payments:
+              amountPaid > 0
+                ? [buildCreditPayment(amountPaid, now, input.payment_method)]
+                : [],
+            status:
+              balanceOwed <= 0
+                ? 'paid'
+                : amountPaid > 0
+                  ? new Date(input.due_date) < new Date()
+                    ? 'overdue'
+                    : 'partially_paid'
+                  : getCreditStatus(balanceOwed, input.due_date),
+            notes: 'Swap credit',
+            sync_status: 'pending',
+          };
+          await db.credit_records.add(creditRecord);
+          syncRows.push({
+            id: uuidv4(),
+            table: 'credit_records',
+            operation: 'insert',
+            payload: creditRecord as unknown as Record<string, unknown>,
+            created_at: now,
+            retries: 0,
+          });
+        }
+
+        await db.sync_queue.bulkAdd(syncRows);
       }
     );
 

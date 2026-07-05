@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -53,6 +54,7 @@ export function useSheetDragDismiss(onClose: () => void) {
 
     if (closeTimer.current != null) {
       window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
     }
 
     isClosingRef.current = true;
@@ -69,6 +71,15 @@ export function useSheetDragDismiss(onClose: () => void) {
       onClose();
     }, CLOSE_DURATION_MS);
   }, [onClose, setDragOffset]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current != null) {
+        window.clearTimeout(closeTimer.current);
+        closeTimer.current = null;
+      }
+    };
+  }, []);
 
   const finishDrag = useCallback(
     (clientY: number) => {

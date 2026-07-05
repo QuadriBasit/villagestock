@@ -1,12 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/db';
 import { flushSyncQueue, queueSync } from '@/lib/sync';
-// import { assertTrialAllowsMutations } from '@/lib/trial';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
-import { buildCreditPayment, computeCreditFromPayments, getCreditStatus } from '@/hooks/useCredits';
+import { buildCreditPayment, computeCreditFromPayments, getCreditStatus } from '@/lib/creditUtils';
+import { syncSaleFromCreditRecord } from '@/lib/syncSaleFromCredit';
 import type { CreditRecord, CreditRecordInput, PaymentMethod } from '@/types';
 
 export function useCreditActions() {
@@ -15,9 +15,9 @@ export function useCreditActions() {
 
   async function createCreditRecord(input: CreditRecordInput): Promise<CreditRecord> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
-    // await assertTrialAllowsMutations(shopOwnerId);
     const saleRow = await db.sales_records.get(input.sale_id);
-    const location_id = saleRow?.location_id;
+    if (!saleRow) throw new Error('Sale not found');
+    const location_id = saleRow.location_id;
     if (!location_id) throw new Error('Sale is missing branch — sync and try again');
 
     const balanceOwed = Math.max(0, input.total_amount - input.amount_paid);
@@ -41,7 +41,6 @@ export function useCreditActions() {
     await queueSync('credit_records', 'insert', record as unknown as Record<string, unknown>);
     await flushSyncQueue();
     if (actorUserId) {
-      const sale = await db.sales_records.get(input.sale_id);
       const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
@@ -50,7 +49,7 @@ export function useCreditActions() {
         entityType: 'credit_record',
         entityId: record.id,
         metadata: {
-          receipt: sale?.receipt_number,
+          receipt: saleRow.receipt_number,
           customer: input.customer_name,
           total_amount: input.total_amount,
         },
@@ -62,10 +61,13 @@ export function useCreditActions() {
 
   async function recordPayment(creditId: string, amount: number, date: string, method?: PaymentMethod): Promise<void> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
-    // if (role === 'staff') throw new Error('Credits are not available for staff accounts.');
-    // await assertTrialAllowsMutations(shopOwnerId);
+    if (amount <= 0) throw new Error('Payment amount must be greater than zero');
+
     const existing = await db.credit_records.get(creditId);
     if (!existing) throw new Error('Credit not found');
+    if (amount > existing.balance_owed) {
+      throw new Error(`Amount cannot exceed balance owed (${existing.balance_owed})`);
+    }
 
     const payments = [...existing.payments, buildCreditPayment(amount, date, method)];
     const totals = computeCreditFromPayments(existing, payments);
@@ -76,7 +78,13 @@ export function useCreditActions() {
       sync_status: 'pending',
     };
 
-    await db.credit_records.update(creditId, updated);
+    await db.transaction('rw', [db.credit_records, db.sales_records, db.sync_queue], async () => {
+      await db.credit_records.update(creditId, updated);
+      const latest = await db.credit_records.get(creditId);
+      if (!latest) throw new Error('Credit not found');
+      await syncSaleFromCreditRecord(latest);
+    });
+
     const latest = await db.credit_records.get(creditId);
     if (latest) {
       await queueSync('credit_records', 'update', latest as unknown as Record<string, unknown>);
@@ -119,7 +127,13 @@ export function useCreditActions() {
       sync_status: 'pending',
     };
 
-    await db.credit_records.update(creditId, updated);
+    await db.transaction('rw', [db.credit_records, db.sales_records, db.sync_queue], async () => {
+      await db.credit_records.update(creditId, updated);
+      const latest = await db.credit_records.get(creditId);
+      if (!latest) throw new Error('Credit not found');
+      await syncSaleFromCreditRecord(latest);
+    });
+
     const latest = await db.credit_records.get(creditId);
     if (latest) {
       await queueSync('credit_records', 'update', latest as unknown as Record<string, unknown>);

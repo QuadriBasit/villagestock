@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { useSwapActions } from "@/hooks/useSwapActions";
 import { useTradingGateState } from "@/hooks/useStockSessions";
-import { useCreditActions } from "@/hooks/useCreditActions";
 import { modalSheetFooter, modalSheetPanelLg } from '@/lib/modalSheet';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
@@ -90,7 +89,6 @@ export default function SwapForm({
   onSuccess: () => void;
 }) {
   const { processSwap } = useSwapActions();
-  const { createCreditRecord } = useCreditActions();
   const tradingGate = useTradingGateState();
   const [completedSale, setCompletedSale] = useState<SalesRecord | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -153,29 +151,6 @@ export default function SwapForm({
         customer_phone: data.customer_phone || undefined,
         date: new Date(data.date).toISOString(),
       });
-      if (data.payment_status === "credit") {
-        await createCreditRecord({
-          sale_id: sale.id,
-          customer_name: data.customer_name!,
-          customer_phone: data.customer_phone!,
-          item_name: `${item.brand} ${item.name}`,
-          total_amount: Math.max(0, balance),
-          amount_paid: data.amount_paid ?? 0,
-          due_date: new Date(data.due_date!).toISOString(),
-          payments:
-            data.amount_paid && data.amount_paid > 0
-              ? [
-                  {
-                    amount: data.amount_paid,
-                    date: new Date(data.date).toISOString(),
-                    method: data.payment_method,
-                  },
-                ]
-              : [],
-          notes: "Swap credit",
-        });
-      }
-
       setCompletedSale(sale);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Swap failed");

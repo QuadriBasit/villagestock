@@ -6,7 +6,6 @@ import { z } from "zod";
 import { Loader2, ShoppingCart, Receipt as ReceiptIcon } from "lucide-react";
 import { useSalesActions } from "@/hooks/useSalesActions";
 import { useTradingGateState } from "@/hooks/useStockSessions";
-import { useCreditActions } from "@/hooks/useCreditActions";
 import { useShopProfile } from "@/hooks/useShopProfile";
 import {
   decodeWarrantyCoverKey,
@@ -108,7 +107,6 @@ const itemPillMono = `${itemMetaPill} border-shell-line bg-shell-surface-2/40 fo
 
 export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
   const { recordSale } = useSalesActions();
-  const { createCreditRecord } = useCreditActions();
   const { profile } = useShopProfile();
   const tradingGate = useTradingGateState();
   const { canViewProfit } = useShopAccess();
@@ -187,61 +185,64 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
       }
     }
     try {
-      const sale = await recordSale({
-        item_id: item.id,
-        item_name: item.name,
-        item_category: item.category,
-        item_brand: item.brand,
-        item_mode: item.mode,
-        serial_number: item.serial_number,
-        imei: item.imei,
-        device_details: item.deviceDetails,
-        sale_price: data.sale_price,
-        cost_price: item.cost_price ?? 0,
-        profit: (data.sale_price - (item.cost_price ?? 0)) * qtySold,
-        payment_method:
-          data.payment_status === "paid"
-            ? data.payment_method
-            : data.payment_method || undefined,
-        payment_status: data.payment_status,
-        amount_paid:
-          data.payment_status === "credit"
-            ? (data.amount_paid ?? 0)
-            : totalAmount,
-        balance_owed: data.payment_status === "credit" ? balanceOwed : 0,
-        due_date:
-          data.payment_status === "credit" && data.due_date
-            ? new Date(data.due_date).toISOString()
-            : undefined,
-        customer_name: data.customer_name || undefined,
-        customer_phone: data.customer_phone || undefined,
-        quantity_sold: qtySold,
-        sold_at: new Date(data.sold_at).toISOString(),
-        item_stock_condition: stockConditionFromItem(item),
-        warranty_cover: decodeWarrantyCoverKey(data.warranty_cover_key),
-      });
-      if (data.payment_status === "credit") {
-        await createCreditRecord({
-          sale_id: sale.id,
-          customer_name: data.customer_name!,
-          customer_phone: data.customer_phone!,
+      const sale = await recordSale(
+        {
+          item_id: item.id,
           item_name: item.name,
-          total_amount: totalAmount,
-          amount_paid: data.amount_paid ?? 0,
-          due_date: new Date(data.due_date!).toISOString(),
-          payments:
-            data.amount_paid && data.amount_paid > 0
-              ? [
-                  {
-                    amount: data.amount_paid,
-                    date: new Date(data.sold_at).toISOString(),
-                    method: data.payment_method,
-                  },
-                ]
-              : [],
-          notes: undefined,
-        });
-      }
+          item_category: item.category,
+          item_brand: item.brand,
+          item_mode: item.mode,
+          serial_number: item.serial_number,
+          imei: item.imei,
+          device_details: item.deviceDetails,
+          sale_price: data.sale_price,
+          cost_price: item.cost_price ?? 0,
+          profit: (data.sale_price - (item.cost_price ?? 0)) * qtySold,
+          payment_method:
+            data.payment_status === "paid"
+              ? data.payment_method
+              : data.payment_method || undefined,
+          payment_status: data.payment_status,
+          amount_paid:
+            data.payment_status === "credit"
+              ? (data.amount_paid ?? 0)
+              : totalAmount,
+          balance_owed: data.payment_status === "credit" ? balanceOwed : 0,
+          due_date:
+            data.payment_status === "credit" && data.due_date
+              ? new Date(data.due_date).toISOString()
+              : undefined,
+          customer_name: data.customer_name || undefined,
+          customer_phone: data.customer_phone || undefined,
+          quantity_sold: qtySold,
+          sold_at: new Date(data.sold_at).toISOString(),
+          item_stock_condition: stockConditionFromItem(item),
+          warranty_cover: decodeWarrantyCoverKey(data.warranty_cover_key),
+        },
+        data.payment_status === "credit"
+          ? {
+              credit: {
+                customer_name: data.customer_name!,
+                customer_phone: data.customer_phone!,
+                item_name: item.name,
+                total_amount: totalAmount,
+                amount_paid: data.amount_paid ?? 0,
+                due_date: new Date(data.due_date!).toISOString(),
+                payments:
+                  data.amount_paid && data.amount_paid > 0
+                    ? [
+                        {
+                          amount: data.amount_paid,
+                          date: new Date(data.sold_at).toISOString(),
+                          method: data.payment_method,
+                        },
+                      ]
+                    : [],
+                notes: undefined,
+              },
+            }
+          : undefined,
+      );
       setCompletedSale(sale);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Could not record sale");

@@ -1,6 +1,24 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+let openModalCount = 0;
+let previousBodyOverflow = '';
+
+function lockBodyScroll() {
+  if (openModalCount === 0) {
+    previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+  openModalCount += 1;
+}
+
+function unlockBodyScroll() {
+  openModalCount = Math.max(0, openModalCount - 1);
+  if (openModalCount === 0) {
+    document.body.style.overflow = previousBodyOverflow;
+  }
+}
+
 /**
  * Renders sheet/dialog overlays on `document.body`.
  * Required because `.route-enter` (and other ancestors) use `transform`, which makes
@@ -12,11 +30,8 @@ export function ModalSheetPortal({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!mounted) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    lockBodyScroll();
+    return () => unlockBodyScroll();
   }, [mounted]);
 
   if (!mounted) return null;

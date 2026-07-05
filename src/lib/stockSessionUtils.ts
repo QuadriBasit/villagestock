@@ -69,10 +69,15 @@ export async function buildSessionCloseSummary(
 ): Promise<StockSessionSummary> {
   const opening = new Set(session.opening_snapshot_ids);
   const openedAt = new Date(session.opened_at);
+  const locationId = session.location_id;
   const itemById = new Map(items.map((i) => [i.id, i]));
 
   const sales = await db.sales_records.where('user_id').equals(userId).toArray();
-  const sessionSales = sales.filter((s) => new Date(s.sold_at) >= openedAt);
+  const sessionSales = sales.filter(
+    (s) =>
+      new Date(s.sold_at) >= openedAt &&
+      (!locationId || s.location_id === locationId),
+  );
 
   let soldFromOpening = 0;
   let creditFromOpening = 0;
@@ -90,7 +95,11 @@ export async function buildSessionCloseSummary(
   }
 
   const returns = await db.return_records.where('user_id').equals(userId).toArray();
-  const returnsReceived = returns.filter((r) => new Date(r.returned_at) >= openedAt).length;
+  const returnsReceived = returns.filter(
+    (r) =>
+      new Date(r.returned_at) >= openedAt &&
+      (!locationId || r.location_id === locationId),
+  ).length;
 
   let newStock = 0;
   for (const item of items) {
