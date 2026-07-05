@@ -52,6 +52,16 @@ export function useActiveRepairsSummary() {
   return { summary: summary ?? { active_count: 0, overdue_count: 0 }, isLoading: summary === undefined };
 }
 
+export function useCollectedRepairs() {
+  const { repairs, isLoading } = useRepairs();
+  return {
+    repairs: repairs
+      .filter(record => record.repair_status === 'collected')
+      .sort((a, b) => (b.date_returned ?? '').localeCompare(a.date_returned ?? '')),
+    isLoading,
+  };
+}
+
 export function useEngineerNames() {
   const { repairs } = useRepairs();
   return [...new Set(repairs.map(record => record.engineer_name).filter(Boolean))];

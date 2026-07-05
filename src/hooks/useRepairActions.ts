@@ -90,14 +90,20 @@ export function useRepairActions() {
     }
   }
 
-  async function markCollected(id: string, itemId: string, condition?: DeviceCondition, notes?: string): Promise<void> {
+  async function markCollected(
+    id: string,
+    itemId: string,
+    condition?: DeviceCondition,
+    notes?: string,
+    dateReturned?: string,
+  ): Promise<void> {
     if (!user || !shopOwnerId) throw new Error('Not authenticated');
     // await assertTrialAllowsMutations(shopOwnerId);
-    const now = new Date().toISOString();
+    const returnedAt = dateReturned ?? new Date().toISOString();
     const existingItem = await db.inventory_items.get(itemId);
     await db.repair_records.update(id, {
       repair_status: 'collected',
-      date_returned: now,
+      date_returned: returnedAt,
       notes,
       sync_status: 'pending',
     });
@@ -111,7 +117,7 @@ export function useRepairActions() {
       status: 'in_stock',
       condition,
       ...(nextCostPrice === undefined ? null : { cost_price: nextCostPrice }),
-      updated_at: now,
+      updated_at: returnedAt,
       sync_status: 'pending',
     });
     const item = await db.inventory_items.get(itemId);
@@ -130,11 +136,54 @@ export function useRepairActions() {
         metadata: {
           item: colItem ? `${colItem.brand} ${colItem.name}`.trim() : undefined,
           ...(repairCost > 0 ? { repairCostAddedToItemCostPrice: repairCost } : null),
+          dateReturned: returnedAt,
         },
         actorLabel,
       });
     }
   }
 
-  return { sendToEngineer, updateRepairStatus, markCollected };
+  async function updateRepairCollectedDate(
+    id: string,
+    dateReturned: string,
+    notes?: string,
+  ): Promise<void> {
+    if (!user || !shopOwnerId) throw new Error('Not authenticated');
+    const existing = await db.repair_records.get(id);
+    if (!existing) throw new Error('Repair record not found');
+    if (existing.repair_status !== 'collected') {
+      throw new Error('Only collected repairs can have their return date edited');
+    }
+    const parsed = new Date(dateReturned);
+    if (Number.isNaN(parsed.getTime())) throw new Error('Invalid collection date');
+
+    await db.repair_records.update(id, {
+      date_returned: parsed.toISOString(),
+      ...(notes !== undefined ? { notes } : null),
+      sync_status: 'pending',
+    });
+    const latest = await db.repair_records.get(id);
+    if (latest) {
+      await queueSync('repair_records', 'update', latest as unknown as Record<string, unknown>);
+    }
+    await flushSyncQueue();
+    if (actorUserId) {
+      const repItem = await db.inventory_items.get(existing.item_id);
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
+      void logShopAudit({
+        businessId: shopOwnerId,
+        actorUserId,
+        action: 'repair.collected_date_updated',
+        entityType: 'repair_record',
+        entityId: id,
+        metadata: {
+          item: repItem ? `${repItem.brand} ${repItem.name}`.trim() : undefined,
+          dateReturned: parsed.toISOString(),
+        },
+        actorLabel,
+      });
+    }
+  }
+
+  return { sendToEngineer, updateRepairStatus, markCollected, updateRepairCollectedDate };
 }

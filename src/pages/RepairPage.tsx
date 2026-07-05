@@ -2,7 +2,7 @@ import { lazy, Suspense, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Wrench } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useActiveRepairs } from '@/hooks/useRepairs';
+import { useActiveRepairs, useCollectedRepairs } from '@/hooks/useRepairs';
 import { db } from '@/lib/db';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -15,11 +15,12 @@ import type { InventoryItem, RepairRecord, RepairStatus } from '@/types';
 
 const RepairDetailModal = lazy(() => import('@/components/repair/RepairDetailModal'));
 
-type ViewMode = 'board' | 'engineer';
+type ViewMode = 'board' | 'engineer' | 'collected';
 
 const VIEW_TABS: { value: ViewMode; label: string }[] = [
   { value: 'board', label: 'Board' },
   { value: 'engineer', label: 'By engineer' },
+  { value: 'collected', label: 'Collected' },
 ];
 
 const KANBAN_COLS: { key: RepairStatus; label: string; dot: string }[] = [
@@ -30,11 +31,18 @@ const KANBAN_COLS: { key: RepairStatus; label: string; dot: string }[] = [
 
 export default function RepairPage() {
   const navigate = useNavigate();
-  const { repairs, isLoading } = useActiveRepairs();
+  const { repairs, isLoading: activeLoading } = useActiveRepairs();
+  const { repairs: collectedRepairs, isLoading: collectedLoading } = useCollectedRepairs();
   const [view, setView] = useState<ViewMode>('board');
   const [selected, setSelected] = useState<RepairRecord | null>(null);
+  const isLoading = activeLoading || collectedLoading;
 
-  const itemIds = useMemo(() => repairs.map(record => record.item_id), [repairs]);
+  const itemIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const record of repairs) ids.add(record.item_id);
+    for (const record of collectedRepairs) ids.add(record.item_id);
+    return [...ids];
+  }, [repairs, collectedRepairs]);
   const items = useLiveQuery(async (): Promise<InventoryItem[]> => {
     if (!itemIds.length) return [];
     const rows = await db.inventory_items.bulkGet(itemIds);
@@ -55,7 +63,7 @@ export default function RepairPage() {
     return <div className="app-page py-8 text-sm text-shell-muted">Loading repairs…</div>;
   }
 
-  if (repairs.length === 0) {
+  if (repairs.length === 0 && collectedRepairs.length === 0) {
     return (
       <div className="app-page flex flex-col items-center px-4 py-20 text-center">
         <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-violet-400/10">
@@ -80,7 +88,11 @@ export default function RepairPage() {
     <div className="app-page space-y-4 py-4 md:py-5">
       <PageHeader
         title="Repairs & refurb"
-        subtitle={`${repairs.length} active ticket${repairs.length === 1 ? '' : 's'}`}
+        subtitle={
+          view === 'collected'
+            ? `${collectedRepairs.length} collected`
+            : `${repairs.length} active ticket${repairs.length === 1 ? '' : 's'}`
+        }
       >
         <Button
           size="sm"
@@ -146,7 +158,7 @@ export default function RepairPage() {
             );
           })}
         </div>
-      ) : (
+      ) : view === 'engineer' ? (
         <div className="space-y-4">
           {groups.map(([engineerName, records]) => (
             <Card key={engineerName} className="border-shell-line bg-shell-surface p-0 shadow-none">
@@ -184,6 +196,30 @@ export default function RepairPage() {
               </div>
             </Card>
           ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {collectedRepairs.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-shell-line px-4 py-12 text-center text-sm text-shell-muted">
+              No collected repairs yet. When a device is returned to stock, it appears here so you can fix the collection date if needed.
+            </div>
+          ) : (
+            collectedRepairs.map(record => (
+              <button
+                key={record.id}
+                type="button"
+                onClick={() => setSelected(record)}
+                className="flex w-full items-start gap-3 rounded-lg border border-shell-line bg-shell-surface p-3.5 text-left transition-colors hover:border-shell-muted/40 hover:bg-shell-surface-2/30"
+              >
+                <RepairCardContent record={record} item={itemMap.get(record.item_id)} compact />
+                <span className="shrink-0 text-right text-[11px] text-shell-muted">
+                  {record.date_returned
+                    ? new Date(record.date_returned).toLocaleDateString('en-NG')
+                    : '—'}
+                </span>
+              </button>
+            ))
+          )}
         </div>
       )}
 

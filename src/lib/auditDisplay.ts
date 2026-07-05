@@ -56,6 +56,7 @@ const ACTION_MAP: Record<string, ActionMeta> = {
   'repair.sent': { label: 'Sent for repair', icon: Wrench, category: 'repairs' },
   'repair.status_updated': { label: 'Repair updated', icon: Wrench, category: 'repairs' },
   'repair.collected': { label: 'Repair collected', icon: Wrench, category: 'repairs' },
+  'repair.collected_date_updated': { label: 'Collection date updated', icon: Wrench, category: 'repairs' },
   'shop.profile_updated': { label: 'Shop profile updated', icon: Settings, category: 'staff' },
   'team.member_added': { label: 'Team member added', icon: Users, category: 'staff' },
   'team.member_removed': { label: 'Team member removed', icon: Users, category: 'staff' },
