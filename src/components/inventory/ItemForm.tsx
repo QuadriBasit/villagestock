@@ -1117,7 +1117,7 @@ export default function ItemForm({
                   id='chip'
                   {...register('chip')}
                   className={fieldClass}
-                  placeholder='M3 Max'
+                  placeholder='M5 Max'
                 />
               </div>
               <Controller

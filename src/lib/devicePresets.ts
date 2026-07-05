@@ -331,6 +331,12 @@ const TABLET_MODELS: readonly string[] = [
 ];
 
 const LAPTOP_MODELS: readonly string[] = [
+  'MacBook Pro 16" (M5 Max)',
+  'MacBook Pro 14" (M5 Pro)',
+  'MacBook Pro 14" (M5 Max)',
+  'MacBook Pro 14" (M5)',
+  'MacBook Air 15" (M5)',
+  'MacBook Air 13" (M5)',
   'MacBook Pro 16" (M4 Max)',
   'MacBook Pro 14" (M4 Pro)',
   'MacBook Pro 14" (M4 Max)',
