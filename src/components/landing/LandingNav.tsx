@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useScrolled } from './hooks';
 import { Wordmark } from './LogoMark';
@@ -14,6 +14,23 @@ const navLinks = [
 export function LandingNav() {
   const scrolled = useScrolled();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    const close = () => setMenuOpen(false);
+    window.addEventListener('hashchange', close);
+    return () => window.removeEventListener('hashchange', close);
+  }, []);
+
+  const closeMenu = () => setMenuOpen(false);
 
   return (
     <>
@@ -42,11 +59,19 @@ export function LandingNav() {
         </div>
       </nav>
 
-      <div className={`mobile-menu ${menuOpen ? 'open' : ''}`}>
+      <button
+        type="button"
+        className={`mobile-menu-backdrop${menuOpen ? ' open' : ''}`}
+        aria-label="Close menu"
+        tabIndex={menuOpen ? 0 : -1}
+        onClick={closeMenu}
+      />
+
+      <div className={`mobile-menu ${menuOpen ? 'open' : ''}`} aria-hidden={!menuOpen}>
         {navLinks.map((l) => (
-          <a key={l.href} href={l.href} onClick={() => setMenuOpen(false)}>{l.label}</a>
+          <a key={l.href} href={l.href} onClick={closeMenu}>{l.label}</a>
         ))}
-        <Link to="/auth" className="landing-btn landing-btn-primary" onClick={() => setMenuOpen(false)}>
+        <Link to="/auth" className="landing-btn landing-btn-primary" onClick={closeMenu}>
           Start free trial
         </Link>
       </div>

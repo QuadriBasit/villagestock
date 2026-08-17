@@ -37,7 +37,7 @@ export default function TopBar() {
   const { canManageBusinessSettings, status: shopAccessStatus } = useShopAccess();
   const { locations, activeLocationId, setActiveLocationId, ready: locationReady } = useShopLocation();
   const { profile } = useBusinessProfile();
-  const { setMobileOpen } = useSidebarLayout();
+  const { mobileOpen, setMobileOpen } = useSidebarLayout();
   const [commandOpen, setCommandOpen] = useState(false);
 
   const isEditPage = location.pathname.includes('/edit');
@@ -66,7 +66,12 @@ export default function TopBar() {
     <>
       <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-shell-line bg-shell-bg/82 px-3 py-3 backdrop-blur-md sm:gap-4 sm:px-[26px] max-lg:gap-2">
         <div className="flex min-w-0 items-center gap-3">
-          <ShellIconButton className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+          <ShellIconButton
+            className="lg:hidden"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileOpen}
+          >
             <Menu size={20} />
           </ShellIconButton>
 

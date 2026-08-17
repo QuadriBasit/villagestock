@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import LandingPage from '@/pages/LandingPage';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
@@ -108,6 +108,20 @@ function RouteFallback() {
   return <AppLoadingScreen />;
 }
 
+/** Signed-in users should never see the marketing landing page. */
+function LandingRoute() {
+  const { user, isLoading } = useAuthStore();
+  const { status: shopStatus, shopOwnerId } = useShopAccess();
+  const q = useBusinessProfileQuery(shopStatus === 'ready' ? shopOwnerId ?? undefined : undefined);
+
+  if (isLoading) return <AppLoadingScreen label="Loading…" />;
+  if (!user) return <LandingPage />;
+  if (shopStatus === 'loading' || shopStatus === 'idle') return <AppLoadingScreen label="Loading…" />;
+  if (q.status === 'pending') return <AppLoadingScreen label="Loading…" />;
+  if (q.profile?.onboarding_complete) return <Navigate to="/dashboard" replace />;
+  return <Navigate to="/onboarding" replace />;
+}
+
 function RetailAppProviders({ children }: { children: ReactNode }) {
   return (
     <ShopAccessProvider>
@@ -120,10 +134,8 @@ function RetailAppProviders({ children }: { children: ReactNode }) {
 }
 
 function AuthBootstrap() {
-  const location = useLocation();
   const { setSession, setLoading, user } = useAuthStore();
   const previousUserIdRef = useRef<string | undefined>(undefined);
-  const shouldBootstrapAuth = location.pathname !== '/';
 
   useEffect(() => {
     const id = user?.id;
@@ -135,8 +147,6 @@ function AuthBootstrap() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!shouldBootstrapAuth) return;
-
     let active = true;
     let unsubscribe: (() => void) | undefined;
 
@@ -171,7 +181,7 @@ function AuthBootstrap() {
       active = false;
       unsubscribe?.();
     };
-  }, [setSession, setLoading, shouldBootstrapAuth]);
+  }, [setSession, setLoading]);
 
   return null;
 }
@@ -181,7 +191,14 @@ export default function App() {
     <Suspense fallback={<RouteFallback />}>
       <AuthBootstrap />
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route
+          path="/"
+          element={
+            <ShopAccessProvider>
+              <LandingRoute />
+            </ShopAccessProvider>
+          }
+        />
         <Route
           path="/auth"
           element={

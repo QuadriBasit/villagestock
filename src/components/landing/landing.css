@@ -263,18 +263,41 @@ html:has(.vs-landing) {
   z-index: 99;
   background: rgba(10, 14, 20, 0.97);
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 16px 5%;
   transform: translateY(-130%);
-  transition: transform 0.32s ease;
+  transition: transform 0.32s ease, opacity 0.32s ease, visibility 0.32s ease;
   opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 .mobile-menu.open {
   transform: translateY(0);
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+.mobile-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(4, 7, 14, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.32s ease, visibility 0.32s ease;
+}
+.mobile-menu-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 .mobile-menu a {
   color: var(--muted);
