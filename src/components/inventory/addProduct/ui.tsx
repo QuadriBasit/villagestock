@@ -185,36 +185,6 @@ export function APMulti({
   );
 }
 
-export function APStepper({
-  value,
-  onChange,
-  min = 0,
-}: {
-  value: number;
-  onChange: (n: number) => void;
-  min?: number;
-}) {
-  return (
-    <div className="inline-flex items-center overflow-hidden rounded-lg border border-shell-line bg-shell-surface-2/40">
-      <button
-        type="button"
-        onClick={() => onChange(Math.max(min, value - 1))}
-        className="grid h-8 w-[30px] place-items-center font-mono text-lg text-shell-ink hover:bg-shell-surface-2"
-      >
-        −
-      </button>
-      <span className="min-w-[26px] text-center font-mono text-[13.5px] font-semibold text-shell-ink">{value}</span>
-      <button
-        type="button"
-        onClick={() => onChange(value + 1)}
-        className="grid h-8 w-[30px] place-items-center font-mono text-lg text-shell-ink hover:bg-shell-surface-2"
-      >
-        +
-      </button>
-    </div>
-  );
-}
-
 export function APMoney({
   value,
   onChange,
@@ -403,7 +373,14 @@ export function VariantTable({
             {lockQty ? (
               <span className="font-mono text-[13.5px] font-semibold text-shell-ink">{v.qty}</span>
             ) : (
-              <APStepper value={v.qty} onChange={n => onQty(i, n)} min={0} />
+              <APTextField
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={v.qty}
+                onChange={e => onQty(i, Math.max(0, Number(e.target.value) || 0))}
+                className="w-full px-2 py-2 text-center font-mono"
+              />
             )}
           </div>
           <APMoney value={v.price} onChange={n => onPrice(i, n)} />

@@ -42,7 +42,6 @@ import {
   APMsg,
   APMulti,
   APSeg,
-  APStepper,
   APTextField,
   APToggle,
   CategoryPicker,
@@ -597,12 +596,17 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <APLabel label="Quantity in stock">
-                    <APStepper
+                    <APTextField
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
                       value={state.variants[0]?.qty ?? 1}
-                      onChange={n => {
+                      onChange={e => {
+                        const qty = Math.max(0, Number(e.target.value) || 0);
                         if (state.variants.length === 0) setState(syncVar(state, {}));
-                        setVar(0, { qty: n });
+                        setVar(0, { qty });
                       }}
+                      className="font-mono"
                     />
                   </APLabel>
                   <APLabel label="Reorder at">
@@ -713,16 +717,22 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                         text="Battery was replaced with a non-genuine cell — the phone shows a service warning. Disclose at sale."
                       />
                     ) : null}
-                    <APLabel label="Battery health" hint={`${state.insp.batteryHealth}%`}>
+                    <APLabel label="Battery health" hint="1–100%">
                       <APTextField
-                        type="range"
+                        type="number"
                         min={1}
                         max={100}
+                        inputMode="numeric"
                         value={state.insp.batteryHealth}
                         onChange={e =>
-                          set({ insp: { ...state.insp, batteryHealth: Number(e.target.value) } })
+                          set({
+                            insp: {
+                              ...state.insp,
+                              batteryHealth: Math.min(100, Math.max(1, Number(e.target.value) || 1)),
+                            },
+                          })
                         }
-                        className="w-full accent-violet-400"
+                        className="font-mono"
                       />
                     </APLabel>
                     <APLabel label="Camera">
@@ -756,16 +766,22 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                         onChange={v => set({ insp: { ...state.insp, display: v } })}
                       />
                     </APLabel>
-                    <APLabel label="Battery health" hint={`${state.insp.batteryHealth}%`}>
+                    <APLabel label="Battery health" hint="1–100%">
                       <APTextField
-                        type="range"
+                        type="number"
                         min={1}
                         max={100}
+                        inputMode="numeric"
                         value={state.insp.batteryHealth}
                         onChange={e =>
-                          set({ insp: { ...state.insp, batteryHealth: Number(e.target.value) } })
+                          set({
+                            insp: {
+                              ...state.insp,
+                              batteryHealth: Math.min(100, Math.max(1, Number(e.target.value) || 1)),
+                            },
+                          })
                         }
-                        className="w-full accent-violet-400"
+                        className="font-mono"
                       />
                     </APLabel>
                   </>
