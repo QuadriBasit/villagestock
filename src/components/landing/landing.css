@@ -104,7 +104,7 @@ html:has(.vs-landing) {
   50% { transform: translate(-50px, 40px) scale(1.1); }
 }
 
-.vs-landing > *:not(.vs-aurora):not(.landing-nav):not(.mobile-menu) {
+.vs-landing > *:not(.vs-aurora):not(.landing-nav):not(.mobile-menu):not(.mobile-menu-backdrop) {
   position: relative;
   z-index: 1;
 }
@@ -292,6 +292,8 @@ html:has(.vs-landing) {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: opacity 0.32s ease, visibility 0.32s ease;
 }
 .mobile-menu-backdrop.open {

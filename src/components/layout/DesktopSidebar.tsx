@@ -24,10 +24,28 @@ export default function DesktopSidebar() {
 
   useEffect(() => {
     if (!mobileOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    // Avoid `overflow: hidden` on body — Android Chrome stops delivering taps to fixed overlays.
+    const scrollY = window.scrollY;
+    const { style } = document.body;
+    const prev = {
+      position: style.position,
+      top: style.top,
+      left: style.left,
+      right: style.right,
+      width: style.width,
+    };
+    style.position = 'fixed';
+    style.top = `-${scrollY}px`;
+    style.left = '0';
+    style.right = '0';
+    style.width = '100%';
     return () => {
-      document.body.style.overflow = prev;
+      style.position = prev.position;
+      style.top = prev.top;
+      style.left = prev.left;
+      style.right = prev.right;
+      style.width = prev.width;
+      window.scrollTo(0, scrollY);
     };
   }, [mobileOpen]);
 
@@ -44,13 +62,10 @@ export default function DesktopSidebar() {
       <div
         className={cn(
           /* z-45: above shell chrome (z-40), below modal overlays (z-50) */
-          'fixed inset-0 z-[45] bg-[#04070e]/60 transition-opacity lg:hidden',
+          'fixed inset-0 z-[45] touch-manipulation bg-[#04070e]/60 transition-opacity lg:hidden',
           mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
         )}
-        onClick={closeMobile}
-        onTouchEnd={e => {
-          if (e.target === e.currentTarget) closeMobile();
-        }}
+        onPointerDown={closeMobile}
         aria-hidden={!mobileOpen}
       />
       <aside
