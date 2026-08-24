@@ -45,7 +45,7 @@ export default function ContactsPage() {
       >
         <Button
           size="sm"
-          className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          className="bg-brand-400 text-[#04231d] hover:bg-brand-300"
           onClick={() => setAddOpen(true)}
         >
           <Plus size={16} />
@@ -80,8 +80,8 @@ export default function ContactsPage() {
 
       {contacts.length === 0 ? (
         <div className="flex flex-col items-center px-4 py-20 text-center">
-          <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-violet-400/10">
-            <Users size={28} className="text-violet-300" />
+          <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-brand-400/10">
+            <Users size={28} className="text-brand-300" />
           </div>
           <h2 className="font-display text-lg font-semibold text-shell-ink">
             No {tab === 'supplier' ? 'suppliers' : 'customers'} yet
@@ -90,7 +90,7 @@ export default function ContactsPage() {
             Add the people and businesses you buy from or sell to.
           </p>
           <Button
-            className="mt-4 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+            className="mt-4 bg-brand-400 text-[#04231d] hover:bg-brand-300"
             onClick={() => setAddOpen(true)}
           >
             <Plus size={16} />
@@ -142,7 +142,7 @@ function ContactCard({ contact, onOpen }: { contact: ContactRecord; onOpen: () =
       className="flex flex-col gap-3 rounded-lg border border-shell-line bg-shell-surface p-4 text-left transition-colors hover:border-shell-muted/40 hover:bg-shell-surface-2/30"
     >
       <div className="flex items-center gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-violet-400/15 font-display text-base font-bold text-violet-300">
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-400/15 font-display text-base font-bold text-brand-300">
           {initial}
         </span>
         <div className="min-w-0 flex-1">

@@ -55,7 +55,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
 
 const CATEGORY_COLORS: Record<Category, string> = {
   phones: '#2563eb',
-  laptops: '#7c3aed',
+  laptops: '#00b398',
   tablets: '#0f766e',
   accessories: '#ea580c',
   parts: '#4b5563',

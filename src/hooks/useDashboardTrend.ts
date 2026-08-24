@@ -94,7 +94,7 @@ export function useProfitByCategory(days = 14) {
 
     const total = [...byCat.values()].reduce((a, b) => a + b, 0);
     const colors: Record<string, string> = {
-      phones: '#a78bfa',
+      phones: '#00b398',
       laptops: '#34d399',
       tablets: '#60a5fa',
       accessories: '#fbbf24',

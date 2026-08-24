@@ -55,7 +55,7 @@ export default function PurchaseDetailModal({
                   key={index}
                   className="flex items-center gap-3 rounded-lg border border-shell-line bg-shell-surface-2/35 p-3"
                 >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-shell-line bg-shell-surface text-violet-300">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-shell-line bg-shell-surface text-brand-300">
                     <Box size={16} />
                   </span>
                   <div className="min-w-0 flex-1">
@@ -104,7 +104,7 @@ export default function PurchaseDetailModal({
               </a>
               {owed > 0 && supplier && onPaySupplier ? (
                 <Button
-                  className="flex-1 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                  className="flex-1 bg-brand-400 text-[#04231d] hover:bg-brand-300"
                   onClick={() => {
                     onClose();
                     onPaySupplier(supplier);

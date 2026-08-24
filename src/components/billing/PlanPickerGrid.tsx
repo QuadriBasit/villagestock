@@ -27,7 +27,7 @@ export default function PlanPickerGrid({ variant = 'default' }: Props) {
               <p className={cn(billingPlanPrice, 'mt-0.5')}>{plan.priceLabel}</p>
             </div>
             {plan.highlight ? (
-              <span className="shrink-0 rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-300">
+              <span className="shrink-0 rounded-full bg-brand-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-300">
                 Popular
               </span>
             ) : null}
@@ -36,7 +36,7 @@ export default function PlanPickerGrid({ variant = 'default' }: Props) {
           <ul className="mt-3 flex-1 space-y-1.5">
             {plan.features.map(f => (
               <li key={f} className={cn(billingPlanFeature, 'flex gap-2')}>
-                <span className="shrink-0 text-violet-300">✓</span>
+                <span className="shrink-0 text-brand-300">✓</span>
                 <span>{f}</span>
               </li>
             ))}

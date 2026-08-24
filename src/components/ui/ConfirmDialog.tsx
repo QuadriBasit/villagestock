@@ -52,13 +52,13 @@ export default function ConfirmDialog({
             <div
               className={cn(
                 'mb-3 flex size-14 items-center justify-center rounded-full',
-                destructive ? 'bg-red-500/15' : 'bg-violet-400/15',
+                destructive ? 'bg-red-500/15' : 'bg-brand-400/15',
               )}
             >
               {destructive ? (
                 <Trash2 size={24} className="text-red-400" />
               ) : (
-                <X size={24} className="text-violet-300" />
+                <X size={24} className="text-brand-300" />
               )}
             </div>
             <h3 className="font-display text-lg font-semibold text-shell-ink">{title}</h3>
@@ -80,7 +80,7 @@ export default function ConfirmDialog({
                 'h-auto rounded-none py-3.5 text-sm font-semibold',
                 destructive
                   ? 'text-red-400 hover:bg-red-500/10'
-                  : 'text-violet-300 hover:bg-violet-400/10',
+                  : 'text-brand-300 hover:bg-brand-400/10',
               )}
             >
               {confirmLabel}

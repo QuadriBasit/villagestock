@@ -32,6 +32,7 @@ const SalesHistoryPage = lazy(() => import('@/pages/SalesHistoryPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 const CloseStockPage = lazy(() => import('@/pages/CloseStockPage'));
+const OpenStockPage = lazy(() => import('@/pages/OpenStockPage'));
 const StockSessionsPage = lazy(() => import('@/pages/StockSessionsPage'));
 const StockSessionDetailPage = lazy(() => import('@/pages/StockSessionDetailPage'));
 const CreditsPage = lazy(() => import('@/pages/CreditsPage'));
@@ -95,7 +96,7 @@ function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
         <p className="mt-2 max-w-sm text-sm text-shell-muted">
           This account is not in the admin roster. Use the main app to manage your shop.
         </p>
-        <a href="/auth" className="mt-6 text-sm font-medium text-violet-300 hover:underline">
+        <a href="/auth" className="mt-6 text-sm font-medium text-brand-300 hover:underline">
           Retailer sign-in
         </a>
       </div>
@@ -320,6 +321,14 @@ export default function App() {
             element={
               <StaffRedirect>
                 <StockSessionDetailPage />
+              </StaffRedirect>
+            }
+          />
+          <Route
+            path="stock/open/:sessionId"
+            element={
+              <StaffRedirect>
+                <OpenStockPage />
               </StaffRedirect>
             }
           />

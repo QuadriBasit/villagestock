@@ -8,6 +8,7 @@ import { findItemByScannedValue } from '@/lib/serializedIdentifiers';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Textarea } from '@/components/ui/Textarea';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { cn } from '@/lib/utils';
 
 const BarcodeScanner = lazy(() => import('@/components/inventory/BarcodeScanner'));
@@ -27,6 +28,7 @@ export default function CloseStockPage() {
   const [closing, setClosing] = useState(false);
   const [doneMessage, setDoneMessage] = useState<string | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  const [confirmPost, setConfirmPost] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!sessionId) return;
@@ -106,7 +108,7 @@ export default function CloseStockPage() {
   if (loading) {
     return (
       <div className="app-page flex min-h-[40vh] items-center justify-center py-8">
-        <Loader2 className="size-8 animate-spin text-violet-300" />
+        <Loader2 className="size-8 animate-spin text-brand-300" />
       </div>
     );
   }
@@ -126,7 +128,7 @@ export default function CloseStockPage() {
         <h2 className="font-display text-lg font-semibold text-shell-ink">Stock-take posted</h2>
         <p className="mt-2 max-w-md text-sm leading-relaxed text-shell-muted">{doneMessage}</p>
         <Button
-          className="mt-6 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          className="mt-6 bg-brand-400 text-[#04231d] hover:bg-brand-300"
           onClick={() => navigate('/reports/stock-sessions')}
         >
           Done
@@ -198,7 +200,7 @@ export default function CloseStockPage() {
                 <span
                   className={cn(
                     'mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg',
-                    ok ? 'bg-emerald-400 text-[#160a2e]' : 'bg-shell-surface text-shell-muted ring-1 ring-shell-line'
+                    ok ? 'bg-emerald-400 text-[#04231d]' : 'bg-shell-surface text-shell-muted ring-1 ring-shell-line'
                   )}
                 >
                   {ok ? <Check size={16} strokeWidth={3} /> : <X size={16} />}
@@ -256,9 +258,9 @@ export default function CloseStockPage() {
           <Stat label="Confirmed" value={checked.size} />
         </div>
         <Button
-          className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          className="bg-brand-400 text-[#04231d] hover:bg-brand-300"
           disabled={closing || missingIds.some(id => !(missingNotes[id]?.trim()))}
-          onClick={() => void onConfirmClose()}
+          onClick={() => setConfirmPost(true)}
         >
           {closing ? (
             <>
@@ -272,6 +274,25 @@ export default function CloseStockPage() {
           )}
         </Button>
       </div>
+
+      {confirmPost ? (
+        <ConfirmDialog
+          open
+          title={missingIds.length > 0 ? `Post with ${missingIds.length} discrepanc${missingIds.length === 1 ? 'y' : 'ies'}?` : 'Post stock-take?'}
+          message={
+            missingIds.length > 0
+              ? `${checked.size} device${checked.size === 1 ? '' : 's'} confirmed and ${missingIds.length} will be marked missing in inventory. This can't be undone from here.`
+              : `All ${checked.size} device${checked.size === 1 ? '' : 's'} accounted for. The session will be closed for today.`
+          }
+          confirmLabel="Post stock-take"
+          destructive={missingIds.length > 0}
+          onConfirm={() => {
+            setConfirmPost(false);
+            void onConfirmClose();
+          }}
+          onCancel={() => setConfirmPost(false)}
+        />
+      ) : null}
 
       {scanOpen ? (
         <Suspense fallback={null}>
@@ -289,7 +310,7 @@ function SummaryRow({ label, value, highlight }: { label: string; value: number;
       <span
         className={cn(
           'font-mono tabular-nums font-semibold',
-          highlight ? 'text-violet-300' : 'text-shell-ink'
+          highlight ? 'text-brand-300' : 'text-shell-ink'
         )}
       >
         {value}

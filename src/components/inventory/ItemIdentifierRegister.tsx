@@ -103,7 +103,7 @@ export function ItemIdentifierRegister({
                   <div
                     className={cn(
                       'px-4 py-3 transition-colors',
-                      active ? 'bg-violet-400/8' : 'hover:bg-shell-surface-2/40',
+                      active ? 'bg-brand-400/8' : 'hover:bg-shell-surface-2/40',
                     )}
                   >
                     <button
@@ -182,7 +182,7 @@ export function ItemIdentifierRegister({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="mt-2 h-8 w-full justify-start gap-1.5 text-xs text-violet-300 hover:bg-violet-400/10 hover:text-violet-200"
+                        className="mt-2 h-8 w-full justify-start gap-1.5 text-xs text-brand-300 hover:bg-brand-400/10 hover:text-brand-200"
                         onClick={e => {
                           e.stopPropagation();
                           onSendToBench?.(unit);

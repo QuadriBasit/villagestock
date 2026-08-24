@@ -88,7 +88,7 @@ export default function SendToEngineerForm({
           )}>
 <div className={cn(modalSheetHeader, 'border-shell-line')}>
             <div className="flex items-center gap-2">
-              <Wrench size={18} className="text-violet-300" />
+              <Wrench size={18} className="text-brand-300" />
               <h2 className="font-display text-base font-bold text-shell-ink">Send for repair</h2>
             </div>
             <ModalSheetClose />

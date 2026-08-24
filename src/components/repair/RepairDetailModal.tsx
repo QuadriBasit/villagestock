@@ -33,7 +33,7 @@ const CONDITION_LABELS: Record<DeviceCondition, string> = {
 };
 
 const STATUS_BADGE: Record<RepairRecord['repair_status'], string> = {
-  sent: 'border-violet-500/25 bg-violet-500/10 text-violet-300',
+  sent: 'border-brand-500/25 bg-brand-500/10 text-brand-300',
   in_progress: 'border-blue-500/25 bg-blue-500/10 text-blue-300',
   completed: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300',
   collected: 'border-zinc-500/25 bg-zinc-500/10 text-zinc-400',
@@ -185,7 +185,7 @@ export default function RepairDetailModal({ record, item, onClose }: RepairDetai
                       className={cn(
                         'grid size-[22px] place-items-center rounded-full border text-[10px]',
                         active
-                          ? 'border-violet-400/50 bg-violet-400 text-[#160a2e]'
+                          ? 'border-brand-400/50 bg-brand-400 text-[#04231d]'
                           : 'border-shell-line bg-shell-surface-2 text-shell-muted',
                       )}
                     >
@@ -194,7 +194,7 @@ export default function RepairDetailModal({ record, item, onClose }: RepairDetai
                   </div>
                   {i < REPAIR_FLOW.length - 1 ? (
                     <span
-                      className={cn('h-0.5 min-w-[12px] flex-1', i < idx ? 'bg-violet-400/70' : 'bg-shell-line')}
+                      className={cn('h-0.5 min-w-[12px] flex-1', i < idx ? 'bg-brand-400/70' : 'bg-shell-line')}
                     />
                   ) : null}
                 </div>
@@ -252,7 +252,7 @@ export default function RepairDetailModal({ record, item, onClose }: RepairDetai
                 />
               </div>
               <Button
-                className="w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                className="w-full bg-brand-400 text-[#04231d] hover:bg-brand-300"
                 onClick={handleSaveCollectedDate}
                 disabled={busy}
               >
@@ -305,7 +305,7 @@ export default function RepairDetailModal({ record, item, onClose }: RepairDetai
                   Back
                 </Button>
                 <Button
-                  className="flex-1 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                  className="flex-1 bg-brand-400 text-[#04231d] hover:bg-brand-300"
                   onClick={handleCollect}
                   disabled={busy}
                 >
@@ -330,14 +330,14 @@ export default function RepairDetailModal({ record, item, onClose }: RepairDetai
                 </a>
                 {isReady ? (
                   <Button
-                    className="flex-1 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                    className="flex-1 bg-brand-400 text-[#04231d] hover:bg-brand-300"
                     onClick={openCollectForm}
                   >
                     <Wrench size={16} /> Collect
                   </Button>
                 ) : next && next !== 'collected' ? (
                   <Button
-                    className="flex-1 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                    className="flex-1 bg-brand-400 text-[#04231d] hover:bg-brand-300"
                     onClick={advance}
                     disabled={busy}
                   >

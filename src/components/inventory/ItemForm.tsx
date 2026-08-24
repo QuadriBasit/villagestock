@@ -685,7 +685,7 @@ export default function ItemForm({
           </div>
 
           {(showAppleMobileFields || showAppleLaptopFields) && (
-            <p className='text-xs text-violet-300 rounded-lg border border-violet-400/20 bg-violet-500/10 px-3 py-2'>
+            <p className='text-xs text-brand-300 rounded-lg border border-brand-400/20 bg-brand-500/10 px-3 py-2'>
               Apple device details will be saved as structured metadata and will
               appear in search, inventory badges, and receipts.
             </p>
@@ -1202,7 +1202,7 @@ export default function ItemForm({
               type='submit'
               disabled={isSubmitting}
               className={cn(
-                'rounded-xl py-3.5 font-display font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2 bg-violet-400 text-[#160a2e] hover:bg-violet-300',
+                'rounded-xl py-3.5 font-display font-semibold text-sm transition-colors disabled:opacity-60 flex items-center justify-center gap-2 bg-brand-400 text-[#04231d] hover:bg-brand-300',
               )}>
               {isSubmitting && <Loader2 size={16} className='animate-spin' />}
               {submitLabel}
@@ -1301,7 +1301,7 @@ const ScanField = ({id, label, onScan, className, ...props}: ScanFieldProps) => 
       <button
         type='button'
         onClick={onScan}
-        className='shrink-0 rounded-lg border border-shell-line bg-shell-surface px-3 py-2.5 text-shell-muted transition-colors hover:bg-shell-surface-2 hover:text-violet-300'
+        className='shrink-0 rounded-lg border border-shell-line bg-shell-surface px-3 py-2.5 text-shell-muted transition-colors hover:bg-shell-surface-2 hover:text-brand-300'
         aria-label={`Scan ${label}`}>
         <ScanLine size={18} />
       </button>

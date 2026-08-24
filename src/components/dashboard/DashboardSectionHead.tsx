@@ -16,7 +16,7 @@ export function DashboardSectionHead({ title, action, onAction, className }: Das
         <button
           type="button"
           onClick={onAction}
-          className="inline-flex items-center gap-0.5 text-[13px] font-semibold text-violet-400 transition-colors hover:text-violet-300"
+          className="inline-flex items-center gap-0.5 text-[13px] font-semibold text-brand-400 transition-colors hover:text-brand-300"
         >
           {action}
           <ChevronRight size={14} />

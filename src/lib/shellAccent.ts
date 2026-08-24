@@ -1,4 +1,4 @@
-export const DEFAULT_SHELL_ACCENT = '#a78bfa';
+export const DEFAULT_SHELL_ACCENT = '#00b398';
 
 /** Apply shop receipt / brand color to the authenticated app shell and portaled overlays. */
 export function applyShellAccent(color: string, root?: HTMLElement | null) {

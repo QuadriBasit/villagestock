@@ -156,7 +156,7 @@ export default function ReturnForm({
           )}>
 <div className={salesModalHeader}>
             <div className="flex items-center gap-2">
-              <RotateCcw size={18} className="text-violet-300" />
+              <RotateCcw size={18} className="text-brand-300" />
               <h2 className="font-display text-base font-bold text-shell-ink">
                 Process Return
               </h2>
@@ -395,7 +395,7 @@ export default function ReturnForm({
             <button
               onClick={handleSubmit(onSubmit)}
               disabled={isSubmitting}
-              className="w-full bg-violet-400 text-[#160a2e] rounded-xl py-3.5 font-display font-semibold text-sm hover:bg-violet-300 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+              className="w-full bg-brand-400 text-[#04231d] rounded-xl py-3.5 font-display font-semibold text-sm hover:bg-brand-300 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>

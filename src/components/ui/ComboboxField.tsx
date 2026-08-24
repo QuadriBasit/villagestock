@@ -18,7 +18,7 @@ const labelCls = 'mb-1 block text-sm font-medium text-shell-muted';
 const errorCls = 'mt-1 text-xs text-red-400';
 
 const baseInputCls =
-  'shell-inset-field h-11 w-full rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-2 text-sm text-shell-ink transition-[color,box-shadow] focus:outline-none focus:ring-2 focus:ring-violet-400/12';
+  'shell-inset-field h-11 w-full rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-2 text-sm text-shell-ink transition-[color,box-shadow] focus:outline-none focus:ring-2 focus:ring-brand-400/12';
 
 const optionBtnCls =
   'flex w-full cursor-pointer select-none items-center rounded-lg px-2 py-2 text-left text-sm outline-none transition-colors hover:bg-shell-surface-2 focus-visible:bg-shell-surface-2';
@@ -113,9 +113,9 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
 
   const modeClass =
     trimmed.length === 0
-      ? 'border-shell-line focus:border-violet-400/45 focus:ring-violet-400/12'
+      ? 'border-shell-line focus:border-brand-400/45 focus:ring-brand-400/12'
       : matchesPreset
-        ? 'border-violet-400/50 bg-violet-500/10 ring-1 ring-violet-400/30 focus:border-violet-400 focus:ring-violet-400/30'
+        ? 'border-brand-400/50 bg-brand-500/10 ring-1 ring-brand-400/30 focus:border-brand-400 focus:ring-brand-400/30'
         : 'border-dashed border-amber-500/45 bg-amber-500/10 focus:border-amber-500 focus:ring-amber-500/20';
 
   const showList = options.length > 0 && open;
@@ -290,7 +290,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
                   className={cn(
                     optionBtnCls,
                     i === highlight && 'bg-shell-surface-2',
-                    trimmed.toLowerCase() === opt.toLowerCase() && 'bg-violet-500/10'
+                    trimmed.toLowerCase() === opt.toLowerCase() && 'bg-brand-500/10'
                   )}
                                    tabIndex={-1}
                   onMouseEnter={() => setHighlight(i)}
@@ -303,7 +303,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
                   <Check
                     strokeWidth={2}
                     className={cn(
-                      'mr-2 size-4 shrink-0 text-violet-300',
+                      'mr-2 size-4 shrink-0 text-brand-300',
                       trimmed.toLowerCase() === opt.toLowerCase() ? 'opacity-100' : 'opacity-0'
                     )}
                     aria-hidden
@@ -325,7 +325,7 @@ export const ComboboxField = forwardRef<HTMLInputElement, ComboboxFieldProps>(fu
           id={`${id}-mode`}
           className={cn(
             'mt-1 text-[11px] font-medium',
-            matchesPreset ? 'text-violet-300' : 'text-amber-300'
+            matchesPreset ? 'text-brand-300' : 'text-amber-300'
           )}
         >
           {matchesPreset ? 'Quick list — suggestions match your text' : 'Custom name — saved as you typed'}

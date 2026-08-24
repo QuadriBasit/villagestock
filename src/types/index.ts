@@ -386,6 +386,7 @@ export type StockSessionStatus = 'open' | 'closed' | 'closed_with_discrepancy';
 
 export type StockSessionAuditAction =
   | 'opened'
+  | 'opening_confirmed'
   | 'closed'
   | 'skipped_abandoned'
   | 'missing_item_noted'
@@ -423,6 +424,8 @@ export interface StockSession {
   closed_by_user_id?: string;
   /** Serialized item ids that were in_stock at open */
   opening_snapshot_ids: string[];
+  /** Ids physically confirmed present when opening stock */
+  opening_confirmed_ids?: string[];
   /** Ids we expect on hand at close (computed before/during reconcile) */
   expected_closing_ids: string[];
   /** Ids physically confirmed present */

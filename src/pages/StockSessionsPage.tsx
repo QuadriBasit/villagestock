@@ -17,6 +17,7 @@ import { useShopLocation } from '@/context/ShopLocationContext';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard, StatGrid } from '@/components/ui/StatCard';
 import { Button } from '@/components/ui/Button';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,7 @@ export default function StockSessionsPage() {
   const { session: priorOpen } = usePriorOpenStockSessionState();
   const { openTodaySession } = useStockSessionActions();
   const [starting, setStarting] = useState(false);
+  const [confirmStart, setConfirmStart] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const trackedCount = useLiveQuery(async () => {
@@ -77,7 +79,7 @@ export default function StockSessionsPage() {
     setStarting(true);
     try {
       const session = await openTodaySession();
-      navigate(`/stock/close/${session.id}`);
+      navigate(`/stock/open/${session.id}`);
     } catch (e) {
       if (e instanceof PriorDayStockOpenError) {
         setError('Close the previous open session before starting a new count.');
@@ -97,9 +99,9 @@ export default function StockSessionsPage() {
       >
         <Button
           size="sm"
-          className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          className="bg-brand-400 text-[#04231d] hover:bg-brand-300"
           disabled={starting}
-          onClick={() => void startCount()}
+          onClick={() => setConfirmStart(true)}
         >
           <ScanLine size={16} />
           {starting ? 'Starting…' : 'Start a count'}
@@ -114,7 +116,7 @@ export default function StockSessionsPage() {
           label="Discrepancies (90d)"
           value={String(discrepancyTotal)}
           icon={AlertTriangle}
-          iconClassName="bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300"
+          iconClassName=" text-amber-600 dark:text-amber-300"
         />
       </StatGrid>
 
@@ -122,9 +124,21 @@ export default function StockSessionsPage() {
         <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</p>
       ) : null}
 
-      <Card className="border-shell-line bg-gradient-to-br from-violet-400/[0.14] to-shell-surface p-4 shadow-none md:p-5">
+      <ConfirmDialog
+        open={confirmStart}
+        title="Start a stock count?"
+        message="A session will open with a snapshot of your serialized devices, and you'll confirm them on the opening checklist before trading."
+        confirmLabel="Start count"
+        onConfirm={() => {
+          setConfirmStart(false);
+          void startCount();
+        }}
+        onCancel={() => setConfirmStart(false)}
+      />
+
+      <Card className="border-shell-line bg-gradient-to-br from-brand-400/[0.14] to-shell-surface p-4 shadow-none md:p-5">
         <div className="flex flex-wrap items-center gap-4">
-          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-violet-400/15 text-violet-300">
+          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-brand-400/15 text-brand-300">
             <ScanLine size={22} />
           </span>
           <div className="min-w-0 flex-1">
@@ -135,9 +149,9 @@ export default function StockSessionsPage() {
             </p>
           </div>
           <Button
-            className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+            className="bg-brand-400 text-[#04231d] hover:bg-brand-300"
             disabled={starting}
-            onClick={() => void startCount()}
+            onClick={() => setConfirmStart(true)}
           >
             <ScanLine size={16} />
             Start a count

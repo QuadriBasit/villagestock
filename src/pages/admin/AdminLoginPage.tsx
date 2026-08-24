@@ -73,7 +73,7 @@ export default function AdminLoginPage() {
 
   return (
     <div className="app-shell dark flex min-h-svh flex-col items-center justify-center bg-shell-bg px-4 font-body text-shell-ink">
-      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-300 ring-1 ring-violet-400/25">
+      <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-400/25">
         <Shield size={30} />
       </div>
       <h1 className="font-display text-xl font-bold text-shell-ink">Admin sign in</h1>
@@ -119,7 +119,7 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-500 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-violet-400 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-400 disabled:opacity-60"
           >
             {isSubmitting && <Loader2 size={16} className="animate-spin" />}
             Sign in
@@ -128,7 +128,7 @@ export default function AdminLoginPage() {
       </div>
       <p className="mt-8 max-w-md text-center text-xs text-shell-muted">
         Grant access in Supabase by inserting your auth user id into{' '}
-        <code className="font-mono text-violet-300/90">admin_users</code>.
+        <code className="font-mono text-brand-300/90">admin_users</code>.
       </p>
     </div>
   );

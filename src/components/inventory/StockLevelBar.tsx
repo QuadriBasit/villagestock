@@ -16,7 +16,7 @@ export function StockLevelBar({
       ? 'bg-red-500'
       : qty <= reorder
         ? 'bg-amber-400'
-        : 'bg-violet-400';
+        : 'bg-brand-400';
 
   return (
     <div className={cn('h-1.5 w-12 overflow-hidden rounded-full bg-shell-surface-2', className)}>

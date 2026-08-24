@@ -31,12 +31,12 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
 
   const shopName = profile.shop_name || 'Our Shop';
   const price = item.price ?? 0;
-  const brandColor = profile.receipt_theme?.header_color || '#7c3aed';
+  const brandColor = profile.receipt_theme?.header_color || '#00b398';
 
   const flyerStyle = {
     background:
       theme === 'sale'
-        ? `linear-gradient(135deg, ${brandColor} 0%, #160a2e 100%)`
+        ? `linear-gradient(135deg, ${brandColor} 0%, #04231d 100%)`
         : '#ffffff',
     color: theme === 'sale' ? '#ffffff' : '#0f172a',
   };
@@ -158,7 +158,7 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
       <ModalSheetFrame onClose={onClose} panelClassName={cn(modalSheetPanelSm, 'border-shell-line bg-shell-surface shadow-none')} backdropClassName="bg-black/70">
 <div className={cn(modalSheetHeader, 'border-shell-line')}>
             <h2 className="flex items-center gap-2 font-display text-base font-semibold text-shell-ink">
-              <ImageIcon size={18} className="text-violet-300" />
+              <ImageIcon size={18} className="text-brand-300" />
               Share promo flyer
             </h2>
             <ModalSheetClose />
@@ -180,7 +180,7 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
                   className={cn(
                     'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
                     theme === v
-                      ? 'border-violet-400/40 bg-violet-400/15 text-violet-200'
+                      ? 'border-brand-400/40 bg-brand-400/15 text-brand-200'
                       : 'border-shell-line bg-shell-surface text-shell-muted hover:text-shell-ink',
                   )}
                 >
@@ -244,7 +244,7 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
                   <div
                     className={cn(
                       'mt-5 text-3xl font-black tracking-tight',
-                      theme === 'minimal' ? 'text-violet-600' : 'text-white',
+                      theme === 'minimal' ? 'text-brand-600' : 'text-white',
                     )}
                   >
                     ₦{price.toLocaleString()}
@@ -261,7 +261,7 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
                     {profile.logo_data_url ? (
                       <img src={profile.logo_data_url} alt="Logo" className="h-6 w-6 rounded-md object-cover" />
                     ) : (
-                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-violet-500 text-[10px] font-bold text-white">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500 text-[10px] font-bold text-white">
                         VS
                       </div>
                     )}
@@ -298,7 +298,7 @@ export default function PromoFlyerModal({ item, onClose }: PromoFlyerModalProps)
                 if (capture.status === 'ready') triggerPngDownload(capture.blob);
               }}
               disabled={!ready}
-              className="flex-1 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+              className="flex-1 bg-brand-400 text-[#04231d] hover:bg-brand-300"
             >
               {busy ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
               Save image

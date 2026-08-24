@@ -156,7 +156,7 @@ export default function WarrantySlipModal({
               Print
             </Button>
             <Button
-              className="flex-1 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+              className="flex-1 bg-brand-400 text-[#04231d] hover:bg-brand-300"
               onClick={() => void handleDownload()}
             >
               <Download size={16} />

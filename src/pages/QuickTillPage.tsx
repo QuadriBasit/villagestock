@@ -287,7 +287,7 @@ export default function QuickTillPage() {
             ) : null}
             <p className="mt-1 text-xs text-shell-muted">Stock, sales and cash-up updated.</p>
             <Button
-              className="mt-6 w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+              className="mt-6 w-full bg-brand-400 text-[#04231d] hover:bg-brand-300"
               onClick={reset}
             >
               <ShoppingCart size={18} />
@@ -547,7 +547,7 @@ function TillCartPanel({
               className={cn(
                 'rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
                 isWalkIn
-                  ? 'border-violet-400/40 bg-violet-400/15 text-violet-200'
+                  ? 'border-brand-400/40 bg-brand-400/15 text-brand-200'
                   : 'border-shell-line bg-shell-surface-2/40 text-shell-muted hover:text-shell-ink',
               )}
             >
@@ -565,7 +565,7 @@ function TillCartPanel({
                   className={cn(
                     'rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
                     active
-                      ? 'border-violet-400/40 bg-violet-400/15 text-violet-200'
+                      ? 'border-brand-400/40 bg-brand-400/15 text-brand-200'
                       : 'border-shell-line bg-shell-surface-2/40 text-shell-muted hover:text-shell-ink',
                   )}
                 >
@@ -607,13 +607,13 @@ function TillCartPanel({
                   className={cn(
                     'relative py-2.5 text-xs font-medium transition-colors',
                     active
-                      ? 'bg-violet-400/10 text-violet-200'
+                      ? 'bg-brand-400/10 text-brand-200'
                       : 'text-shell-muted hover:bg-shell-surface-2/25 hover:text-shell-ink',
                   )}
                 >
                   {label}
                   {active ? (
-                    <span className="absolute inset-x-0 bottom-0 h-px bg-violet-400/60" aria-hidden />
+                    <span className="absolute inset-x-0 bottom-0 h-px bg-brand-400/60" aria-hidden />
                   ) : null}
                 </button>
               );
@@ -692,7 +692,7 @@ function TillCartPanel({
           className={cn(
             'shell-inset-field flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition-colors',
             canCharge
-              ? 'bg-violet-400 text-[#160a2e] hover:bg-violet-300'
+              ? 'bg-brand-400 text-[#04231d] hover:bg-brand-300'
               : 'cursor-not-allowed border border-shell-line bg-shell-surface-2/40 text-shell-muted'
           )}
         >
@@ -803,13 +803,13 @@ function ProductTile({
       onClick={onAdd}
       className={cn(
         'relative flex flex-col gap-2 rounded-[14px] border p-3 text-left transition-all',
-        'bg-shell-surface hover:border-violet-400/50 hover:-translate-y-0.5',
-        inCart > 0 ? 'border-violet-400/55' : 'border-shell-line',
+        'bg-shell-surface hover:border-brand-400/50 hover:-translate-y-0.5',
+        inCart > 0 ? 'border-brand-400/55' : 'border-shell-line',
         disabled && 'opacity-55 hover:translate-y-0'
       )}
     >
       {inCart > 0 && (
-        <span className="absolute right-2 top-2 grid min-w-[22px] place-items-center rounded-full bg-violet-400 px-1.5 py-0.5 font-mono text-xs font-bold text-[#160a2e]">
+        <span className="absolute right-2 top-2 grid min-w-[22px] place-items-center rounded-full bg-brand-400 px-1.5 py-0.5 font-mono text-xs font-bold text-[#04231d]">
           {inCart}
         </span>
       )}

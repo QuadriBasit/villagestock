@@ -53,7 +53,7 @@ export function DashboardMoneyGlance() {
       <CardContent className="p-4 md:p-5">
         <DashboardSectionHead title="Cash position" action="Cash desk" onAction={() => navigate('/cashup')} />
 
-        <div className="mb-3 flex items-center justify-between rounded-xl bg-violet-400/[0.13] px-3.5 py-3">
+        <div className="mb-3 flex items-center justify-between rounded-xl bg-brand-400/[0.13] px-3.5 py-3">
           <div>
             <p className="text-xs text-shell-muted">Expected in drawer</p>
             <p className="mt-0.5 font-mono text-[22px] font-bold text-shell-ink">{formatCurrency(expectedDrawer)}</p>
@@ -61,7 +61,7 @@ export function DashboardMoneyGlance() {
               {formatCurrency(cashSalesToday ?? 0)} cash in · {formatCurrency(expenses.cash)} cash out
             </p>
           </div>
-          <span className="grid size-10 place-items-center rounded-[11px] border border-shell-line bg-shell-surface text-violet-400">
+          <span className="grid size-10 place-items-center rounded-[11px] border border-shell-line bg-shell-surface text-brand-400">
             <Wallet size={19} />
           </span>
         </div>
@@ -96,7 +96,7 @@ export function DashboardMoneyGlance() {
           type="button"
           variant="ghost"
           size="sm"
-          className="mt-3 w-full text-violet-400 hover:text-violet-300"
+          className="mt-3 w-full text-brand-400 hover:text-brand-300"
           onClick={() => navigate('/cashup')}
         >
           Count drawer & close day

@@ -84,7 +84,7 @@ export default function PaySupplierModal({ supplier, onClose, onPay }: PaySuppli
                     ? `${supplier.name} fully settled.`
                     : `${formatCurrency(remaining)} still owed to ${supplier.name}.`}
                 </p>
-                <Button className="mt-5 w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300" onClick={onClose}>
+                <Button className="mt-5 w-full bg-brand-400 text-[#04231d] hover:bg-brand-300" onClick={onClose}>
                   Done
                 </Button>
               </div>
@@ -114,7 +114,7 @@ export default function PaySupplierModal({ supplier, onClose, onPay }: PaySuppli
                         className={cn(
                           'h-auto rounded-full px-3 py-1.5 text-xs font-semibold shadow-none active:scale-100',
                           amount === chip.value
-                            ? 'border-violet-400/50 bg-violet-400/15 text-shell-ink'
+                            ? 'border-brand-400/50 bg-brand-400/15 text-shell-ink'
                             : 'border-shell-line bg-shell-surface-2/30 text-shell-muted hover:text-shell-ink',
                         )}
                       >
@@ -125,7 +125,7 @@ export default function PaySupplierModal({ supplier, onClose, onPay }: PaySuppli
                 ) : null}
 
                 <Button
-                  className="w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                  className="w-full bg-brand-400 text-[#04231d] hover:bg-brand-300"
                   disabled={amount <= 0 || saving}
                   onClick={() => void pay()}
                 >

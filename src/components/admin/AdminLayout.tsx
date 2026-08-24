@@ -20,7 +20,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
     'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
     isActive
-      ? 'bg-violet-500/15 text-violet-200 shadow-sm ring-1 ring-violet-400/20'
+      ? 'bg-brand-500/15 text-brand-200 shadow-sm ring-1 ring-brand-400/20'
       : 'text-shell-muted hover:bg-shell-surface-2/60 hover:text-shell-ink',
   );
 
@@ -46,7 +46,7 @@ export default function AdminLayout() {
       <ShellAccentSync />
       <aside className="flex w-56 shrink-0 flex-col border-r border-shell-line bg-[#0e1320] sm:w-64">
         <div className="flex items-center gap-3 border-b border-shell-line p-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300 ring-1 ring-violet-400/25">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-400/25">
             <Shield size={20} />
           </div>
           <div>

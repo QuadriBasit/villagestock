@@ -53,11 +53,11 @@ export function APChoiceStack<T extends string>({
             className={cn(
               'rounded-[11px] border px-3.5 py-2.5 text-left transition-colors',
               on
-                ? 'border-violet-400/40 bg-violet-400/10'
+                ? 'border-brand-400/40 bg-brand-400/10'
                 : 'border-shell-line bg-shell-surface-2/40 hover:border-shell-muted/40',
             )}
           >
-            <span className={cn('block text-[13.5px] font-semibold', on ? 'text-violet-200' : 'text-shell-ink')}>
+            <span className={cn('block text-[13.5px] font-semibold', on ? 'text-brand-200' : 'text-shell-ink')}>
               {o.label}
             </span>
             {o.hint ? (
@@ -92,7 +92,7 @@ export function APSeg<T extends string>({
             onClick={() => onChange(v)}
             className={cn(
               'flex-1 rounded-lg px-1.5 py-2 text-[13px] font-semibold leading-tight transition-colors',
-              on ? 'bg-violet-400 text-[#160a2e]' : 'text-shell-muted hover:text-shell-ink',
+              on ? 'bg-brand-400 text-[#04231d]' : 'text-shell-muted hover:text-shell-ink',
             )}
           >
             {l}
@@ -146,7 +146,7 @@ export function APMulti({
             className={cn(
               'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors',
               on
-                ? 'bg-violet-400 text-[#160a2e]'
+                ? 'bg-brand-400 text-[#04231d]'
                 : 'border border-shell-line bg-shell-surface-2/40 text-shell-ink hover:bg-shell-surface-2',
             )}
           >
@@ -233,7 +233,7 @@ export function APToggle({
       onClick={() => onChange(!checked)}
       className={cn(
         'relative h-6 w-[42px] shrink-0 rounded-full border-none transition-colors',
-        checked ? 'bg-violet-400' : 'bg-shell-line',
+        checked ? 'bg-brand-400' : 'bg-shell-line',
       )}
     >
       <span
@@ -275,7 +275,7 @@ export function CategoryPicker({
               'flex flex-col items-center gap-2 rounded-[13px] border px-2.5 py-4 transition-colors',
               disabled && 'cursor-default opacity-70',
               on
-                ? 'border-violet-400/60 bg-violet-400/10 text-shell-ink'
+                ? 'border-brand-400/60 bg-brand-400/10 text-shell-ink'
                 : 'border-shell-line bg-shell-surface-2/40 text-shell-muted hover:text-shell-ink',
             )}
           >
@@ -300,7 +300,7 @@ export function TrackToggle({
   return (
     <div className="flex items-center justify-between rounded-xl border border-shell-line bg-shell-surface-2/40 px-3.5 py-3">
       <div className="flex items-center gap-2.5">
-        <Hash size={17} className="text-violet-400" />
+        <Hash size={17} className="text-brand-400" />
         <div>
           <p className="text-[13.5px] font-semibold text-shell-ink">Track {idType} per unit</p>
           <p className="text-[11.5px] text-shell-muted">Record each handset&apos;s unique {idType}</p>
@@ -317,7 +317,7 @@ export function StepProgress({ steps, step }: { steps: string[]; step: number })
       {steps.map((st, i) => (
         <div key={st} className="min-w-0 flex-1">
           <div
-            className={cn('h-1 rounded-full transition-colors', i <= step ? 'bg-violet-400' : 'bg-shell-line')}
+            className={cn('h-1 rounded-full transition-colors', i <= step ? 'bg-brand-400' : 'bg-shell-line')}
           />
           <p
             className={cn(

@@ -101,7 +101,7 @@ export default function AdminTrialsPage() {
       </div>
 
       {bulkMsg ? (
-        <p className="rounded-lg bg-violet-500/15 px-3 py-2 text-sm text-violet-200">{bulkMsg}</p>
+        <p className="rounded-lg bg-brand-500/15 px-3 py-2 text-sm text-brand-200">{bulkMsg}</p>
       ) : null}
 
       <div className={adminTableWrap}>

@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, CreditCard, Loader2, Trash2, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, CreditCard, Loader2, MessageCircle, Trash2, Users, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCredits, useCreditRecord, useOutstandingCreditsSummary } from '@/hooks/useCredits';
 import { useCreditActions } from '@/hooks/useCreditActions';
+import { useShopProfile } from '@/hooks/useShopProfile';
+import { buildCreditReminderText, openWhatsApp } from '@/lib/whatsapp';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard, StatGrid } from '@/components/ui/StatCard';
@@ -47,8 +49,8 @@ export default function CreditsPage() {
   if (credits.length === 0) {
     return (
       <div className="app-page flex flex-col items-center px-4 py-20 text-center">
-        <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-violet-400/10">
-          <CreditCard size={28} className="text-violet-300" />
+        <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-brand-400/10">
+          <CreditCard size={28} className="text-brand-300" />
         </div>
         <h2 className="font-display text-lg font-semibold text-shell-ink">No credit sales yet</h2>
         <p className="mt-1 max-w-sm text-sm text-shell-muted">
@@ -76,13 +78,13 @@ export default function CreditsPage() {
               label="Outstanding"
               value={formatCurrency(summary.outstanding_amount)}
               icon={Wallet}
-              iconClassName="bg-violet-400/10 text-violet-300"
+              iconClassName=" text-brand-300"
             />
             <StatCard
               label="Overdue"
               value={String(summary.overdue_count)}
               icon={AlertTriangle}
-              iconClassName="bg-red-500/10 text-red-400"
+              iconClassName=" text-red-400"
               hint={summary.overdue_count > 0 ? 'Needs follow-up' : undefined}
               hintClassName="text-red-400"
             />
@@ -90,7 +92,7 @@ export default function CreditsPage() {
               label="Open accounts"
               value={String(outstanding.length)}
               icon={Users}
-              iconClassName="bg-amber-500/10 text-amber-400"
+              iconClassName=" text-amber-400"
             />
           </StatGrid>
 
@@ -197,6 +199,7 @@ function CreditDetailsModal({ creditId, onClose }: { creditId: string; onClose: 
       }
     : null;
   const { recordPayment, removeCreditPayment } = useCreditActions();
+  const { profile } = useShopProfile();
   const [amount, setAmount] = useState<number | undefined>(undefined);
   const [date, setDate] = useState(toLocalDatetimeValue(new Date()));
   const [method, setMethod] = useState<PaymentMethod>('cash');
@@ -219,6 +222,11 @@ function CreditDetailsModal({ creditId, onClose }: { creditId: string; onClose: 
   const blockAccidentalSubmit = () => {
     setSubmitBlocked(true);
     window.setTimeout(() => setSubmitBlocked(false), 450);
+  };
+
+  const remindViaWhatsApp = () => {
+    openWhatsApp(record.customer_phone, buildCreditReminderText(record, profile));
+    toast.success('Opening WhatsApp…');
   };
 
   const submitPayment = async () => {
@@ -401,23 +409,37 @@ function CreditDetailsModal({ creditId, onClose }: { creditId: string; onClose: 
               'border-shell-line bg-shell-surface pb-[max(1rem,env(safe-area-inset-bottom))]',
             )}
           >
-            <Button
-              type="button"
-              size="lg"
-              className="w-full bg-violet-400 text-[#160a2e] shadow-[0_0_0_1px_rgba(167,139,250,0.35)] hover:bg-violet-300 disabled:bg-violet-400/35 disabled:text-[#160a2e]/70"
-              onClick={() => void submitPayment()}
-              disabled={!canSubmit}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" /> Saving…
-                </>
-              ) : (
-                <>
-                  <CreditCard size={16} /> Record payment
-                </>
-              )}
-            </Button>
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <Button
+                type="button"
+                size="lg"
+                className="w-full bg-brand-400 text-[#04231d] shadow-[0_0_0_1px_rgba(0,179,152,0.35)] hover:bg-brand-300 disabled:bg-brand-400/35 disabled:text-[#04231d]/70"
+                onClick={() => void submitPayment()}
+                disabled={!canSubmit}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" /> Saving…
+                  </>
+                ) : (
+                  <>
+                    <CreditCard size={16} /> Record payment
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                title={record.customer_phone ? 'Send a payment reminder via WhatsApp' : 'No phone number on this credit'}
+                className="border-[#25d366]/40 bg-[#25d366]/10 text-[#25d366] hover:bg-[#25d366]/20"
+                onClick={remindViaWhatsApp}
+                disabled={!record.customer_phone}
+              >
+                <MessageCircle size={16} />
+                <span className="hidden sm:inline">Remind via WhatsApp</span>
+              </Button>
+            </div>
           </div>
           ) : null}
         
@@ -433,7 +455,7 @@ function Detail({ label, value, highlight }: { label: string; value?: string; hi
       <span
         className={cn(
           'text-right font-medium tabular-nums',
-          highlight ? 'font-display text-base font-bold text-violet-200' : 'text-shell-ink',
+          highlight ? 'font-display text-base font-bold text-brand-200' : 'text-shell-ink',
         )}
       >
         {value || '—'}

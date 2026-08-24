@@ -14,7 +14,7 @@ export default function EditItemPage() {
   if (isLoading) {
     return (
       <div className="app-page flex justify-center py-20">
-        <Loader2 className="size-8 animate-spin text-violet-400" />
+        <Loader2 className="size-8 animate-spin text-brand-400" />
       </div>
     );
   }

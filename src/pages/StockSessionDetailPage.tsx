@@ -42,6 +42,8 @@ export default function StockSessionDetailPage() {
   const expectedIds = session?.expected_closing_ids ?? [];
   const confirmedIds = new Set(session?.actual_closing_ids ?? []);
   const missingIdSet = new Set(session?.missing_item_ids ?? []);
+  const openingConfirmedIds = new Set(session?.opening_confirmed_ids ?? []);
+  const openingConfirmedCount = session?.opening_confirmed_ids?.length ?? 0;
 
   const confirmedItems = useMemo(() => {
     if (!session) return [];
@@ -66,7 +68,7 @@ export default function StockSessionDetailPage() {
   if (isLoading || session === undefined || itemsMap === undefined) {
     return (
       <div className="app-page flex min-h-[40vh] items-center justify-center">
-        <Loader2 className="size-8 animate-spin text-violet-300" />
+        <Loader2 className="size-8 animate-spin text-brand-300" />
       </div>
     );
   }
@@ -135,6 +137,32 @@ export default function StockSessionDetailPage() {
             <Row k="Returns received" v={sum.returns_received_count} />
             <Row k="New stock" v={sum.new_stock_count} />
             <Row k="Expected remaining" v={sum.expected_remaining} bold />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {session.opening_snapshot_ids.length > 0 ? (
+        <Card className="border-shell-line bg-shell-surface shadow-none">
+          <CardContent className="py-4">
+            <p className="text-sm font-semibold text-shell-ink">
+              Opened with ({session.opening_snapshot_ids.length})
+            </p>
+            <p className="mt-1 text-xs text-shell-muted">
+              {openingConfirmedCount > 0
+                ? `${openingConfirmedCount} of ${session.opening_snapshot_ids.length} devices confirmed at open.`
+                : session.status === 'open'
+                  ? 'Confirm these devices from the opening checklist.'
+                  : 'Devices on the books when this session started.'}
+            </p>
+            <ul className="mt-3 space-y-2">
+              {session.opening_snapshot_ids.map((id) => {
+                const item = itemsMap?.get(id);
+                if (!item) return null;
+                return (
+                  <DeviceRow key={id} item={item} ok={openingConfirmedIds.has(id)} />
+                );
+              })}
+            </ul>
           </CardContent>
         </Card>
       ) : null}
@@ -211,7 +239,7 @@ export default function StockSessionDetailPage() {
                 <span className="font-mono text-[10px] text-shell-muted">
                   {format(parseISO(entry.at), 'dd MMM yyyy, HH:mm')}
                 </span>
-                <span className="ml-2 font-medium capitalize text-violet-300">{entry.action.replace(/_/g, ' ')}</span>
+                <span className="ml-2 font-medium capitalize text-brand-300">{entry.action.replace(/_/g, ' ')}</span>
                 {entry.detail ? <p className="mt-0.5 text-shell-muted">{entry.detail}</p> : null}
               </li>
             ))}
@@ -236,7 +264,7 @@ function DeviceRow({
       <span
         className={cn(
           'grid size-7 shrink-0 place-items-center rounded-md',
-          ok ? 'bg-emerald-400 text-[#160a2e]' : 'bg-shell-surface text-shell-muted ring-1 ring-shell-line'
+          ok ? 'bg-emerald-400 text-[#04231d]' : 'bg-shell-surface text-shell-muted ring-1 ring-shell-line'
         )}
       >
         {ok ? <Check size={14} strokeWidth={3} /> : <X size={14} />}
@@ -270,7 +298,7 @@ function Row({ k, v, bold }: { k: string; v: number; bold?: boolean }) {
       <span
         className={cn(
           'font-mono tabular-nums',
-          bold ? 'font-bold text-violet-300' : 'font-medium text-shell-ink'
+          bold ? 'font-bold text-brand-300' : 'font-medium text-shell-ink'
         )}
       >
         {v}

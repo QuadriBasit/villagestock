@@ -96,7 +96,7 @@ export default function CashUpPage() {
           <Wallet size={16} />
           Close day
         </Button>
-        <Button size="sm" className="bg-violet-400 text-[#160a2e] hover:bg-violet-300" onClick={() => setAddOpen(true)}>
+        <Button size="sm" className="bg-brand-400 text-[#04231d] hover:bg-brand-300" onClick={() => setAddOpen(true)}>
           <Plus size={16} />
           Add expense
         </Button>
@@ -108,7 +108,7 @@ export default function CashUpPage() {
           label="Cash sales today"
           value={formatCurrency(till.cashSales)}
           icon={Wallet}
-          iconClassName="bg-emerald-500/10 text-emerald-400"
+          iconClassName=" text-emerald-400"
         />
         <StatCard
           label="Expenses today"
@@ -116,13 +116,13 @@ export default function CashUpPage() {
           hint={`${expSummary.count} items`}
           hintClassName="text-amber-300"
           icon={Fuel}
-          iconClassName="bg-amber-500/10 text-amber-300"
+          iconClassName=" text-amber-300"
         />
         <StatCard
           label="Expected in drawer"
           value={formatCurrency(till.expected)}
           icon={Wallet}
-          iconClassName="bg-violet-400/15 text-violet-300"
+          iconClassName=" text-brand-300"
         />
       </StatGrid>
 
@@ -144,7 +144,7 @@ export default function CashUpPage() {
           <button
             type="button"
             onClick={() => setAddOpen(true)}
-            className="flex w-full items-center justify-center gap-2 border-t border-shell-line py-3 text-sm font-medium text-violet-300 transition-colors hover:bg-shell-surface-2/40"
+            className="flex w-full items-center justify-center gap-2 border-t border-shell-line py-3 text-sm font-medium text-brand-300 transition-colors hover:bg-shell-surface-2/40"
           >
             <Plus size={16} />
             Add expense
@@ -165,14 +165,14 @@ export default function CashUpPage() {
                   </div>
                 ))}
               </div>
-              <div className="flex items-center justify-between rounded-lg border border-violet-400/20 bg-violet-400/8 px-3 py-3">
+              <div className="flex items-center justify-between rounded-lg border border-brand-400/20 bg-brand-400/8 px-3 py-3">
                 <span className="text-sm font-semibold text-shell-ink">Expected cash</span>
                 <span className="font-mono text-xl font-bold tabular-nums text-shell-ink">
                   {formatCurrency(till.expected)}
                 </span>
               </div>
               <Button
-                className="w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                className="w-full bg-brand-400 text-[#04231d] hover:bg-brand-300"
                 onClick={() => setCountOpen(true)}
               >
                 <Wallet size={16} />

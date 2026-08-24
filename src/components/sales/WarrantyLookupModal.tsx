@@ -106,7 +106,7 @@ export default function WarrantyLookupModal({
                     key={code}
                     type="button"
                     onClick={() => setQ(code)}
-                    className="shell-inset-field mr-2 font-mono text-xs text-violet-300 hover:text-violet-200"
+                    className="shell-inset-field mr-2 font-mono text-xs text-brand-300 hover:text-brand-200"
                   >
                     {formatIdentifierDisplay(
                       code,
@@ -217,7 +217,7 @@ export default function WarrantyLookupModal({
                     Warranty
                   </Button>
                   <Button
-                    className="h-10 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                    className="h-10 bg-brand-400 text-[#04231d] hover:bg-brand-300"
                     onClick={() => {
                       onReturn(match);
                       onClose();

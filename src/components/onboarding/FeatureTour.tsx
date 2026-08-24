@@ -16,7 +16,7 @@ export default function FeatureTour() {
           key={title}
           className="flex gap-3 rounded-xl border border-shell-line bg-shell-surface-2/30 p-3"
         >
-          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-violet-400/15 text-violet-300">
+          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-400/15 text-brand-300">
             <Icon size={18} />
           </div>
           <div>

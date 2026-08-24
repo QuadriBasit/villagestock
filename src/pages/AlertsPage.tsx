@@ -75,19 +75,19 @@ export default function AlertsPage() {
           label="Out of stock"
           value={String(outOfStock.length)}
           icon={XCircle}
-          iconClassName="bg-red-500/10 text-red-400"
+          iconClassName=" text-red-400"
         />
         <StatCard
           label="Low stock"
           value={String(lowStock.length)}
           icon={AlertTriangle}
-          iconClassName="bg-amber-500/10 text-amber-400"
+          iconClassName=" text-amber-400"
         />
         <StatCard
           label="Last unit"
           value={String(lastUnits.length)}
           icon={Package}
-          iconClassName="bg-orange-500/10 text-orange-400"
+          iconClassName=" text-orange-400"
         />
       </StatGrid>
 
@@ -175,11 +175,11 @@ function AlertRow({ item, tone, onEdit }: { item: InventoryItem; tone: StockAler
           {isSerialized && item.serial_number ? ` · S/N ${item.serial_number}` : ''}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold tabular-nums text-violet-200">{formatCurrency(item.price)}</span>
+          <span className="text-sm font-semibold tabular-nums text-brand-200">{formatCurrency(item.price)}</span>
           <Badge className={stockAlertBadgeClass(tone, item)}>{badgeText}</Badge>
         </div>
       </div>
-      <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-violet-400">
+      <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-brand-400">
         <Pencil size={12} />
         Edit
         <ChevronRight size={14} />

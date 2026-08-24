@@ -97,6 +97,42 @@ export function useStockSessionActions() {
     return session;
   }, [user, shopOwnerId, actorUserId, activeLocationId, locationReady]);
 
+  const confirmOpeningSession = useCallback(
+    async (sessionId: string, confirmedIds: string[]): Promise<void> => {
+      if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+
+      const session = await db.stock_sessions.get(sessionId);
+      if (!session || session.user_id !== shopOwnerId || session.status !== 'open') {
+        throw new Error('Session not found or not open');
+      }
+
+      const snapshot = new Set(session.opening_snapshot_ids);
+      const confirmed = confirmedIds.filter((id) => snapshot.has(id));
+      const unconfirmed = session.opening_snapshot_ids.length - confirmed.length;
+
+      const now = new Date().toISOString();
+      const audit = [
+        ...session.audit_log,
+        {
+          at: now,
+          user_id: actorUserId,
+          action: 'opening_confirmed' as const,
+          detail:
+            unconfirmed > 0
+              ? `${confirmed.length} of ${session.opening_snapshot_ids.length} devices confirmed at open (${unconfirmed} unchecked)`
+              : `All ${session.opening_snapshot_ids.length} devices confirmed at open`,
+        },
+      ];
+
+      await db.stock_sessions.update(sessionId, {
+        opening_confirmed_ids: confirmed,
+        audit_log: audit,
+        sync_status: 'pending',
+      });
+    },
+    [user, shopOwnerId, actorUserId]
+  );
+
   const forceAbandonOpenSession = useCallback(
     async (sessionId: string, detail?: string): Promise<void> => {
       if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
@@ -300,6 +336,7 @@ export function useStockSessionActions() {
 
   return {
     openTodaySession,
+    confirmOpeningSession,
     forceAbandonOpenSession,
     loadCloseState,
     confirmCloseSession,

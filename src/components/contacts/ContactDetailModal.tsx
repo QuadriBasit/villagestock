@@ -44,7 +44,7 @@ export default function ContactDetailModal({ contact, onClose }: ContactDetailMo
       <ModalSheetFrame onClose={onClose} panelClassName={modalSheetPanelMd} backdropClassName="bg-black/70">
 <div className="flex shrink-0 items-start justify-between gap-3 border-b border-shell-line px-5 py-4">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-violet-400/15 font-display text-base font-bold text-violet-300">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-400/15 font-display text-base font-bold text-brand-300">
                 {contact.name.trim().charAt(0).toUpperCase()}
               </span>
               <div className="min-w-0">
@@ -84,7 +84,7 @@ export default function ContactDetailModal({ contact, onClose }: ContactDetailMo
                 </Button>
               </a>
               <Button
-                className="flex-1 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                className="flex-1 bg-brand-400 text-[#04231d] hover:bg-brand-300"
                 onClick={action}
               >
                 {isSupplier ? (

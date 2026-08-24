@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
             label="Gross profit"
             value={formatCurrency(metrics.profit)}
             icon={PiggyBank}
-            iconClassName="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+            iconClassName=" text-emerald-600 dark:text-emerald-400"
           />
         ) : (
           <StatCard label="Orders" value={String(metrics.salesCount)} icon={ShoppingCart} />

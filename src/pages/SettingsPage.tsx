@@ -213,7 +213,7 @@ export default function SettingsPage() {
   if (isLoading || isBizLoading) {
     return (
       <div className="app-page flex justify-center py-20">
-        <Loader2 className="size-8 animate-spin text-violet-400" />
+        <Loader2 className="size-8 animate-spin text-brand-400" />
       </div>
     );
   }
@@ -297,7 +297,7 @@ export default function SettingsPage() {
       {/* Shop Profile */}
       <section className={`${panelClass} space-y-3`}>
         <div className="mb-0.5 flex items-center gap-2">
-          <Store size={18} className="text-violet-300" />
+          <Store size={18} className="text-brand-300" />
           <h3 className="font-display font-semibold text-shell-ink">Shop Profile</h3>
         </div>
         <p className="-mt-1 text-xs text-shell-muted">
@@ -309,7 +309,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => logoInputRef.current?.click()}
-            className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-shell-line bg-shell-surface-2/40 transition-colors hover:border-violet-400/45"
+            className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-shell-line bg-shell-surface-2/40 transition-colors hover:border-brand-400/45"
           >
             {currentLogo ? (
               <img src={currentLogo} alt="Shop logo" className="w-full h-full object-cover rounded-xl" />
@@ -323,7 +323,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => logoInputRef.current?.click()}
-              className="text-xs text-violet-300 mt-1 hover:underline"
+              className="text-xs text-brand-300 mt-1 hover:underline"
             >
               {currentLogo ? 'Change logo' : 'Upload logo'}
             </button>
@@ -400,7 +400,7 @@ export default function SettingsPage() {
 
       <section className={`${panelClass} space-y-3`}>
         <div className="mb-0.5 flex items-center gap-2">
-          <Layers size={18} className="text-violet-300" />
+          <Layers size={18} className="text-brand-300" />
           <h3 className="font-display font-semibold text-shell-ink">Receipt Design</h3>
         </div>
         <p className="-mt-1 text-xs text-shell-muted">
@@ -496,7 +496,7 @@ export default function SettingsPage() {
 
       <section className={`${panelClass} space-y-3`}>
         <div className="mb-0.5 flex items-center gap-2">
-          <Shield size={18} className="text-violet-300" />
+          <Shield size={18} className="text-brand-300" />
           <h3 className="font-display font-semibold text-shell-ink">Warranty &amp; returns</h3>
         </div>
         <p className="-mt-1 text-xs text-shell-muted">
@@ -613,7 +613,7 @@ export default function SettingsPage() {
 
       <section className={`${panelClass} space-y-3`}>
         <div className="flex items-center gap-2">
-          <Layers size={18} className="text-violet-300" />
+          <Layers size={18} className="text-brand-300" />
           <h3 className="font-display font-semibold text-shell-ink">Branches</h3>
         </div>
         <p className="text-xs text-shell-muted">
@@ -691,7 +691,7 @@ export default function SettingsPage() {
 
       <section className={`${panelClass} space-y-3`}>
         <div className="flex items-center gap-2">
-          <Users size={18} className="text-violet-300" />
+          <Users size={18} className="text-brand-300" />
           <h3 className="font-display font-semibold text-shell-ink">Team &amp; roles</h3>
         </div>
         <p className="text-sm text-shell-muted">
@@ -1011,7 +1011,7 @@ export default function SettingsPage() {
                           <span
                             className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${
                               m.role === 'owner'
-                                ? 'bg-violet-400/15 text-violet-200'
+                                ? 'bg-brand-400/15 text-brand-200'
                                 : m.role === 'manager'
                                   ? 'bg-blue-400/15 text-blue-200'
                                   : 'bg-shell-surface-2 text-shell-muted'
@@ -1103,7 +1103,7 @@ export default function SettingsPage() {
                             ) : (
                               <button
                                 type="button"
-                                className="text-[11px] font-medium text-violet-300 hover:underline"
+                                className="text-[11px] font-medium text-brand-300 hover:underline"
                                 onClick={() => {
                                   const ids = m.allowed_location_ids ?? [];
                                   setEditingMemberId(m.id);
@@ -1150,7 +1150,7 @@ export default function SettingsPage() {
       {/* Subscription / plan picker hidden — restore when billing returns.
       <section className={`${panelClass} space-y-3`}>
         <div className="flex items-center gap-2">
-          <CreditCard size={18} className="text-violet-300" />
+          <CreditCard size={18} className="text-brand-300" />
           <h3 className="font-display font-semibold text-shell-ink">Subscription</h3>
         </div>
         {businessProfile ? (
@@ -1184,7 +1184,7 @@ export default function SettingsPage() {
 
       <section className={`${panelClass} space-y-3`}>
         <div className="flex items-center gap-2">
-          <FileBarChart2 size={18} className="text-violet-300" />
+          <FileBarChart2 size={18} className="text-brand-300" />
           <h3 className="font-display font-semibold text-shell-ink">Reporting</h3>
         </div>
         <p className="text-sm text-shell-muted">

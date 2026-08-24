@@ -146,8 +146,8 @@ export default function AdminBusinessesPage() {
           <div className={cn(adminModalPanel, 'max-w-xl')} onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3 border-b border-shell-line p-5">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/30 bg-violet-400/10">
-                  <Building2 className="text-violet-300" size={22} />
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-brand-400/30 bg-brand-400/10">
+                  <Building2 className="text-brand-300" size={22} />
                 </div>
                 <div>
                   <h2 className="font-display font-bold text-shell-ink">{selected.shop_name || 'Shop'}</h2>

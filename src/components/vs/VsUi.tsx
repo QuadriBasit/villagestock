@@ -50,7 +50,7 @@ const BADGE_TONES: Record<BadgeTone, { bg: string; fg: string }> = {
   green: { bg: 'rgba(52,211,153,.14)', fg: '#6ee7b7' },
   amber: { bg: 'rgba(251,191,36,.15)', fg: '#fcd34d' },
   red: { bg: 'rgba(248,113,113,.15)', fg: '#fca5a5' },
-  violet: { bg: 'rgba(167,139,250,.16)', fg: '#c4b5fd' },
+  violet: { bg: 'rgba(0,179,152,.16)', fg: '#5ce8d1' },
   blue: { bg: 'rgba(96,165,250,.15)', fg: '#93c5fd' },
 };
 
@@ -205,7 +205,7 @@ export function VsBtn({
     width: full ? '100%' : 'auto',
   };
   const variants: Record<BtnVariant, CSSProperties> = {
-    primary: { background: 'var(--accent)', color: '#160a2e' },
+    primary: { background: 'var(--accent)', color: '#04231d' },
     ghost: { background: 'transparent', color: 'var(--ink)', borderColor: 'var(--line)' },
     subtle: { background: 'var(--surface-2)', color: 'var(--ink)', borderColor: 'var(--line)' },
     danger: { background: 'rgba(248,113,113,.14)', color: '#fca5a5' },
@@ -340,7 +340,7 @@ export function VsSeg({
         cursor: 'pointer',
         fontFamily: 'inherit',
         background: active ? 'var(--accent)' : 'var(--surface)',
-        color: active ? '#160a2e' : 'var(--muted)',
+        color: active ? '#04231d' : 'var(--muted)',
         ...style,
       }}
     >

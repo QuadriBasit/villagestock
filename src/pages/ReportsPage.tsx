@@ -171,7 +171,7 @@ export default function ReportsPage() {
       >
         <Button
           size="sm"
-          className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          className="bg-brand-400 text-[#04231d] hover:bg-brand-300"
           onClick={handleExport}
         >
           <FileDown size={16} />
@@ -184,7 +184,7 @@ export default function ReportsPage() {
         onClick={() => navigate('/reports/stock-sessions')}
         className="flex w-full items-center gap-3 rounded-xl border border-shell-line bg-shell-surface p-4 text-left transition-colors hover:bg-shell-surface-2/40 md:p-5"
       >
-        <span className="grid size-11 shrink-0 place-items-center rounded-[10px] bg-violet-400/15 text-violet-300">
+        <span className="grid size-11 shrink-0 place-items-center rounded-[10px] bg-brand-400/15 text-brand-300">
           <Warehouse size={20} strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">
@@ -205,7 +205,7 @@ export default function ReportsPage() {
                 Switch between quick views or apply a custom range.
               </CardDescription>
             </div>
-            <span className="grid size-9 place-items-center rounded-[10px] bg-violet-400/15 text-violet-300">
+            <span className="grid size-9 place-items-center rounded-[10px] bg-brand-400/15 text-brand-300">
               <CalendarRange size={18} />
             </span>
           </div>
@@ -223,7 +223,7 @@ export default function ReportsPage() {
                     className={cn(
                       'relative shrink-0 px-3.5 py-2.5 text-xs font-medium transition-colors',
                       active
-                        ? 'text-shell-ink after:absolute after:inset-x-3.5 after:bottom-0 after:h-px after:bg-violet-400/70'
+                        ? 'text-shell-ink after:absolute after:inset-x-3.5 after:bottom-0 after:h-px after:bg-brand-400/70'
                         : 'text-shell-muted hover:text-shell-ink',
                     )}
                   >
@@ -252,7 +252,7 @@ export default function ReportsPage() {
                     variant="outline"
                     className="w-full justify-start gap-2 border-shell-line bg-shell-surface-2/40 text-shell-ink hover:bg-shell-surface-2 sm:w-auto"
                   >
-                    <CalendarRange size={16} className="shrink-0 text-violet-300" />
+                    <CalendarRange size={16} className="shrink-0 text-brand-300" />
                     <span className="tabular-nums">
                       {format(ymdParse(customStart), 'd MMM yyyy')} – {format(ymdParse(customEnd), 'd MMM yyyy')}
                     </span>
@@ -278,7 +278,7 @@ export default function ReportsPage() {
                     <Button
                       type="button"
                       size="sm"
-                      className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                      className="bg-brand-400 text-[#04231d] hover:bg-brand-300"
                       onClick={() => {
                         if (rangeDraft?.from) {
                           setCustomStart(format(rangeDraft.from, 'yyyy-MM-dd'));
@@ -320,20 +320,20 @@ export default function ReportsPage() {
             label="Profit"
             value={formatCurrency(metrics.profit)}
             icon={PiggyBank}
-            iconClassName="bg-emerald-500/10 text-emerald-400"
+            iconClassName="text-emerald-400"
           />
           <StatCard label="Returns" value={String(metrics.returnsCount)} icon={RotateCcw} />
           <StatCard
             label="Refund value"
             value={formatCurrency(metrics.refundValue)}
             icon={RotateCcw}
-            iconClassName="bg-red-500/10 text-red-400"
+            iconClassName="text-red-400"
           />
           <StatCard
             label="Net profit"
             value={formatCurrency(metrics.netProfit)}
             icon={TrendingUp}
-            iconClassName="bg-violet-400/15 text-violet-300"
+            iconClassName="text-brand-300"
             hint="After returns"
           />
         </StatGrid>
@@ -422,7 +422,7 @@ function HighlightCard({
       </CardHeader>
       <CardContent className="space-y-1">
         <div className="text-lg font-semibold text-shell-ink">{value}</div>
-        {subvalue ? <div className="text-sm font-medium text-violet-300">{subvalue}</div> : null}
+        {subvalue ? <div className="text-sm font-medium text-brand-300">{subvalue}</div> : null}
       </CardContent>
     </Card>
   );

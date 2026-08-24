@@ -99,7 +99,7 @@ export default function AddContactModal({ open, type, onClose, onSave }: AddCont
               />
             </Field>
             <Button
-              className="w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+              className="w-full bg-brand-400 text-[#04231d] hover:bg-brand-300"
               disabled={!name.trim() || saving}
               onClick={() => void save()}
             >

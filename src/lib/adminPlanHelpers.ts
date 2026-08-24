@@ -42,7 +42,7 @@ export function planBadgeClass(plan: string, status: string): string {
     case 'starter':
       return 'bg-emerald-500/15 text-emerald-200 ring-emerald-400/25';
     default:
-      return 'bg-violet-500/15 text-violet-200 ring-violet-400/25';
+      return 'bg-brand-500/15 text-brand-200 ring-brand-400/25';
   }
 }
 

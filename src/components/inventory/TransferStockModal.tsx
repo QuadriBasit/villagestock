@@ -240,7 +240,7 @@ export default function TransferStockModal({
                     <button
                       type="button"
                       onClick={() => setPick(null)}
-                      className="shrink-0 text-xs font-semibold text-violet-400 hover:text-violet-300"
+                      className="shrink-0 text-xs font-semibold text-brand-400 hover:text-brand-300"
                     >
                       Change
                     </button>
@@ -258,7 +258,7 @@ export default function TransferStockModal({
                       disabled={!!presetItem}
                     />
                   </div>
-                  <ArrowRight size={18} className="mb-2.5 text-violet-300" />
+                  <ArrowRight size={18} className="mb-2.5 text-brand-300" />
                   <div>
                     <label className={settingsLabel}>To</label>
                     <BranchSelect

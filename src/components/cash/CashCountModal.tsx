@@ -94,7 +94,7 @@ export default function CashCountModal({ open, till, onClose, onCloseDay }: Cash
                     ? 'Drawer balanced perfectly against expected cash.'
                     : `${variance < 0 ? 'Short by' : 'Over by'} ${formatCurrency(Math.abs(variance))} against the ${formatCurrency(expected)} expected.`}
                 </p>
-                <Button className="mt-5 w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300" onClick={onClose}>
+                <Button className="mt-5 w-full bg-brand-400 text-[#04231d] hover:bg-brand-300" onClick={onClose}>
                   Done
                 </Button>
               </div>
@@ -142,7 +142,7 @@ export default function CashCountModal({ open, till, onClose, onCloseDay }: Cash
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-violet-400/20 bg-violet-400/8 px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand-400/20 bg-brand-400/8 px-4 py-3">
                   <div className="flex flex-wrap gap-5">
                     <Stat label="Expected" value={formatCurrency(expected)} />
                     <Stat label="Counted" value={formatCurrency(counted)} />
@@ -155,7 +155,7 @@ export default function CashCountModal({ open, till, onClose, onCloseDay }: Cash
                     />
                   </div>
                   <Button
-                    className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                    className="bg-brand-400 text-[#04231d] hover:bg-brand-300"
                     disabled={counted <= 0 || posting}
                     onClick={() => void post()}
                   >

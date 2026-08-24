@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, Copy, MessageCircle, Search } from 'lucide-react';
+import { toast } from 'sonner';
 import { db } from '@/lib/db';
+import { normalizePhone } from '@/lib/whatsapp';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { useShopProfile } from '@/hooks/useShopProfile';
@@ -54,6 +56,7 @@ export default function PriceListPage() {
   const [cardQ, setCardQ] = useState('');
   const [copied, setCopied] = useState(false);
   const [seeded, setSeeded] = useState(false);
+  const [sendTo, setSendTo] = useState('');
 
   useEffect(() => {
     if (!inStock?.length || seeded) return;
@@ -110,8 +113,15 @@ export default function PriceListPage() {
 
   const shareWhatsApp = async () => {
     if (!text) return;
+    const msisdn = normalizePhone(sendTo);
     await navigator.clipboard.writeText(text).catch(() => undefined);
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    if (sendTo.trim() && !msisdn) {
+      toast.error('That phone number does not look valid — check it or leave it empty.');
+      return;
+    }
+    const url = msisdn
+      ? `https://wa.me/${msisdn}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -160,7 +170,7 @@ export default function PriceListPage() {
                     <div className="flex items-center gap-2 text-xs font-medium">
                       <button
                         type="button"
-                        className="text-violet-300 hover:text-violet-200"
+                        className="text-brand-300 hover:text-brand-200"
                         onClick={() => setSelected(new Set(filtered.map(i => i.id)))}
                       >
                         All
@@ -214,7 +224,7 @@ export default function PriceListPage() {
                               className={cn(
                                 'grid size-5 shrink-0 place-items-center rounded-md border',
                                 on
-                                  ? 'border-violet-400 bg-violet-400 text-[#160a2e]'
+                                  ? 'border-brand-400 bg-brand-400 text-[#04231d]'
                                   : 'border-shell-line bg-transparent'
                               )}
                             >
@@ -280,7 +290,7 @@ export default function PriceListPage() {
                         className={cn(
                           'flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
                           on
-                            ? 'border-violet-400/50 bg-violet-400/8'
+                            ? 'border-brand-400/50 bg-brand-400/8'
                             : 'border-shell-line bg-shell-surface-2/30 hover:bg-shell-surface-2/50'
                         )}
                       >
@@ -292,7 +302,7 @@ export default function PriceListPage() {
                             {flags.includes('IDM') ? ' · IDM' : ''}
                           </p>
                         </div>
-                        {on ? <Check size={16} className="shrink-0 text-violet-300" /> : null}
+                        {on ? <Check size={16} className="shrink-0 text-brand-300" /> : null}
                       </button>
                     );
                   })}
@@ -312,6 +322,14 @@ export default function PriceListPage() {
               No in-stock products to share.
             </Card>
           )}
+
+          <Input
+            type="tel"
+            value={sendTo}
+            onChange={e => setSendTo(e.target.value)}
+            placeholder="Optional: customer phone e.g. 0803 123 4567"
+            className="shell-inset-field w-full rounded-lg border border-shell-line bg-shell-surface-2/40 px-3 py-2 text-sm text-shell-ink outline-none placeholder:text-shell-muted focus:border-shell-muted/60"
+          />
 
           <div className="grid grid-cols-2 gap-2">
             <Button
@@ -356,8 +374,8 @@ function ProductCardPreview({
 
   return (
     <Card className="overflow-hidden border-shell-line bg-shell-surface p-0 shadow-none">
-      <div className="flex items-center gap-3 border-b border-shell-line bg-gradient-to-br from-violet-400/20 to-shell-surface px-4 py-4">
-        <span className="grid size-9 place-items-center rounded-lg bg-violet-400 font-display text-sm font-bold text-[#160a2e]">
+      <div className="flex items-center gap-3 border-b border-shell-line bg-gradient-to-br from-brand-400/20 to-shell-surface px-4 py-4">
+        <span className="grid size-9 place-items-center rounded-lg bg-brand-400 font-display text-sm font-bold text-[#04231d]">
           {initial}
         </span>
         <div>
@@ -386,7 +404,7 @@ function ProductCardPreview({
           <h3 className="font-display text-lg font-semibold text-shell-ink">{item.name}</h3>
           <p className="mt-0.5 text-sm text-shell-muted">{itemSpecLine(item)}</p>
         </div>
-        <p className="font-mono text-3xl font-bold text-violet-300">{formatCurrency(item.price)}</p>
+        <p className="font-mono text-3xl font-bold text-brand-300">{formatCurrency(item.price)}</p>
         {shop.phone ? (
           <p className="border-t border-shell-line pt-3 text-xs text-shell-muted">📞 {shop.phone}</p>
         ) : null}

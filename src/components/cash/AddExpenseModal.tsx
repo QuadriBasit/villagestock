@@ -21,7 +21,7 @@ const EXPENSE_CATS: {
   { key: 'nepa', label: 'NEPA / power', icon: Zap, tone: 'text-yellow-300' },
   { key: 'transport', label: 'Transport', icon: Truck, tone: 'text-sky-300' },
   { key: 'feeding', label: 'Feeding / lunch', icon: Utensils, tone: 'text-orange-300' },
-  { key: 'rent', label: 'Rent / levies', icon: Wallet, tone: 'text-violet-300' },
+  { key: 'rent', label: 'Rent / levies', icon: Wallet, tone: 'text-brand-300' },
   { key: 'supplies', label: 'Shop supplies', icon: Package, tone: 'text-emerald-300' },
   { key: 'other', label: 'Other', icon: Wallet, tone: 'text-shell-muted' },
 ];
@@ -114,7 +114,7 @@ export default function AddExpenseModal({ open, onClose, onSave }: AddExpenseMod
                   >
                     Add another
                   </Button>
-                  <Button className="bg-violet-400 text-[#160a2e] hover:bg-violet-300" onClick={onClose}>
+                  <Button className="bg-brand-400 text-[#04231d] hover:bg-brand-300" onClick={onClose}>
                     Done
                   </Button>
                 </div>
@@ -136,7 +136,7 @@ export default function AddExpenseModal({ open, onClose, onSave }: AddExpenseMod
                           className={cn(
                             'h-auto justify-start gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-medium shadow-none active:scale-100',
                             on
-                              ? 'border-violet-400/50 bg-violet-400/10 text-shell-ink'
+                              ? 'border-brand-400/50 bg-brand-400/10 text-shell-ink'
                               : 'border-shell-line bg-shell-surface-2/30 text-shell-muted hover:text-shell-ink',
                           )}
                         >
@@ -184,7 +184,7 @@ export default function AddExpenseModal({ open, onClose, onSave }: AddExpenseMod
                 ) : null}
 
                 <Button
-                  className="w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                  className="w-full bg-brand-400 text-[#04231d] hover:bg-brand-300"
                   disabled={amount <= 0 || saving}
                   onClick={() => void save()}
                 >

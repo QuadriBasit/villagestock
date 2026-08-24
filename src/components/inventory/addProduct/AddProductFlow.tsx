@@ -359,7 +359,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                     Repair ticket opened for {saved.engineer}.
                   </p>
                 ) : null}
-                <Button className="mt-5 w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300" onClick={handleClose}>
+                <Button className="mt-5 w-full bg-brand-400 text-[#04231d] hover:bg-brand-300" onClick={handleClose}>
                   Done
                 </Button>
               </div>
@@ -856,7 +856,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                       {idm ? <Badge className="bg-amber-400/15 text-amber-300">IDM</Badge> : null}
                       {tracks ? <Badge className="bg-sky-400/15 text-sky-300">{idType} tracked</Badge> : null}
                       {state.cat === 'Phone' && formatNetworkSummary(state.network) ? (
-                        <Badge className="bg-indigo-400/15 text-indigo-200">{formatNetworkSummary(state.network)}</Badge>
+                        <Badge className="bg-brand-400/15 text-brand-200">{formatNetworkSummary(state.network)}</Badge>
                       ) : null}
                     </div>
                     <p className="mt-1 font-display text-[17px] font-semibold text-shell-ink">
@@ -966,7 +966,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
               <div className="flex-1" />
               <Button
                 type="button"
-                className="bg-violet-400 text-[#160a2e] hover:bg-violet-300 disabled:opacity-45"
+                className="bg-brand-400 text-[#04231d] hover:bg-brand-300 disabled:opacity-45"
                 disabled={!canNext() || saving}
                 onClick={next}
               >

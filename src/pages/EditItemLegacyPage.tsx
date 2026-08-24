@@ -30,7 +30,7 @@ export default function EditItemLegacyPage() {
   if (isLoading) {
     return (
       <div className="app-page flex justify-center py-20">
-        <div className="size-8 animate-spin rounded-full border-4 border-violet-400 border-t-transparent" />
+        <div className="size-8 animate-spin rounded-full border-4 border-brand-400 border-t-transparent" />
       </div>
     );
   }
@@ -40,7 +40,7 @@ export default function EditItemLegacyPage() {
       <div className="app-page flex flex-col items-center px-4 py-20 text-center">
         <Package size={48} className="mb-3 text-shell-muted" />
         <p className="font-medium text-shell-ink">Item not found</p>
-        <button onClick={() => navigate('/inventory')} className="mt-4 text-sm text-violet-400">
+        <button onClick={() => navigate('/inventory')} className="mt-4 text-sm text-brand-400">
           Back to Inventory
         </button>
       </div>
@@ -55,7 +55,7 @@ export default function EditItemLegacyPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h3 className="flex items-center gap-2 font-display text-sm font-semibold text-shell-ink">
-              <Share2 size={16} className="text-violet-300" />
+              <Share2 size={16} className="text-brand-300" />
               Promo Flyer
             </h3>
             <p className="mt-1 text-xs text-shell-muted">
@@ -73,7 +73,7 @@ export default function EditItemLegacyPage() {
       {canTransfer ? (
         <div className="rounded-xl border border-shell-line bg-shell-surface p-4">
           <div className="mb-2 flex items-center gap-2">
-            <ArrowRightLeft size={18} className="text-violet-300" />
+            <ArrowRightLeft size={18} className="text-brand-300" />
             <h3 className="font-display text-sm font-semibold text-shell-ink">Move to another branch</h3>
           </div>
           <p className="mb-3 text-xs text-shell-muted">

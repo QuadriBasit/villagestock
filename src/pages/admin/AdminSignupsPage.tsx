@@ -54,7 +54,7 @@ export default function AdminSignupsPage() {
             onClick={() => setDays(d)}
             className={
               days === d
-                ? 'rounded-xl bg-violet-500/15 px-3 py-1.5 text-sm font-semibold text-violet-200 ring-1 ring-violet-400/25'
+                ? 'rounded-xl bg-brand-500/15 px-3 py-1.5 text-sm font-semibold text-brand-200 ring-1 ring-brand-400/25'
                 : 'rounded-xl border border-shell-line px-3 py-1.5 text-sm text-shell-muted hover:bg-shell-surface-2'
             }
           >

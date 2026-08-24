@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, PackageX, Search, Warehouse } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Check, Lock, PackageX, Search, Warehouse } from 'lucide-react';
+import { db } from '@/lib/db';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import {
   PriorDayStockOpenError,
@@ -36,6 +38,8 @@ export function DashboardStockAccountability() {
   const [flash, setFlash] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [skipOpen, setSkipOpen] = useState(false);
+  const [confirmOpenStock, setConfirmOpenStock] = useState(false);
+  const [confirmCloseStock, setConfirmCloseStock] = useState(false);
   const [resolving, setResolving] = useState<InventoryItem | null>(null);
 
   const planReady = profileQ.status === 'ready';
@@ -49,14 +53,24 @@ export function DashboardStockAccountability() {
 
   const priorBlocks = !!priorOpen && businessOk;
 
+  // Devices this session opened with, with their opening-checklist state.
+  const openingIds = todaySession?.status === 'open' ? todaySession.opening_snapshot_ids : [];
+  const openingConfirmedIds = todaySession?.opening_confirmed_ids ?? [];
+  const openingItems = useLiveQuery(async () => {
+    if (openingIds.length === 0) return [];
+    const rows = await Promise.all(openingIds.map((id) => db.inventory_items.get(id)));
+    return rows.filter((i): i is InventoryItem => !!i && !i.deleted);
+  }, [openingIds.join('|')]);
+  const openingList = openingItems ?? [];
+  const confirmedSet = new Set(openingConfirmedIds);
+  const confirmedCount = openingList.filter((i) => confirmedSet.has(i.id)).length;
+
   const onOpenStock = async () => {
     setErr(null);
     setFlash(null);
     try {
       const s = await openTodaySession();
-      setFlash(
-        `Stock opened with ${s.opening_snapshot_ids.length} devices. Have a good day!`
-      );
+      navigate(`/stock/open/${s.id}`);
     } catch (e) {
       if (e instanceof PriorDayStockOpenError) {
         setErr('Close or skip the previous open session first.');
@@ -158,8 +172,8 @@ export function DashboardStockAccountability() {
               <Button
                 type="button"
                 size="lg"
-                className="h-12 w-full rounded-xl bg-violet-400 text-[#160a2e] text-base font-bold hover:bg-violet-300 sm:w-auto sm:min-w-[200px]"
-                onClick={() => void onOpenStock()}
+                className="h-12 w-full rounded-xl bg-brand-400 text-[#04231d] text-base font-bold hover:bg-brand-300 sm:w-auto sm:min-w-[200px]"
+                onClick={() => setConfirmOpenStock(true)}
               >
                 <Warehouse size={20} className="mr-2" />
                 Open stock
@@ -167,15 +181,94 @@ export function DashboardStockAccountability() {
             )}
 
             {isOpenToday && todaySession && (
-              <Button
-                type="button"
-                size="lg"
-                variant="secondary"
-                className="h-12 w-full rounded-xl text-base font-bold sm:w-auto sm:min-w-[200px]"
-                onClick={() => navigate(`/stock/close/${todaySession.id}`)}
-              >
-                Close stock
-              </Button>
+              <div className="space-y-3">
+                <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="secondary"
+                    className="h-12 w-full rounded-xl text-base font-bold sm:w-auto sm:min-w-[200px]"
+                    onClick={() => setConfirmCloseStock(true)}
+                  >
+                    Close stock
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/stock/open/${todaySession.id}`)}
+                    className="text-xs font-semibold text-brand-300 transition-colors hover:text-brand-200"
+                  >
+                    View opening list
+                  </button>
+                </div>
+
+                {openingList.length > 0 ? (
+                  <div className="rounded-xl border border-shell-line bg-shell-surface-2/30 p-3">
+                    <p className="mb-2 flex items-center justify-between text-xs font-semibold text-shell-ink">
+                      <span>Opened with {openingList.length} device{openingList.length === 1 ? '' : 's'}</span>
+                      <span
+                        className={cn(
+                          'font-mono tabular-nums',
+                          confirmedCount === openingList.length
+                            ? 'text-emerald-400'
+                            : 'text-amber-300'
+                        )}
+                      >
+                        {confirmedCount}/{openingList.length} confirmed
+                      </span>
+                    </p>
+                    <ul className="space-y-1">
+                      {openingList.slice(0, 4).map((item) => {
+                        const ok = confirmedSet.has(item.id);
+                        return (
+                          <li key={item.id}>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/stock/open/${todaySession.id}`)}
+                              className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-shell-surface-2"
+                            >
+                              <span
+                                className={cn(
+                                  'grid size-5 shrink-0 place-items-center rounded-md',
+                                  ok
+                                    ? 'bg-emerald-400/20 text-emerald-400'
+                                    : 'bg-shell-surface text-shell-muted ring-1 ring-shell-line'
+                                )}
+                              >
+                                {ok ? <Check size={12} strokeWidth={3} /> : null}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="line-clamp-1 text-xs font-medium text-shell-ink">
+                                  {item.name}
+                                </span>
+                                {(item.imei || item.serial_number) && (
+                                  <span className="block font-mono text-[10px] text-shell-muted">
+                                    {item.imei ? `IMEI ${item.imei}` : `S/N ${item.serial_number}`}
+                                  </span>
+                                )}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                      {openingList.length > 4 && (
+                        <li>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/stock/open/${todaySession.id}`)}
+                            className="w-full rounded-lg px-1.5 py-1.5 text-left text-xs font-semibold text-brand-300 transition-colors hover:bg-shell-surface-2 hover:text-brand-200"
+                          >
+                            + {openingList.length - 4} more device{openingList.length - 4 === 1 ? '' : 's'}
+                          </button>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-xs text-shell-muted">
+                    No serialized devices on the books when stock was opened.
+                  </p>
+                )}
+              </div>
             )}
 
             {closedOrNoToday && (
@@ -214,6 +307,30 @@ export function DashboardStockAccountability() {
         )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={confirmOpenStock}
+        title="Open stock for today?"
+        message="A session will start with a snapshot of every serialized device currently in stock, and you'll confirm them on the opening checklist."
+        confirmLabel="Open stock"
+        onConfirm={() => {
+          setConfirmOpenStock(false);
+          void onOpenStock();
+        }}
+        onCancel={() => setConfirmOpenStock(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmCloseStock}
+        title="Close stock for today?"
+        message="You'll count each device expected on the shelf. Devices you can't confirm will be marked missing, so make sure you're ready to do the count."
+        confirmLabel="Start closing"
+        onConfirm={() => {
+          setConfirmCloseStock(false);
+          if (todaySession) navigate(`/stock/close/${todaySession.id}`);
+        }}
+        onCancel={() => setConfirmCloseStock(false)}
+      />
 
       <ConfirmDialog
         open={skipOpen}
@@ -294,19 +411,19 @@ function ResolveMissingModal({
                 className={cn(
                   'h-auto w-full justify-start gap-2 rounded-xl px-3 py-2 text-left text-sm font-normal shadow-none active:scale-100',
                   resolution === val
-                    ? 'border-violet-400/40 bg-violet-400/10 text-shell-ink'
+                    ? 'border-brand-400/40 bg-brand-400/10 text-shell-ink'
                     : 'border-shell-line text-shell-muted hover:text-shell-ink',
                 )}
               >
                 <span
                   className={cn(
                     'grid size-4 shrink-0 place-items-center rounded-full border',
-                    resolution === val ? 'border-violet-400 bg-violet-400' : 'border-shell-line',
+                    resolution === val ? 'border-brand-400 bg-brand-400' : 'border-shell-line',
                   )}
                   aria-hidden
                 >
                   {resolution === val ? (
-                    <span className="size-1.5 rounded-full bg-[#160a2e]" />
+                    <span className="size-1.5 rounded-full bg-[#04231d]" />
                   ) : null}
                 </span>
                 {label}
@@ -339,7 +456,7 @@ function ResolveMissingModal({
           </Button>
           <Button
             type="button"
-            className="flex-1 rounded-xl bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+            className="flex-1 rounded-xl bg-brand-400 text-[#04231d] hover:bg-brand-300"
             disabled={busy}
             onClick={() => void submit()}
           >

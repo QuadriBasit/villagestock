@@ -178,7 +178,7 @@ export default function SwapForm({
       <ModalSheetFrame onClose={onClose} panelClassName={cn(modalSheetPanelLg, 'border-shell-line bg-shell-surface')}>
 <div className={salesModalHeader}>
             <div className="flex items-center gap-2">
-              <ArrowRightLeft size={18} className="text-violet-300" />
+              <ArrowRightLeft size={18} className="text-brand-300" />
               <h2 className="font-display text-base font-bold text-shell-ink">
                 Device Swap / Trade-In
               </h2>
@@ -397,14 +397,14 @@ export default function SwapForm({
                 {balance >= 0 ? (
                   <>
                     <div className="text-xs text-shell-muted">Balance to pay</div>
-                    <div className="font-display text-2xl font-bold text-violet-300">
+                    <div className="font-display text-2xl font-bold text-brand-300">
                       {formatCurrency(balance)}
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="text-xs text-shell-muted">Credit to customer</div>
-                    <div className="font-display text-2xl font-bold text-violet-300">
+                    <div className="font-display text-2xl font-bold text-brand-300">
                       {formatCurrency(Math.abs(balance))}
                     </div>
                   </>
@@ -567,7 +567,7 @@ export default function SwapForm({
                   </button>
                   <button
                     onClick={() => setShowReceipt(true)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-400"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-400"
                   >
                     <ReceiptIcon size={16} /> View Receipt
                   </button>
@@ -577,7 +577,7 @@ export default function SwapForm({
               <button
                 onClick={handleSubmit(onSubmit)}
                 disabled={isSubmitting || !canSwap}
-                className="w-full bg-violet-400 text-[#160a2e] rounded-xl py-3.5 font-display font-semibold text-sm hover:bg-violet-300 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full bg-brand-400 text-[#04231d] rounded-xl py-3.5 font-display font-semibold text-sm hover:bg-brand-300 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>

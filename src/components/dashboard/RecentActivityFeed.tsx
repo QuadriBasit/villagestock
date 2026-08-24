@@ -8,7 +8,7 @@ import { DashboardSectionHead } from './DashboardSectionHead';
 import type { SalesRecord } from '@/types';
 
 function activityIcon(sale: SalesRecord) {
-  if (sale.sale_type === 'swap') return <ArrowRightLeft size={16} className="text-violet-400" />;
+  if (sale.sale_type === 'swap') return <ArrowRightLeft size={16} className="text-brand-400" />;
   if (sale.returned) return <RotateCcw size={16} className="text-orange-400" />;
   return <ShoppingCart size={16} className="text-emerald-400" />;
 }

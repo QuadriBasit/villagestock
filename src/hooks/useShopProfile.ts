@@ -15,8 +15,8 @@ import { supabase, isOnline } from '@/lib/supabase';
 const SETTINGS_KEY = 'shop_profile';
 const SHOP_ASSETS_BUCKET = 'shop-assets';
 export const DEFAULT_RECEIPT_THEME: ReceiptTheme = {
-  header_color: '#6c5ce7',
-  accent_color: '#6c5ce7',
+  header_color: '#00b398',
+  accent_color: '#00b398',
   text_color: '#0f172a',
   paper_color: '#ffffff',
 };

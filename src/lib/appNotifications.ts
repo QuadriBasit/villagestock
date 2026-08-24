@@ -230,7 +230,7 @@ export function notificationIconToneClass(tone: AppNotificationTone): string {
     case 'teal':
       return 'bg-teal-500/15 text-teal-300';
     case 'violet':
-      return 'bg-violet-500/15 text-violet-300';
+      return 'bg-brand-500/15 text-brand-300';
     case 'muted':
       return 'bg-shell-surface-2 text-shell-muted';
     default:

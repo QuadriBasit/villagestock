@@ -67,7 +67,7 @@ export default function OnboardingPage() {
   if (authLoading || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-shell-bg">
-        <Loader2 className="size-8 animate-spin text-violet-400" />
+        <Loader2 className="size-8 animate-spin text-brand-400" />
       </div>
     );
   }
@@ -75,7 +75,7 @@ export default function OnboardingPage() {
   if (!isReady) {
     return (
       <div className="flex h-screen items-center justify-center bg-shell-bg">
-        <Loader2 className="size-8 animate-spin text-violet-400" />
+        <Loader2 className="size-8 animate-spin text-brand-400" />
       </div>
     );
   }
@@ -148,12 +148,12 @@ export default function OnboardingPage() {
   return (
     <div className="relative flex min-h-svh flex-col items-center overflow-hidden bg-shell-bg px-4 py-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] md:py-14">
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(167,139,250,0.18),transparent),radial-gradient(ellipse_50%_40%_at_0%_100%,rgba(52,211,153,0.08),transparent)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(0,179,152,0.18),transparent),radial-gradient(ellipse_50%_40%_at_0%_100%,rgba(52,211,153,0.08),transparent)]"
         aria-hidden
       />
       <div className="relative w-full max-w-lg">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-3 grid size-14 place-items-center rounded-2xl bg-violet-400 text-[#160a2e] shadow-lg shadow-violet-400/20 ring-4 ring-violet-400/15">
+          <div className="mb-3 grid size-14 place-items-center rounded-2xl bg-brand-400 text-[#04231d] shadow-lg shadow-brand-400/20 ring-4 ring-brand-400/15">
             <Package size={28} strokeWidth={2.2} />
           </div>
           <p className="text-xs font-semibold uppercase tracking-wide text-shell-muted">

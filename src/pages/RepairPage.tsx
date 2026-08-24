@@ -24,7 +24,7 @@ const VIEW_TABS: { value: ViewMode; label: string }[] = [
 ];
 
 const KANBAN_COLS: { key: RepairStatus; label: string; dot: string }[] = [
-  { key: 'sent', label: 'Diagnosing', dot: 'bg-violet-400' },
+  { key: 'sent', label: 'Diagnosing', dot: 'bg-brand-400' },
   { key: 'in_progress', label: 'In progress', dot: 'bg-blue-400' },
   { key: 'completed', label: 'Ready for pickup', dot: 'bg-emerald-400' },
 ];
@@ -66,15 +66,15 @@ export default function RepairPage() {
   if (repairs.length === 0 && collectedRepairs.length === 0) {
     return (
       <div className="app-page flex flex-col items-center px-4 py-20 text-center">
-        <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-violet-400/10">
-          <Wrench size={28} className="text-violet-300" />
+        <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-brand-400/10">
+          <Wrench size={28} className="text-brand-300" />
         </div>
         <h2 className="font-display text-lg font-semibold text-shell-ink">No items out for repair</h2>
         <p className="mt-1 max-w-sm text-sm text-shell-muted">
           Send a device from inventory to a repair shop or technician to track it here.
         </p>
         <Button
-          className="mt-4 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          className="mt-4 bg-brand-400 text-[#04231d] hover:bg-brand-300"
           onClick={() => navigate('/inventory')}
         >
           <Plus size={16} />
@@ -96,7 +96,7 @@ export default function RepairPage() {
       >
         <Button
           size="sm"
-          className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          className="bg-brand-400 text-[#04231d] hover:bg-brand-300"
           onClick={() => navigate('/inventory')}
         >
           <Plus size={16} />

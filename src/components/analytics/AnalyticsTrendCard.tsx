@@ -61,7 +61,7 @@ export function AnalyticsTrendCard({ days, onDaysChange }: AnalyticsTrendCardPro
           <SimpleAreaChart
             data={series.map(point => ({ label: point.label, value: point.revenue }))}
             isDark={isDark}
-            color="#a78bfa"
+            color="#00b398"
             valueFormatter={compactCurrency}
             maxXLabels={days === 7 ? 4 : 5}
           />

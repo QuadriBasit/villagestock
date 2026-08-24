@@ -20,7 +20,7 @@ export function StatCard({ label, value, icon: Icon, iconClassName, hint, hintCl
           {Icon ? (
             <span
               className={cn(
-                'grid size-8 place-items-center rounded-lg bg-violet-500/15 text-violet-300',
+                'grid size-8 place-items-center rounded-lg bg-shell-surface-2 text-brand-300',
                 iconClassName
               )}
             >

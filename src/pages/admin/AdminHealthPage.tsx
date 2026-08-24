@@ -26,7 +26,7 @@ const ATTENTION_STYLE: Record<AdminAttentionItem['kind'], string> = {
   trial_expiring: 'bg-amber-500/15 text-amber-200',
   inactive: 'bg-slate-500/15 text-slate-200',
   disabled: 'bg-red-500/15 text-red-200',
-  onboarding_pending: 'bg-violet-500/15 text-violet-200',
+  onboarding_pending: 'bg-brand-500/15 text-brand-200',
 };
 
 export default function AdminHealthPage() {
@@ -92,7 +92,7 @@ export default function AdminHealthPage() {
             className={cn(
               'rounded-xl px-4 py-2 text-sm font-semibold transition-colors',
               tab === key
-                ? 'bg-violet-500/15 text-violet-200 ring-1 ring-violet-400/25'
+                ? 'bg-brand-500/15 text-brand-200 ring-1 ring-brand-400/25'
                 : 'border border-shell-line text-shell-muted hover:bg-shell-surface-2',
             )}
           >
@@ -118,7 +118,7 @@ export default function AdminHealthPage() {
                       <button
                         type="button"
                         onClick={() => setSelected(biz)}
-                        className="text-sm font-semibold text-violet-300 hover:underline"
+                        className="text-sm font-semibold text-brand-300 hover:underline"
                       >
                         Manage
                       </button>

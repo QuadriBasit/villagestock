@@ -68,7 +68,7 @@ export default function PurchasingPage() {
       <PageHeader title="Purchasing" subtitle="Stock you buy in, and what you still owe your suppliers">
         <Button
           size="sm"
-          className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+          className="bg-brand-400 text-[#04231d] hover:bg-brand-300"
           onClick={() => setRecordOpen(true)}
         >
           <Plus size={16} />
@@ -81,7 +81,7 @@ export default function PurchasingPage() {
           label="Owed to suppliers"
           value={formatCurrency(supplierDebt)}
           icon={AlertTriangle}
-          iconClassName="bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300"
+          iconClassName=" text-amber-600 dark:text-amber-300"
           hint={owingSuppliers.length ? `${owingSuppliers.length} on credit` : undefined}
           hintClassName="text-amber-300"
         />
@@ -164,7 +164,7 @@ export default function PurchasingPage() {
                     key={supplier.id}
                     className="flex items-center gap-3 rounded-lg border border-shell-line bg-shell-surface-2/35 px-3 py-2.5"
                   >
-                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-violet-400/15 font-display text-sm font-bold text-violet-300">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-400/15 font-display text-sm font-bold text-brand-300">
                       {supplier.name.trim().charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -201,7 +201,7 @@ export default function PurchasingPage() {
               Goods just arrived from a plug? Log them here — supplier debt updates with the order.
             </p>
             <Button
-              className="mt-4 w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+              className="mt-4 w-full bg-brand-400 text-[#04231d] hover:bg-brand-300"
               onClick={() => setRecordOpen(true)}
             >
               <Plus size={16} />

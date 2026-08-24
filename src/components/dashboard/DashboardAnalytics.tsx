@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
 import { SimpleAreaChart, SimpleDonutChart } from '@/components/charts/LightCharts';
 
-const PIE_PALETTE = ['#a78bfa', '#34d399', '#60a5fa', '#fbbf24', '#f472b6', '#fb7185'];
+const PIE_PALETTE = ['#00b398', '#34d399', '#60a5fa', '#fbbf24', '#f472b6', '#fb7185'];
 const compactNumber = new Intl.NumberFormat('en-NG', { notation: 'compact', maximumFractionDigits: 1 });
 const compactCurrency = (value: number) => `₦${compactNumber.format(value)}`;
 
@@ -63,7 +63,7 @@ export function DashboardAnalytics({
               <SimpleAreaChart
                 data={series.map(point => ({ label: point.label, value: point.revenue }))}
                 isDark={isDark}
-                color="#a78bfa"
+                color="#00b398"
                 valueFormatter={compactCurrency}
                 showRecentSummary
                 maxXLabels={5}

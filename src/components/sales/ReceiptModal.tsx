@@ -3,6 +3,7 @@ import {
   Share2,
   Download,
   Loader2,
+  MessageCircle,
   RefreshCw,
   PencilLine,
   RotateCcw,
@@ -17,6 +18,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ColorPickerField } from "@/components/ui/ColorPickerField";
 import { parseMoneyDigits } from "@/lib/utils";
+import { buildReceiptText, openWhatsApp } from "@/lib/whatsapp";
 import type { SalesRecord } from "@/types";
 import { DEFAULT_RECEIPT_THEME } from "@/hooks/useShopProfile";
 
@@ -247,6 +249,45 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
       pdf.save(`receipt-${sale.receipt_number}.pdf`);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Could not create PDF");
+    }
+  };
+
+  /**
+   * Share the receipt PNG through WhatsApp when the Web Share API supports
+   * files (mobile), otherwise fall back to a wa.me deep link with the text
+   * version of the receipt.
+   */
+  const handleWhatsApp = () => {
+    setActionError(null);
+    if (capture.status !== "ready") return;
+    const { blob } = capture;
+
+    try {
+      const file = new File([blob], `receipt-${sale.receipt_number}.png`, {
+        type: "image/png",
+      });
+      let canShareFiles = false;
+      try {
+        canShareFiles = navigator.canShare?.({ files: [file] }) === true;
+      } catch {
+        canShareFiles = false;
+      }
+      if (canShareFiles && navigator.share) {
+        void navigator
+          .share({
+            title: `Receipt ${sale.receipt_number}`,
+            text: `${profile.shop_name || "VillageStock"} — ${sale.item_name}`,
+            files: [file],
+          })
+          .catch((err) => {
+            if (err instanceof Error && err.name === "AbortError") return;
+            openWhatsApp(sale.customer_phone, buildReceiptText(sale, profile));
+          });
+        return;
+      }
+      openWhatsApp(sale.customer_phone, buildReceiptText(sale, profile));
+    } catch {
+      openWhatsApp(sale.customer_phone, buildReceiptText(sale, profile));
     }
   };
 
@@ -530,6 +571,19 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
               <>
                 <button
                   type="button"
+                  onClick={handleWhatsApp}
+                  disabled={!ready}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#25d366] py-3 text-sm font-semibold text-[#0b141a] transition-colors hover:bg-[#20bd5a] disabled:opacity-60"
+                >
+                  {busy ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <MessageCircle size={16} />
+                  )}
+                  WhatsApp
+                </button>
+                <button
+                  type="button"
                   onClick={handleShare}
                   disabled={!ready}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-shell-line bg-shell-surface-2/30 py-3 text-sm font-medium text-shell-ink transition-colors hover:bg-shell-surface-2/50 disabled:opacity-60"
@@ -545,7 +599,7 @@ export default function ReceiptModal({ sale, onClose }: ReceiptModalProps) {
                   type="button"
                   onClick={handleDownloadPDF}
                   disabled={!ready}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-400 disabled:opacity-60"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-400 disabled:opacity-60"
                 >
                   {busy ? (
                     <Loader2 size={16} className="animate-spin" />

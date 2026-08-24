@@ -38,7 +38,7 @@ export function DashboardTodayHeader({
           {branchName ? ` · ${branchName}` : ''}
         </p>
         <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-shell-ink md:text-[25px]">
-          {greeting()}, {firstName} 👋
+          {greeting()}, {firstName}
         </h1>
       </div>
       <div className="flex flex-wrap items-center gap-2.5">

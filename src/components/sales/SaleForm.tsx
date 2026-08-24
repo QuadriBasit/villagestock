@@ -267,7 +267,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
       <ModalSheetFrame onClose={onClose} panelClassName={cn(modalSheetPanelMd, 'border-shell-line bg-shell-surface')}>
 <div className={salesModalHeader}>
             <div className="flex items-center gap-2">
-              <ShoppingCart size={18} className="text-violet-300" />
+              <ShoppingCart size={18} className="text-brand-300" />
               <h2 className="font-display text-base font-bold text-shell-ink">
                 Record Sale
               </h2>
@@ -626,7 +626,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
                   </button>
                   <button
                     onClick={() => setShowReceipt(true)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-violet-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-400"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-400"
                   >
                     <ReceiptIcon size={16} /> View Receipt
                   </button>
@@ -637,7 +637,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
                 type="button"
                 onClick={handleSubmit(onSubmit)}
                 disabled={isSubmitting || !canSell}
-                className="w-full bg-violet-400 text-[#160a2e] rounded-xl py-3.5 font-display font-semibold text-sm hover:bg-violet-300 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full bg-brand-400 text-[#04231d] rounded-xl py-3.5 font-display font-semibold text-sm hover:bg-brand-300 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>

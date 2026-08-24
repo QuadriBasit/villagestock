@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Loader2, Receipt, Shield, RotateCcw, Wallet, Share2 } from "lucide-react";
+import { Loader2, MessageCircle, Receipt, Shield, RotateCcw, Wallet, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/Button";
 import { DateTimeField, toLocalDatetimeValue } from "@/components/ui/DateTimeField";
 import { CategoryThumb } from "@/components/inventory/CategoryThumb";
 import { useSalesActions } from "@/hooks/useSalesActions";
+import { useShopProfile } from "@/hooks/useShopProfile";
+import { buildReceiptText, openWhatsApp } from "@/lib/whatsapp";
 import { db } from "@/lib/db";
 import { cn, formatCurrency } from "@/lib/utils";
 import { modalSheetBodyScroll, modalSheetPanelMd } from '@/lib/modalSheet';
@@ -49,6 +51,7 @@ export default function SaleDetailModal({
   onRecordPayment,
 }: SaleDetailModalProps) {
   const { updateSaleSoldAt } = useSalesActions();
+  const { profile } = useShopProfile();
   const liveSale = useLiveQuery(() => (sale ? db.sales_records.get(sale.id) : undefined), [sale?.id]) ?? sale;
   const [soldAt, setSoldAt] = useState(
     liveSale ? toLocalDatetimeValue(new Date(liveSale.sold_at)) : toLocalDatetimeValue(new Date()),
@@ -89,6 +92,15 @@ export default function SaleDetailModal({
     } finally {
       setSavingDate(false);
     }
+  };
+
+  const sendWhatsAppReceipt = () => {
+    openWhatsApp(liveSale.customer_phone, buildReceiptText(liveSale, profile));
+    toast.success(
+      liveSale.customer_phone
+        ? "Opening WhatsApp…"
+        : "Opening WhatsApp — pick a chat to send the receipt",
+    );
   };
 
   return (
@@ -236,7 +248,7 @@ export default function SaleDetailModal({
               </Button>
               {owing ? (
                 <Button
-                  className="h-10 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                  className="h-10 bg-brand-400 text-[#04231d] hover:bg-brand-300"
                   onClick={() => onRecordPayment?.(liveSale)}
                 >
                   <Wallet size={16} />
@@ -244,7 +256,7 @@ export default function SaleDetailModal({
                 </Button>
               ) : (
                 <Button
-                  className="h-10 bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                  className="h-10 bg-brand-400 text-[#04231d] hover:bg-brand-300"
                   onClick={() => onReceipt(liveSale)}
                 >
                   <Share2 size={16} />
@@ -252,6 +264,15 @@ export default function SaleDetailModal({
                 </Button>
               )}
             </div>
+
+            <Button
+              variant="outline"
+              className="mt-2 h-10 w-full border-[#25d366]/40 bg-[#25d366]/10 text-[#25d366] hover:bg-[#25d366]/20"
+              onClick={sendWhatsAppReceipt}
+            >
+              <MessageCircle size={16} />
+              WhatsApp receipt
+            </Button>
 
             <div className="mt-3 flex flex-wrap gap-2">
               <Badge
@@ -274,7 +295,7 @@ export default function SaleDetailModal({
                 </Badge>
               ) : null}
               {sale.sale_type === "swap" ? (
-                <Badge className="border-violet-400/25 bg-violet-400/10 text-violet-200">
+                <Badge className="border-brand-400/25 bg-brand-400/10 text-brand-200">
                   Swap
                 </Badge>
               ) : null}

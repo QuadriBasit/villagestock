@@ -31,7 +31,7 @@ const CATEGORY_TONE: Record<Exclude<AuditCategory, 'all'>, string> = {
   sales: '#34d399',
   money: '#fbbf24',
   stock: '#60a5fa',
-  repairs: '#a78bfa',
+  repairs: '#00b398',
   staff: '#8794ab',
 };
 

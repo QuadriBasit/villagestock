@@ -4,7 +4,7 @@
   --auth-muted: #8190a3;
   --auth-border: rgba(255, 255, 255, 0.08);
   --auth-card: rgba(15, 20, 29, 0.82);
-  --auth-accent: #a78bfa;
+  --auth-accent: #00b398;
   --auth-accent-2: #00e5c3;
 
   position: relative;
@@ -13,7 +13,7 @@
   flex-direction: column;
   background: var(--auth-bg);
   color: var(--auth-text);
-  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
 .vs-auth-page .vs-aurora {
@@ -58,7 +58,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
-  font-family: 'Syne', ui-sans-serif, system-ui, sans-serif;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -74,7 +74,7 @@
   border-radius: 0.65rem;
   background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-2));
   box-shadow: 0 4px 18px rgba(167, 139, 250, 0.35);
-  color: #160a2e;
+  color: #04231d;
 }
 
 .vs-auth-logo span {
@@ -82,7 +82,7 @@
 }
 
 .vs-auth-headline {
-  font-family: 'Syne', ui-sans-serif, system-ui, sans-serif;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(1.85rem, 3vw, 2.45rem);
   font-weight: 700;
   line-height: 1.12;
@@ -261,8 +261,8 @@
   font-family: inherit;
   cursor: pointer;
   transition: filter 0.15s, transform 0.1s;
-  background: linear-gradient(135deg, #a78bfa, #8b5cf6);
-  color: #160a2e;
+  background: linear-gradient(135deg, #00b398, #008f7b);
+  color: #04231d;
 }
 
 .vs-auth-btn-primary:hover:not(:disabled) {
@@ -384,7 +384,7 @@
 
 .vs-auth-panel-title {
   margin-bottom: 0.35rem;
-  font-family: 'Syne', ui-sans-serif, system-ui, sans-serif;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 1.125rem;
   font-weight: 600;
   display: flex;

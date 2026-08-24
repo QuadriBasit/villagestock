@@ -81,7 +81,7 @@ export default function DashboardPage() {
           label="Today's revenue"
           value={formatCurrency(todaySales.revenue)}
           icon={ShoppingCart}
-          iconClassName="bg-violet-400/15 text-violet-400"
+          iconClassName="text-brand-400"
           hint={todaySales.count > 0 ? `${todaySales.count} units sold` : undefined}
         />
         {canViewProfit ? (
@@ -89,7 +89,7 @@ export default function DashboardPage() {
             label="Today's profit"
             value={formatCurrency(todaySales.profit)}
             icon={TrendingUp}
-            iconClassName="bg-emerald-500/15 text-emerald-400"
+            iconClassName="text-emerald-400"
           />
         ) : (
           <StatCard label="Units sold" value={String(todaySales.count)} icon={ShoppingCart} />
@@ -99,7 +99,7 @@ export default function DashboardPage() {
             label="Owed to you"
             value={formatCurrency(creditsSummary.outstanding_amount)}
             icon={HandCoins}
-            iconClassName="bg-amber-500/15 text-amber-400"
+            iconClassName="text-amber-400"
             hint={creditsSummary.overdue_count > 0 ? `${creditsSummary.overdue_count} overdue` : undefined}
             hintClassName="text-red-400"
           />
@@ -109,7 +109,7 @@ export default function DashboardPage() {
             label="Owed to suppliers"
             value={formatCurrency(supplierDebt)}
             icon={Truck}
-            iconClassName="bg-blue-500/15 text-blue-400"
+            iconClassName="text-blue-400"
           />
         )}
       </StatGrid>
@@ -290,7 +290,7 @@ function PulseCard({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-2xl border border-shell-line bg-shell-surface p-4 text-left transition-colors hover:border-violet-400/30 hover:bg-shell-surface-2"
+      className="rounded-2xl border border-shell-line bg-shell-surface p-4 text-left transition-colors hover:border-brand-400/30 hover:bg-shell-surface-2"
     >
       <div className="mb-2 flex items-center justify-between text-shell-muted">{icon}</div>
       <p className="text-xs font-semibold uppercase tracking-wide text-shell-muted">{label}</p>

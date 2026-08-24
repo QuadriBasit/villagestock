@@ -243,7 +243,7 @@ export default function ItemDetailPage() {
           <Card className="border-shell-line bg-shell-surface p-0 shadow-none">
             <CardContent className="flex flex-col gap-2 p-3">
               <Button
-                className="h-10 w-full justify-start bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                className="h-10 w-full justify-start bg-brand-400 text-[#04231d] hover:bg-brand-300"
                 disabled={!canSell}
                 onClick={() => setSellOpen(true)}
               >

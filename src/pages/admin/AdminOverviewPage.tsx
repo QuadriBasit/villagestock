@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/Badge';
 import { adminCard, adminRefreshBtn } from '@/pages/admin/adminUi';
 
 const PLAN_COLORS: Record<string, string> = {
-  Trial: '#a78bfa',
+  Trial: '#00b398',
   Starter: '#34d399',
   Pro: '#60a5fa',
   Business: '#fbbf24',
@@ -214,7 +214,7 @@ export default function AdminOverviewPage() {
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-[11px] text-shell-muted">{b.created_at ? formatDate(b.created_at) : '—'}</p>
-                <p className="text-[10px] capitalize text-violet-300/90">{b.plan}</p>
+                <p className="text-[10px] capitalize text-brand-300/90">{b.plan}</p>
               </div>
             </Link>
           ))}
@@ -233,7 +233,7 @@ export default function AdminOverviewPage() {
               to="/admin/businesses"
               className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-shell-surface-2/50"
             >
-              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-violet-500/15 font-mono text-xs font-bold text-violet-200">
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand-500/15 font-mono text-xs font-bold text-brand-200">
                 {i + 1}
               </span>
               <div className="min-w-0 flex-1">
@@ -257,7 +257,7 @@ export default function AdminOverviewPage() {
             <SimpleAreaChart
               data={lineData.map(point => ({ label: point.label, value: point.count }))}
               isDark={isDark}
-              color="#a78bfa"
+              color="#00b398"
               valueFormatter={value => String(Math.round(value))}
             />
           </div>
@@ -290,7 +290,7 @@ export default function AdminOverviewPage() {
 function SectionLabel({ icon: Icon, label }: { icon: typeof Building2; label: string }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon size={16} className="text-violet-300/90" />
+      <Icon size={16} className="text-brand-300/90" />
       <h2 className="text-xs font-bold uppercase tracking-wider text-shell-muted">{label}</h2>
     </div>
   );
@@ -310,7 +310,7 @@ function MetricCard({
   accent?: 'violet' | 'sky' | 'amber' | 'emerald';
 }) {
   const accentClass = {
-    violet: 'bg-violet-500/15 text-violet-300',
+    violet: 'bg-brand-500/15 text-brand-300',
     sky: 'bg-sky-500/15 text-sky-300',
     amber: 'bg-amber-500/15 text-amber-300',
     emerald: 'bg-emerald-500/15 text-emerald-300',
@@ -360,7 +360,7 @@ function AdminListCard({
       </div>
       <Link
         to={footerHref}
-        className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-violet-300 transition-colors hover:text-violet-200"
+        className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-300 transition-colors hover:text-brand-200"
       >
         {footerLabel}
         <ArrowRight size={14} />

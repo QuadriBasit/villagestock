@@ -19,13 +19,13 @@ export function DashboardPortfolioStrip({ summary, alertCount, shelfHealthPct }:
       <button
         type="button"
         onClick={() => navigate('/inventory')}
-        className="group relative overflow-hidden rounded-2xl border border-shell-line bg-shell-surface text-left transition-colors hover:border-violet-400/40"
+        className="group relative overflow-hidden rounded-2xl border border-shell-line bg-shell-surface text-left transition-colors hover:border-brand-400/40"
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-emerald-500/5" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-500/10 via-transparent to-emerald-500/5" />
         <CardContent className="relative p-4 md:p-5">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-shell-muted">Portfolio value</span>
-            <TrendingUp size={20} className="text-violet-400" />
+            <TrendingUp size={20} className="text-brand-400" />
           </div>
           <p className="font-mono text-3xl font-bold tracking-tight text-shell-ink md:text-4xl">
             {formatCurrency(summary?.total_value ?? 0)}
@@ -49,7 +49,7 @@ export function DashboardPortfolioStrip({ summary, alertCount, shelfHealthPct }:
           <button
             type="button"
             onClick={() => navigate('/alerts')}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-400 hover:text-violet-300"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-400 hover:text-brand-300"
           >
             <Package size={14} />
             View alert queue

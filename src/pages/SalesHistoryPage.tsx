@@ -129,12 +129,12 @@ export default function SalesHistoryPage() {
   if (sales.length === 0) {
     return (
       <div className="app-page flex flex-col items-center px-4 py-20 text-center">
-        <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-violet-400/10">
-          <ShoppingCart size={28} className="text-violet-300" />
+        <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-brand-400/10">
+          <ShoppingCart size={28} className="text-brand-300" />
         </div>
         <h2 className="font-display text-lg font-semibold text-shell-ink">No sales yet</h2>
         <p className="mt-1 text-sm text-shell-muted">Sales you record will appear here.</p>
-        <Button className="mt-4 bg-violet-400 text-[#160a2e] hover:bg-violet-300" onClick={() => navigate('/till')}>
+        <Button className="mt-4 bg-brand-400 text-[#04231d] hover:bg-brand-300" onClick={() => navigate('/till')}>
           New sale
         </Button>
       </div>
@@ -153,7 +153,7 @@ export default function SalesHistoryPage() {
           <ScanLine size={16} />
           IMEI lookup
         </Button>
-        <Button size="sm" className="bg-violet-400 text-[#160a2e] hover:bg-violet-300" onClick={() => navigate('/till')}>
+        <Button size="sm" className="bg-brand-400 text-[#04231d] hover:bg-brand-300" onClick={() => navigate('/till')}>
           <ShoppingCart size={16} />
           New sale
         </Button>
@@ -166,7 +166,7 @@ export default function SalesHistoryPage() {
             label="Week profit"
             value={formatCurrency(weekProfit)}
             icon={TrendingUp}
-            iconClassName="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+            iconClassName=" text-emerald-600 dark:text-emerald-400"
           />
         ) : (
           <StatCard label="Week orders" value={String(weekSales.length)} icon={Tag} />
@@ -175,7 +175,7 @@ export default function SalesHistoryPage() {
           label="Outstanding"
           value={formatCurrency(creditsSummary.outstanding_amount)}
           icon={AlertTriangle}
-          iconClassName="bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300"
+          iconClassName=" text-amber-600 dark:text-amber-300"
           hint={creditsSummary.overdue_count > 0 ? `${creditsSummary.overdue_count} overdue` : undefined}
           hintClassName="text-red-500 dark:text-red-400"
         />
@@ -327,7 +327,7 @@ function SalesRow({
         <div className="truncate font-mono text-sm font-semibold text-shell-ink">{record.receipt_number}</div>
         <div className="text-xs text-shell-muted">{saleDateLabel(record.sold_at)}</div>
         {record.sale_type === 'swap' && (
-          <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-violet-300">
+          <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-brand-300">
             <ArrowRightLeft size={10} /> Swap
           </span>
         )}
@@ -385,7 +385,7 @@ function SalesRow({
         {!record.returned && !owing ? (
           <button
             type="button"
-            className="hidden text-[10px] font-medium text-violet-300 opacity-0 group-hover:opacity-100 hover:underline sm:inline"
+            className="hidden text-[10px] font-medium text-brand-300 opacity-0 group-hover:opacity-100 hover:underline sm:inline"
             onClick={e => {
               e.stopPropagation();
               onReturn();

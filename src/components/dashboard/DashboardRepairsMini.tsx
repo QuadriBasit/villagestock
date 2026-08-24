@@ -14,7 +14,7 @@ const STATUS_LABEL: Record<RepairStatus, string> = {
 };
 
 const STATUS_CLASS: Record<RepairStatus, string> = {
-  sent: 'border-violet-500/25 bg-violet-500/10 text-violet-300',
+  sent: 'border-brand-500/25 bg-brand-500/10 text-brand-300',
   in_progress: 'border-blue-500/25 bg-blue-500/10 text-blue-300',
   completed: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300',
   collected: 'border-zinc-500/25 bg-zinc-500/10 text-zinc-400',
@@ -43,7 +43,7 @@ export function DashboardRepairsMini() {
                 onClick={() => navigate('/repair')}
                 className="flex items-center gap-2.5 rounded-lg text-left transition-colors hover:bg-shell-surface-2"
               >
-                <span className="grid size-[34px] shrink-0 place-items-center rounded-[9px] bg-shell-surface-2 text-violet-400">
+                <span className="grid size-[34px] shrink-0 place-items-center rounded-[9px] bg-shell-surface-2 text-brand-400">
                   <Wrench size={16} />
                 </span>
                 <div className="min-w-0 flex-1">

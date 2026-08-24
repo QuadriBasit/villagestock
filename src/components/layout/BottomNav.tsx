@@ -34,7 +34,7 @@ export default function BottomNav() {
             'relative z-[1] flex h-[3.1rem] w-[3.1rem] items-center justify-center rounded-full ring-4 ring-shell-bg transition-transform active:scale-95',
             mutationsBlocked
               ? 'cursor-not-allowed bg-shell-surface-2 text-shell-muted opacity-50'
-              : 'shell-accent-bg text-[#160a2e] hover:brightness-105',
+              : 'shell-accent-bg text-[#04231d] hover:brightness-105',
           )}
           aria-label="Add item"
         >

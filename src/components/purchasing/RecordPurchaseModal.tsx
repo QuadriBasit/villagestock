@@ -133,7 +133,7 @@ export default function RecordPurchaseModal({
                     : ' · paid in full'}
                   .
                 </p>
-                <Button className="mt-5 w-full bg-violet-400 text-[#160a2e] hover:bg-violet-300" onClick={onClose}>
+                <Button className="mt-5 w-full bg-brand-400 text-[#04231d] hover:bg-brand-300" onClick={onClose}>
                   Done
                 </Button>
               </div>
@@ -203,7 +203,7 @@ export default function RecordPurchaseModal({
                   <Button
                     type="button"
                     variant="link"
-                    className="mt-2 h-auto p-0 text-xs font-semibold text-violet-300 hover:text-violet-200"
+                    className="mt-2 h-auto p-0 text-xs font-semibold text-brand-300 hover:text-brand-200"
                     onClick={() => setLines(current => [...current, { name: '', qty: 1, unit_cost: 0 }])}
                   >
                     <Plus size={14} />
@@ -235,7 +235,7 @@ export default function RecordPurchaseModal({
                   </Field>
                 ) : null}
 
-                <div className="flex items-center justify-between gap-4 rounded-lg border border-violet-400/20 bg-violet-400/10 px-4 py-3.5">
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-brand-400/20 bg-brand-400/10 px-4 py-3.5">
                   <div>
                     <p className="text-xs text-shell-muted">
                       {owed > 0 ? `Total · ${formatCurrency(owed)} will be owed` : 'Total · paid in full'}
@@ -243,7 +243,7 @@ export default function RecordPurchaseModal({
                     <p className="font-mono text-xl font-bold tabular-nums text-shell-ink">{formatCurrency(total)}</p>
                   </div>
                   <Button
-                    className="bg-violet-400 text-[#160a2e] hover:bg-violet-300"
+                    className="bg-brand-400 text-[#04231d] hover:bg-brand-300"
                     disabled={!valid || total <= 0 || saving}
                     onClick={() => void save()}
                   >

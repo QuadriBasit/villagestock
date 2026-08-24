@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Box, ClipboardList, History, Printer, ShoppingCart, Tag } from 'lucide-react';
+import { Box, ChevronLeft, ChevronRight, ClipboardList, History, Printer, ShoppingCart, Tag } from 'lucide-react';
 import { useAuditEvents } from '@/hooks/useAuditEvents';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
@@ -38,6 +38,8 @@ export default function AuditLogPage() {
   const viewer = useAuthStore(s => s.user);
   const [category, setCategory] = useState<AuditCategory>('all');
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const memberDisplayByUserId = useMemo(() => {
     const map = new Map<string, string>();
@@ -68,7 +70,20 @@ export default function AuditLogPage() {
     () => filterAuditEvents(events, category, query),
     [events, category, query]
   );
-  const groups = useMemo(() => groupAuditEventsByDay(filtered), [filtered]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+
+  // Filters or page size changed -> jump back to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [category, query, pageSize]);
+
+  const paged = useMemo(
+    () => filtered.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filtered, safePage]
+  );
+  const groups = useMemo(() => groupAuditEventsByDay(paged), [paged]);
   const stats = useMemo(() => auditStats(events), [events]);
 
   if (isLoading) return <AlertsSkeletonList />;
@@ -98,14 +113,14 @@ export default function AuditLogPage() {
           label="Sales logged"
           value={String(stats.salesCount)}
           icon={ShoppingCart}
-          iconClassName="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+          iconClassName=" text-emerald-600 dark:text-emerald-400"
         />
         <StatCard label="Stock moves" value={String(stats.stockCount)} icon={Box} />
         <StatCard
           label="Money logged"
           value={String(stats.moneyCount)}
           icon={Tag}
-          iconClassName="bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300"
+          iconClassName=" text-amber-600 dark:text-amber-300"
         />
       </StatGrid>
 
@@ -146,8 +161,8 @@ export default function AuditLogPage() {
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center px-4 py-20 text-center">
-          <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-violet-400/10">
-            <ClipboardList size={28} className="text-violet-300" />
+          <div className="mb-3 flex size-16 items-center justify-center rounded-full bg-brand-400/10">
+            <ClipboardList size={28} className="text-brand-300" />
           </div>
           <h2 className="font-display text-lg font-semibold text-shell-ink">No activity matches</h2>
           <p className="mt-1 max-w-sm text-sm text-shell-muted">
@@ -183,6 +198,54 @@ export default function AuditLogPage() {
               </Card>
             </section>
           ))}
+
+          {totalPages > 1 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="font-mono text-xs tabular-nums text-shell-muted">
+                  {filtered.length} events · page {safePage} of {totalPages}
+                </p>
+                <div className="flex items-center gap-1.5 text-xs text-shell-muted">
+                  <span>Per page</span>
+                  {[10, 25, 50].map(size => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setPageSize(size)}
+                      className={cn(
+                        'rounded-md px-1.5 py-0.5 font-mono tabular-nums transition-colors',
+                        size === pageSize
+                          ? 'bg-brand-400/15 font-semibold text-brand-300'
+                          : 'text-shell-muted hover:bg-shell-surface-2 hover:text-shell-ink'
+                      )}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage <= 1}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft size={14} />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                >
+                  Next
+                  <ChevronRight size={14} />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -246,7 +309,7 @@ function AuditRow({
         <p className="mt-0.5 text-xs leading-relaxed text-shell-muted">{target.title}</p>
         {target.detail ? <p className="mt-1 text-xs text-shell-muted">{target.detail}</p> : null}
         <div className="mt-2.5 flex items-center gap-2">
-          <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-violet-400/15 text-[10px] font-bold text-violet-300">
+          <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-brand-400/15 text-[10px] font-bold text-brand-300">
             {initial}
           </span>
           <span className="text-xs font-semibold text-shell-ink">{who}</span>

@@ -141,8 +141,8 @@ function DualTrendChart({ data, showProfit }: { data: DashboardTrendPoint[]; sho
       >
         <defs>
           <linearGradient id="dashAreaFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.32" />
-            <stop offset="100%" stopColor="#a78bfa" stopOpacity="0" />
+            <stop offset="0%" stopColor="#00b398" stopOpacity="0.32" />
+            <stop offset="100%" stopColor="#00b398" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -153,7 +153,7 @@ function DualTrendChart({ data, showProfit }: { data: DashboardTrendPoint[]; sho
             key={`rev-${i}`}
             d={d}
             fill="none"
-            stroke="#a78bfa"
+            stroke="#00b398"
             strokeWidth="2.75"
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -186,7 +186,7 @@ function DualTrendChart({ data, showProfit }: { data: DashboardTrendPoint[]; sho
               strokeWidth="1"
             />
             {hover.revenue > 0 && (
-              <circle cx={hoverX} cy={yAt(hover.revenue)} r="5" fill="#a78bfa" stroke="#141a28" strokeWidth="2" />
+              <circle cx={hoverX} cy={yAt(hover.revenue)} r="5" fill="#00b398" stroke="#141a28" strokeWidth="2" />
             )}
             {showProfit && hover.profit > 0 && (
               <circle cx={hoverX} cy={yAt(hover.profit)} r="4" fill="#34d399" stroke="#141a28" strokeWidth="2" />
@@ -205,7 +205,7 @@ function DualTrendChart({ data, showProfit }: { data: DashboardTrendPoint[]; sho
           }}
         >
           <p className="text-[11px] font-semibold text-shell-muted">{hover.label}</p>
-          <p className="mt-1 font-mono text-sm font-semibold text-violet-300">{formatCurrency(hover.revenue)}</p>
+          <p className="mt-1 font-mono text-sm font-semibold text-brand-300">{formatCurrency(hover.revenue)}</p>
           {showProfit && (
             <p className="font-mono text-xs font-medium text-emerald-400">{formatCurrency(hover.profit)} profit</p>
           )}
@@ -242,7 +242,7 @@ export function DashboardRevenueCard() {
             <DashboardSectionHead title="Revenue · last 14 days" className="mb-2" />
             <div className="flex flex-wrap gap-4">
               <span className="inline-flex items-center gap-1.5 text-xs text-shell-muted">
-                <span className="h-0.5 w-2.5 rounded-sm bg-violet-400" />
+                <span className="h-0.5 w-2.5 rounded-sm bg-brand-400" />
                 Revenue
               </span>
               {canViewProfit && (
