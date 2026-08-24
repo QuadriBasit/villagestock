@@ -9,16 +9,16 @@ import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import { buildCreditPayment, getCreditStatus } from '@/lib/creditUtils';
 import { saleBlockedMissingIdentifiers } from '@/lib/serializedIdentifiers';
-import type { CreditRecord, DeviceCondition, InventoryItem, PaymentMethod, PaymentStatus, SalesRecord, SwapRecord } from '@/types';
+import { buildSwapIncomingDescription, buildSwapIncomingDeviceDetails, type SwapIncomingIntake } from '@/lib/swapIntake';
+import type { CreditRecord, InventoryItem, PaymentMethod, PaymentStatus, SalesRecord, SwapRecord } from '@/types';
 
 interface ProcessSwapInput {
   outgoingItem: InventoryItem;
-  incoming: {
+  incoming: SwapIncomingIntake & {
     brand: string;
     model: string;
     serial_number?: string;
     imei?: string;
-    condition: DeviceCondition;
     trade_in_value: number;
   };
   sale_price: number;
@@ -69,7 +69,8 @@ export function useSwapActions() {
       serial_number: input.incoming.serial_number,
       imei: input.incoming.imei,
       condition: input.incoming.condition,
-      deviceDetails: {},
+      description: buildSwapIncomingDescription(input.incoming),
+      deviceDetails: buildSwapIncomingDeviceDetails(input.incoming, input.outgoingItem.category),
       created_at: now,
       updated_at: now,
       sync_status: 'pending',

@@ -9,8 +9,8 @@ type Body = {
   business_id?: string;
   email?: string;
   role?: 'manager' | 'staff';
+  role_id?: string;
   display_name?: string;
-  /** If set, invitee is limited to these shop_locations ids; omit or null = all branches. */
   allowed_location_ids?: string[] | null;
 };
 
@@ -68,7 +68,6 @@ Deno.serve(async (req: Request) => {
 
   const email = (body.email ?? '').trim().toLowerCase();
   const businessId = (body.business_id ?? '').trim();
-  const role = body.role;
   const displayName = (body.display_name ?? '').trim();
   const rawLocIds = body.allowed_location_ids;
   const allowedLocationIds =
@@ -88,12 +87,6 @@ Deno.serve(async (req: Request) => {
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }
-  if (role !== 'staff' && role !== 'manager') {
-    return new Response(JSON.stringify({ error: 'role must be staff or manager' }), {
-      status: 400,
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    });
-  }
   if (!displayName) {
     return new Response(JSON.stringify({ error: 'Name on receipts is required' }), {
       status: 400,
@@ -101,16 +94,58 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const { data: memberRow, error: memErr } = await admin
-    .from('business_members')
-    .select('role')
-    .eq('business_id', businessId)
-    .eq('member_user_id', authData.user.id)
-    .maybeSingle();
-
-  if (memErr || !memberRow || !['owner', 'manager'].includes(memberRow.role as string)) {
-    return new Response(JSON.stringify({ error: 'Only shop owners or managers can send invites' }), {
+  const { data: canInvite, error: permErr } = await admin.rpc('shop_member_has_permission', {
+    p_business_id: businessId,
+    p_member_id: authData.user.id,
+    p_permission: 'manage_team',
+  });
+  if (permErr) {
+    return new Response(JSON.stringify({ error: permErr.message }), {
+      status: 400,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
+  if (!canInvite) {
+    return new Response(JSON.stringify({ error: 'You do not have permission to send invites' }), {
       status: 403,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
+
+  let roleId = (body.role_id ?? '').trim();
+  let role = body.role;
+
+  if (roleId) {
+    const { data: roleRow, error: roleErr } = await admin
+      .from('shop_roles')
+      .select('id, slug')
+      .eq('id', roleId)
+      .eq('business_id', businessId)
+      .maybeSingle();
+    if (roleErr || !roleRow) {
+      return new Response(JSON.stringify({ error: 'Invalid role for this shop' }), {
+        status: 400,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+    role = (roleRow.slug as 'manager' | 'staff' | null) ?? 'member';
+  } else if (role === 'staff' || role === 'manager') {
+    const { data: roleRow, error: roleErr } = await admin
+      .from('shop_roles')
+      .select('id, slug')
+      .eq('business_id', businessId)
+      .eq('slug', role)
+      .maybeSingle();
+    if (roleErr || !roleRow) {
+      return new Response(JSON.stringify({ error: 'Default role not found for this shop' }), {
+        status: 400,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+    roleId = roleRow.id as string;
+  } else {
+    return new Response(JSON.stringify({ error: 'role_id is required' }), {
+      status: 400,
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }
@@ -191,6 +226,7 @@ Deno.serve(async (req: Request) => {
     business_id: businessId,
     email,
     role,
+    role_id: roleId,
     display_name: displayName,
     allowed_location_ids: allowedLocationIds,
     invited_by: authData.user.id,

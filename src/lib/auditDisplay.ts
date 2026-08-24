@@ -6,6 +6,7 @@ import {
   Package,
   RotateCcw,
   Settings,
+  Shield,
   ShoppingCart,
   Users,
   Wallet,
@@ -63,6 +64,10 @@ const ACTION_MAP: Record<string, ActionMeta> = {
   'team.member_removed': { label: 'Team member removed', icon: Users, category: 'staff' },
   'team.member_invited': { label: 'Team invite sent', icon: Users, category: 'staff' },
   'team.member_branch_scope_updated': { label: 'Branch access updated', icon: Users, category: 'staff' },
+  'team.member_role_updated': { label: 'Member role updated', icon: Users, category: 'staff' },
+  'team.role_created': { label: 'Role created', icon: Shield, category: 'staff' },
+  'team.role_updated': { label: 'Role updated', icon: Shield, category: 'staff' },
+  'team.role_deleted': { label: 'Role deleted', icon: Shield, category: 'staff' },
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

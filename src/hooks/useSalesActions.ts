@@ -10,7 +10,7 @@ import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import { buildCreditPayment, getCreditStatus } from '@/lib/creditUtils';
 import { saleBlockedMissingIdentifiers } from '@/lib/serializedIdentifiers';
 import { getShopWarrantyPolicy, stockConditionFromItem, warrantyCoverFor } from '@/lib/warranty';
-import type { CreditRecord, CreditRecordInput, InventoryItem, SalesRecord, SalesRecordInput } from '@/types';
+import type { CreditRecord, CreditRecordInput, InventoryItem, PaymentMethod, SalesRecord, SalesRecordInput } from '@/types';
 
 function assertItemAvailableForSale(
   item: InventoryItem,
@@ -440,5 +440,63 @@ export function useSalesActions() {
     });
   }
 
-  return { recordSale, checkoutQuickTill, updateSaleSoldAt };
+  async function updateSalePaymentMethod(saleId: string, paymentMethod: PaymentMethod): Promise<void> {
+    if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+    const existing = await db.sales_records.get(saleId);
+    if (!existing) throw new Error('Sale not found');
+    if (existing.returned) throw new Error('Cannot edit a returned sale');
+    if (existing.payment_status === 'credit' && (existing.balance_owed ?? 0) > 0) {
+      throw new Error('Record further payments on the Credits page');
+    }
+    if (existing.payment_method === paymentMethod) return;
+
+    await db.sales_records.update(saleId, { payment_method: paymentMethod, sync_status: 'pending' });
+    const latest = await db.sales_records.get(saleId);
+    if (latest) {
+      await queueSync('sales_records', 'update', latest as unknown as Record<string, unknown>);
+    }
+
+    if (existing.swap_record_id) {
+      await db.swap_records.update(existing.swap_record_id, {
+        payment_method: paymentMethod,
+        sync_status: 'pending',
+      });
+      const swap = await db.swap_records.get(existing.swap_record_id);
+      if (swap) {
+        await queueSync('swap_records', 'update', swap as unknown as Record<string, unknown>);
+      }
+    }
+
+    if (existing.payment_status === 'credit') {
+      const credit = await db.credit_records.where('sale_id').equals(saleId).first();
+      if (credit?.payments.length === 1 && credit.balance_owed <= 0) {
+        const payments = [{ ...credit.payments[0], method: paymentMethod }];
+        await db.credit_records.update(credit.id, { payments, sync_status: 'pending' });
+        const updatedCredit = await db.credit_records.get(credit.id);
+        if (updatedCredit) {
+          await queueSync('credit_records', 'update', updatedCredit as unknown as Record<string, unknown>);
+        }
+      }
+    }
+
+    await flushSyncQueue();
+
+    const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
+    void logShopAudit({
+      businessId: shopOwnerId,
+      actorUserId,
+      action: 'sale.payment_method_updated',
+      entityType: 'sales_record',
+      entityId: saleId,
+      metadata: {
+        receipt: existing.receipt_number,
+        item: existing.item_name,
+        from: existing.payment_method ?? null,
+        to: paymentMethod,
+      },
+      actorLabel,
+    });
+  }
+
+  return { recordSale, checkoutQuickTill, updateSaleSoldAt, updateSalePaymentMethod };
 }

@@ -16,7 +16,7 @@ export function SegmentedTabs<T extends string>({
   className,
 }: SegmentedTabsProps<T>) {
   return (
-    <div className={cn(shellSegmentTrack, className)}>
+    <div className={cn(shellSegmentTrack, 'inline-flex w-fit max-w-full', className)}>
       {options.map(opt => (
         <Button
           key={opt.value}

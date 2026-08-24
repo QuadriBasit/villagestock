@@ -148,7 +148,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
     defaultValues: {
       sale_price: item.price,
       payment_status: "paid",
-      payment_method: "cash",
+      payment_method: "bank_transfer",
       amount_paid: 0,
       sold_at: toLocalDatetimeValue(new Date()),
       quantity_sold: 1,
@@ -430,7 +430,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value ?? "cash"}
+                      value={field.value ?? "bank_transfer"}
                       onValueChange={field.onChange}
                     >
                       <SelectTrigger id="payment_method" className="w-full">

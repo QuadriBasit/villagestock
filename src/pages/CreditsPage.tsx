@@ -202,7 +202,7 @@ function CreditDetailsModal({ creditId, onClose }: { creditId: string; onClose: 
   const { profile } = useShopProfile();
   const [amount, setAmount] = useState<number | undefined>(undefined);
   const [date, setDate] = useState(toLocalDatetimeValue(new Date()));
-  const [method, setMethod] = useState<PaymentMethod>('cash');
+  const [method, setMethod] = useState<PaymentMethod>('bank_transfer');
   const [isSaving, setIsSaving] = useState(false);
   const [removingIndex, setRemovingIndex] = useState<number | null>(null);
   const [submitBlocked, setSubmitBlocked] = useState(false);

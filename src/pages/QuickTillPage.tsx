@@ -108,7 +108,7 @@ export default function QuickTillPage() {
   const [cat, setCat] = useState<CategoryTab>('All');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [payMethod, setPayMethod] = useState<PaymentMethod>('cash');
+  const [payMethod, setPayMethod] = useState<PaymentMethod>('bank_transfer');
   const [payTerms, setPayTerms] = useState<PayTerms>('paid');
   const [amountPaidTotal, setAmountPaidTotal] = useState(0);
   const [dueDate, setDueDate] = useState(defaultDueDate);
@@ -247,7 +247,7 @@ export default function QuickTillPage() {
     setDone(null);
     setCustomerName('');
     setCustomerPhone('');
-    setPayMethod('cash');
+    setPayMethod('bank_transfer');
     setPayTerms('paid');
     setAmountPaidTotal(0);
     setDueDate(defaultDueDate());

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Fuel, Utensils, Truck, Zap, Wallet, Package } from 'lucide-react';
+import { Check, Wallet } from 'lucide-react';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
 import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
@@ -8,23 +8,11 @@ import { Button } from '@/components/ui/Button';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Input } from '@/components/ui/Input';
 import { cn, formatCurrency } from '@/lib/utils';
+import { EXPENSE_CATEGORY_META } from '@/lib/expenseCategories';
 import { modalSheetBodyScroll, modalSheetPanelMd } from '@/lib/modalSheet';
 import type { ExpenseCategory, PaymentMethod } from '@/types';
 
-const EXPENSE_CATS: {
-  key: ExpenseCategory;
-  label: string;
-  icon: typeof Fuel;
-  tone: string;
-}[] = [
-  { key: 'generator', label: 'Generator / diesel', icon: Fuel, tone: 'text-amber-300' },
-  { key: 'nepa', label: 'NEPA / power', icon: Zap, tone: 'text-yellow-300' },
-  { key: 'transport', label: 'Transport', icon: Truck, tone: 'text-sky-300' },
-  { key: 'feeding', label: 'Feeding / lunch', icon: Utensils, tone: 'text-orange-300' },
-  { key: 'rent', label: 'Rent / levies', icon: Wallet, tone: 'text-brand-300' },
-  { key: 'supplies', label: 'Shop supplies', icon: Package, tone: 'text-emerald-300' },
-  { key: 'other', label: 'Other', icon: Wallet, tone: 'text-shell-muted' },
-];
+const EXPENSE_CATS = EXPENSE_CATEGORY_META;
 
 const PAY_OPTIONS: PaymentMethod[] = ['cash', 'bank_transfer', 'pos'];
 
@@ -49,7 +37,7 @@ export default function AddExpenseModal({ open, onClose, onSave }: AddExpenseMod
   const [cat, setCat] = useState<ExpenseCategory>('generator');
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState(0);
-  const [method, setMethod] = useState<PaymentMethod>('cash');
+  const [method, setMethod] = useState<PaymentMethod>('bank_transfer');
   const [done, setDone] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -58,7 +46,7 @@ export default function AddExpenseModal({ open, onClose, onSave }: AddExpenseMod
       setCat('generator');
       setLabel('');
       setAmount(0);
-      setMethod('cash');
+      setMethod('bank_transfer');
       setDone(false);
     }
   }, [open]);

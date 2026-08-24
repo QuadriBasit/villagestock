@@ -15,6 +15,8 @@ import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
 import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { DatePickerField } from "@/components/ui/DatePickerField";
 import {
   DateTimeField,
@@ -44,6 +46,10 @@ import type {
   PaymentStatus,
   SalesRecord,
 } from "@/types";
+import type { IntakeCondition } from "@/components/inventory/addProduct/types";
+
+const INTAKE_CONDITIONS: IntakeCondition[] = ["New", "Used", "UK Used", "Refurb"];
+const GRADES = ["A", "B", "C"] as const;
 
 const ReceiptModal = lazy(() => import("./ReceiptModal"));
 
@@ -52,6 +58,12 @@ const schema = z.object({
   incoming_model: z.string().min(1, "Model is required"),
   incoming_imei: z.string().optional(),
   incoming_serial_number: z.string().optional(),
+  intake_condition: z.enum(["New", "Used", "UK Used", "Refurb"]),
+  grade: z.enum(["A", "B", "C"]).optional(),
+  storage: z.string().optional(),
+  color: z.string().optional(),
+  battery_health: z.string().optional(),
+  condition_notes: z.string().optional(),
   condition: z.enum(["working", "minor_faults", "major_faults", "not_working"]),
   trade_in_value: z.coerce.number().min(0, "Trade-in value must be 0 or more"),
   sale_price: z.coerce.number().positive("Sale price must be greater than 0"),
@@ -73,10 +85,10 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
 };
 
 const CONDITION_LABELS: Record<DeviceCondition, string> = {
-  working: "Working",
-  minor_faults: "Minor Faults",
-  major_faults: "Major Faults",
-  not_working: "Not Working",
+  working: "Fully working",
+  minor_faults: "Minor faults",
+  major_faults: "Major faults",
+  not_working: "Not working",
 };
 
 export default function SwapForm({
@@ -103,11 +115,13 @@ export default function SwapForm({
   } = useForm<FormData>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
+      intake_condition: "Used",
+      grade: "B",
       condition: "working",
       trade_in_value: 0,
       sale_price: item.price,
       payment_status: "paid",
-      payment_method: "cash",
+      payment_method: "bank_transfer",
       amount_paid: 0,
       date: toLocalDatetimeValue(new Date()),
     },
@@ -117,6 +131,9 @@ export default function SwapForm({
   const tradeInValue = watch("trade_in_value") ?? 0;
   const paymentStatus = watch("payment_status") as PaymentStatus;
   const amountPaid = watch("amount_paid") ?? 0;
+  const intakeCondition = watch("intake_condition") as IntakeCondition;
+  const isMobileCategory =
+    item.category === "phones" || item.category === "tablets";
   const balance = salePrice - tradeInValue;
   const balanceOwed = Math.max(0, balance - amountPaid);
 
@@ -130,6 +147,17 @@ export default function SwapForm({
           model: data.incoming_model,
           imei: data.incoming_imei || undefined,
           serial_number: data.incoming_serial_number || undefined,
+          intake_condition: data.intake_condition,
+          grade: data.intake_condition === "New" ? undefined : data.grade,
+          storage: data.storage || undefined,
+          color: data.color || undefined,
+          battery_health: (() => {
+            const raw = data.battery_health?.trim();
+            if (!raw) return undefined;
+            const n = Number(raw);
+            return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : undefined;
+          })(),
+          condition_notes: data.condition_notes || undefined,
           condition: data.condition,
           trade_in_value: data.trade_in_value,
         },
@@ -273,66 +301,161 @@ export default function SwapForm({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelClass} htmlFor="condition">
-                    Condition *
-                  </label>
+              <div className="space-y-2">
+                <p className={labelClass}>Stock condition *</p>
+                <Controller
+                  name="intake_condition"
+                  control={control}
+                  render={({ field }) => (
+                    <SegmentedTabs
+                      options={INTAKE_CONDITIONS.map(value => ({
+                        value,
+                        label: value,
+                      }))}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+
+              {intakeCondition !== "New" ? (
+                <div className="space-y-2">
+                  <p className={labelClass}>Cosmetic grade</p>
                   <Controller
-                    name="condition"
+                    name="grade"
                     control={control}
                     render={({ field }) => (
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <SelectTrigger id="condition" className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent position="popper">
-                          {(
-                            Object.entries(CONDITION_LABELS) as [
-                              DeviceCondition,
-                              string,
-                            ][]
-                          ).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass} htmlFor="trade_in_value">
-                    Trade-In Value (₦) *
-                  </label>
-                  <Controller
-                    name="trade_in_value"
-                    control={control}
-                    render={({ field }) => (
-                      <CurrencyInput
-                        id="trade_in_value"
-                        ref={field.ref}
-                        value={field.value ?? 0}
-                        onValueChange={field.onChange}
-                        onBlur={field.onBlur}
-                        className={fieldClass}
-                        aria-invalid={!!errors.trade_in_value}
+                      <SegmentedTabs
+                        options={GRADES.map(value => ({ value, label: `Grade ${value}` }))}
+                        value={field.value ?? "B"}
+                        onChange={field.onChange}
                       />
                     )}
                   />
-                  {errors.trade_in_value && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.trade_in_value.message}
-                    </p>
-                  )}
                 </div>
+              ) : null}
+
+              <div>
+                <label className={labelClass} htmlFor="condition">
+                  Working status *
+                </label>
+                <Controller
+                  name="condition"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <SelectTrigger id="condition" className="h-11 w-full">
+                        <SelectValue placeholder="Select working status" />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="min-w-[var(--radix-select-trigger-width)]">
+                        {(
+                          Object.entries(CONDITION_LABELS) as [
+                            DeviceCondition,
+                            string,
+                          ][]
+                        ).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
 
-              <p className="rounded-lg border border-shell-line bg-shell-surface-2/40/80 px-3 py-2 text-xs text-shell-muted /50 dark:text-shell-muted">
+              {isMobileCategory ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelClass} htmlFor="storage">
+                      Storage
+                    </label>
+                    <Input
+                      id="storage"
+                      {...register("storage")}
+                      className={fieldClass}
+                      placeholder="e.g. 128GB"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass} htmlFor="color">
+                      Colour
+                    </label>
+                    <Input
+                      id="color"
+                      {...register("color")}
+                      className={fieldClass}
+                      placeholder="e.g. Black"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {isMobileCategory ? (
+                <div>
+                  <label className={labelClass} htmlFor="battery_health">
+                    Battery health (%)
+                  </label>
+                  <Input
+                    id="battery_health"
+                    type="number"
+                    min={0}
+                    max={100}
+                    inputMode="numeric"
+                    {...register("battery_health")}
+                    className={fieldClass}
+                    placeholder="Optional — e.g. 87"
+                  />
+                </div>
+              ) : null}
+
+              <div>
+                <label className={labelClass} htmlFor="condition_notes">
+                  Condition details
+                </label>
+                <Textarea
+                  id="condition_notes"
+                  {...register("condition_notes")}
+                  rows={3}
+                  placeholder="Describe faults, parts changed, scratches, etc."
+                  className={cn(fieldClass, "min-h-[5.5rem] resize-y")}
+                />
+                <p className="mt-1 text-[11px] text-shell-muted">
+                  Saved on the trade-in unit — same as when adding stock through intake.
+                </p>
+              </div>
+
+              <div>
+                <label className={labelClass} htmlFor="trade_in_value">
+                  Trade-In Value (₦) *
+                </label>
+                <Controller
+                  name="trade_in_value"
+                  control={control}
+                  render={({ field }) => (
+                    <CurrencyInput
+                      id="trade_in_value"
+                      ref={field.ref}
+                      value={field.value ?? 0}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      className={fieldClass}
+                      aria-invalid={!!errors.trade_in_value}
+                    />
+                  )}
+                />
+                {errors.trade_in_value && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.trade_in_value.message}
+                  </p>
+                )}
+              </div>
+
+              <p className="rounded-lg border border-shell-line bg-shell-surface-2/40 px-3 py-2 text-xs text-shell-muted">
                 Incoming device category will match the selected outgoing item
                 category:{" "}
                 <span className="font-medium capitalize">{item.category}</span>.
@@ -393,7 +516,7 @@ export default function SwapForm({
                 Settlement
               </h3>
 
-              <div className="rounded-xl border border-shell-line bg-shell-surface-2/40/90 px-4 py-3 /60">
+              <div className="rounded-xl border border-shell-line bg-shell-surface-2/40 px-4 py-3">
                 {balance >= 0 ? (
                   <>
                     <div className="text-xs text-shell-muted">Balance to pay</div>
@@ -444,7 +567,7 @@ export default function SwapForm({
                     control={control}
                     render={({ field }) => (
                       <Select
-                        value={field.value ?? "cash"}
+                        value={field.value ?? "bank_transfer"}
                         onValueChange={field.onChange}
                       >
                         <SelectTrigger id="payment_method" className="w-full">

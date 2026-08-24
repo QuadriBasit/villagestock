@@ -7,7 +7,8 @@ import { db } from '@/lib/db';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useStockSessionById } from '@/hooks/useStockSessions';
 import { sessionCode, sessionDiscrepancies } from '@/lib/stockTake';
-import type { InventoryItem } from '@/types';
+import { resolveSessionDeviceList } from '@/lib/stockSessionUtils';
+import type { InventoryItem, StockSessionDeviceSnapshot } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -45,21 +46,41 @@ export default function StockSessionDetailPage() {
   const openingConfirmedIds = new Set(session?.opening_confirmed_ids ?? []);
   const openingConfirmedCount = session?.opening_confirmed_ids?.length ?? 0;
 
-  const confirmedItems = useMemo(() => {
+  const openingDevices = useMemo(() => {
     if (!session) return [];
+    return resolveSessionDeviceList(
+      session.opening_snapshot_ids,
+      session.opening_device_snapshots,
+      itemsMap,
+    );
+  }, [session, itemsMap]);
+
+  const closingDevices = useMemo(() => {
+    if (!session || session.status === 'open') return [];
     const ids =
       session.actual_closing_ids.length > 0
         ? session.actual_closing_ids
-        : session.status === 'closed' || session.status === 'closed_with_discrepancy'
-          ? expectedIds.filter((id) => !missingIdSet.has(id))
-          : [];
-    return ids.map((id) => itemsMap?.get(id)).filter((i): i is InventoryItem => !!i);
-  }, [session, expectedIds, missingIdSet, itemsMap]);
+        : session.expected_closing_ids.filter(id => !missingIdSet.has(id));
+    return resolveSessionDeviceList(ids, session.closing_device_snapshots, itemsMap);
+  }, [session, missingIdSet, itemsMap]);
 
-  const missingItems = useMemo(() => {
-    if (!session?.missing_item_ids?.length || !itemsMap) return [];
-    return session.missing_item_ids.map((id) => itemsMap.get(id)).filter((i): i is InventoryItem => !!i);
+  const missingDevices = useMemo(() => {
+    if (!session?.missing_item_ids?.length) return [];
+    return resolveSessionDeviceList(
+      session.missing_item_ids,
+      session.expected_closing_snapshots,
+      itemsMap,
+    );
   }, [session, itemsMap]);
+
+  const expectedOnShelf = useMemo(() => {
+    if (!session || session.status !== 'open' || expectedIds.length === 0) return [];
+    return resolveSessionDeviceList(
+      expectedIds,
+      session.expected_closing_snapshots,
+      itemsMap,
+    );
+  }, [session, expectedIds, itemsMap]);
 
   if (!sessionId) {
     return <div className="app-page py-8 text-sm text-shell-muted">Invalid session.</div>;
@@ -141,51 +162,54 @@ export default function StockSessionDetailPage() {
         </Card>
       ) : null}
 
-      {session.opening_snapshot_ids.length > 0 ? (
+      {openingDevices.length > 0 ? (
         <Card className="border-shell-line bg-shell-surface shadow-none">
           <CardContent className="py-4">
             <p className="text-sm font-semibold text-shell-ink">
-              Opened with ({session.opening_snapshot_ids.length})
+              Opened with ({openingDevices.length})
             </p>
             <p className="mt-1 text-xs text-shell-muted">
               {openingConfirmedCount > 0
-                ? `${openingConfirmedCount} of ${session.opening_snapshot_ids.length} devices confirmed at open.`
+                ? `${openingConfirmedCount} of ${openingDevices.length} devices confirmed at open.`
                 : session.status === 'open'
                   ? 'Confirm these devices from the opening checklist.'
                   : 'Devices on the books when this session started.'}
             </p>
             <ul className="mt-3 space-y-2">
-              {session.opening_snapshot_ids.map((id) => {
-                const item = itemsMap?.get(id);
-                if (!item) return null;
-                return (
-                  <DeviceRow key={id} item={item} ok={openingConfirmedIds.has(id)} />
-                );
-              })}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {isClosed && confirmedItems.length > 0 ? (
-        <Card className="border-shell-line bg-shell-surface shadow-none">
-          <CardContent className="py-4">
-            <p className="text-sm font-semibold text-shell-ink">
-              Confirmed on shelf ({confirmedItems.length})
-            </p>
-            <p className="mt-1 text-xs text-shell-muted">
-              Devices physically counted and matched during this stock-take.
-            </p>
-            <ul className="mt-3 space-y-2">
-              {confirmedItems.map((item) => (
-                <DeviceRow key={item.id} item={item} ok />
+              {openingDevices.map((device) => (
+                <SnapshotDeviceRow
+                  key={device.id}
+                  device={device}
+                  ok={openingConfirmedIds.has(device.id)}
+                />
               ))}
             </ul>
           </CardContent>
         </Card>
       ) : null}
 
-      {isClosed && expectedIds.length > 0 && confirmedItems.length === 0 && missingItems.length === 0 ? (
+      {isClosed && closingDevices.length > 0 ? (
+        <Card className="border-shell-line bg-shell-surface shadow-none">
+          <CardContent className="py-4">
+            <p className="text-sm font-semibold text-shell-ink">
+              Closed with ({closingDevices.length})
+            </p>
+            <p className="mt-1 text-xs text-shell-muted">
+              Devices physically counted on the shelf when this stock-take closed.
+            </p>
+            <ul className="mt-3 space-y-2">
+              {closingDevices.map((device) => (
+                <SnapshotDeviceRow key={device.id} device={device} ok />
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {isClosed &&
+      closingDevices.length === 0 &&
+      expectedIds.length === 0 &&
+      openingDevices.length === 0 ? (
         <Card className="border-shell-line bg-shell-surface shadow-none">
           <CardContent className="py-4 text-sm text-shell-muted">
             This count was posted before device lists were saved on the session. Summary numbers above
@@ -194,33 +218,35 @@ export default function StockSessionDetailPage() {
         </Card>
       ) : null}
 
-      {session.status === 'open' && expectedIds.length > 0 ? (
+      {session.status === 'open' && expectedOnShelf.length > 0 ? (
         <Card className="border-shell-line bg-shell-surface shadow-none">
           <CardContent className="py-4">
-            <p className="text-sm font-semibold text-shell-ink">Expected on shelf ({expectedIds.length})</p>
+            <p className="text-sm font-semibold text-shell-ink">Expected on shelf ({expectedOnShelf.length})</p>
             <p className="mt-1 text-xs text-shell-muted">Finish the count to confirm each device.</p>
             <ul className="mt-3 space-y-2">
-              {expectedIds.map((id) => {
-                const item = itemsMap?.get(id);
-                if (!item) return null;
-                return <DeviceRow key={id} item={item} ok={confirmedIds.has(id)} />;
-              })}
+              {expectedOnShelf.map((device) => (
+                <SnapshotDeviceRow
+                  key={device.id}
+                  device={device}
+                  ok={confirmedIds.has(device.id)}
+                />
+              ))}
             </ul>
           </CardContent>
         </Card>
       ) : null}
 
-      {missingItems.length > 0 ? (
+      {missingDevices.length > 0 ? (
         <Card className="border-red-500/30 bg-red-500/[0.06] shadow-none">
           <CardContent className="py-4">
-            <p className="text-sm font-semibold text-red-300">Missing at close ({missingItems.length})</p>
+            <p className="text-sm font-semibold text-red-300">Missing at close ({missingDevices.length})</p>
             <ul className="mt-3 space-y-2">
-              {missingItems.map((item) => (
-                <li key={item.id} className="rounded-lg border border-shell-line bg-shell-surface/80 px-3 py-2">
-                  <DeviceRow item={item} ok={false} inline />
-                  {session.missing_notes_by_item_id?.[item.id] ? (
+              {missingDevices.map((device) => (
+                <li key={device.id} className="rounded-lg border border-shell-line bg-shell-surface/80 px-3 py-2">
+                  <SnapshotDeviceRow device={device} ok={false} inline />
+                  {session.missing_notes_by_item_id?.[device.id] ? (
                     <p className="mt-1 text-[11px] text-shell-muted">
-                      Note: {session.missing_notes_by_item_id[item.id]}
+                      Note: {session.missing_notes_by_item_id[device.id]}
                     </p>
                   ) : null}
                 </li>
@@ -250,15 +276,16 @@ export default function StockSessionDetailPage() {
   );
 }
 
-function DeviceRow({
-  item,
+function SnapshotDeviceRow({
+  device,
   ok,
   inline,
 }: {
-  item: InventoryItem;
+  device: StockSessionDeviceSnapshot;
   ok: boolean;
   inline?: boolean;
 }) {
+  const removed = device.name === 'Device no longer in inventory';
   const content = (
     <>
       <span
@@ -270,11 +297,15 @@ function DeviceRow({
         {ok ? <Check size={14} strokeWidth={3} /> : <X size={14} />}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-shell-ink">{item.name}</p>
-        <p className="text-[11px] capitalize text-shell-muted">{item.brand}</p>
+        <p className={cn('text-sm font-medium', removed ? 'text-shell-muted italic' : 'text-shell-ink')}>
+          {device.name}
+        </p>
+        {device.brand ? (
+          <p className="text-[11px] capitalize text-shell-muted">{device.brand}</p>
+        ) : null}
         <div className="mt-0.5 flex flex-wrap gap-x-2 font-mono text-[10px] text-shell-muted">
-          {item.imei ? <span>IMEI: {item.imei}</span> : null}
-          {item.serial_number ? <span>S/N: {item.serial_number}</span> : null}
+          {device.imei ? <span>IMEI: {device.imei}</span> : null}
+          {device.serial_number ? <span>S/N: {device.serial_number}</span> : null}
         </div>
       </div>
     </>

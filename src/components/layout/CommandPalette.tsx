@@ -25,9 +25,13 @@ type CommandPaletteProps = {
 
 export function CommandPalette({ open, onClose, onNewSale }: CommandPaletteProps) {
   const navigate = useNavigate();
-  const { shopOwnerId } = useShopAccess();
+  const { shopOwnerId, hasPermission } = useShopAccess();
   const { activeLocationId, ready: locationReady } = useShopLocation();
   const [query, setQuery] = useState('');
+  const allowedPages = useMemo(
+    () => COMMAND_PAGES.filter(page => !page.permission || hasPermission(page.permission)),
+    [hasPermission],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -103,7 +107,7 @@ export function CommandPalette({ open, onClose, onNewSale }: CommandPaletteProps
                 </CommandGroup>
                 <CommandSeparator />
                 <CommandGroup heading="Jump to">
-                  {COMMAND_PAGES.map(p => (
+                  {allowedPages.map(p => (
                     <CommandItem key={p.to} onSelect={() => go(p.to)}>
                       {p.label}
                     </CommandItem>
@@ -128,7 +132,7 @@ export function CommandPalette({ open, onClose, onNewSale }: CommandPaletteProps
                   </CommandGroup>
                 ) : null}
                 <CommandGroup heading="Pages">
-                  {COMMAND_PAGES.filter(p => p.label.toLowerCase().includes(query.toLowerCase())).map(p => (
+                  {allowedPages.filter(p => p.label.toLowerCase().includes(query.toLowerCase())).map(p => (
                     <CommandItem key={p.to} onSelect={() => go(p.to)}>
                       {p.label}
                     </CommandItem>

@@ -47,10 +47,12 @@ function buildAppleMobileDetails(state: AddProductState, variant: VariantRow): A
     ...mobileNetworkDeviceDetails(state.network),
     ...(state.insp.display === 'Changed' ? { important_display_message: true, mdm_idm: true } : {}),
     ...(state.insp.battery === 'Changed'
-      ? { important_battery_message: true, mdm_ibm: true, serviced_battery_third_party: state.insp.batteryHealth < 80 }
-      : state.insp.batteryHealth < 80
-        ? { serviced_battery_third_party: true }
-        : {}),
+      ? {
+          important_battery_message: true,
+          mdm_ibm: true,
+          ...(state.insp.batteryHealth < 80 ? { serviced_battery_third_party: true } : {}),
+        }
+      : {}),
     ...(state.insp.camera === 'Changed' ? { mdm_icm: true } : {}),
   };
 }

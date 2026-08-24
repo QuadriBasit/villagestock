@@ -4,7 +4,7 @@
 -- already exist and are owned by the linked business's user_id.
 
 create table if not exists public.whatsapp_links (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   -- MSISDN without '+' e.g. 2348031234567
   phone_msisdn text not null unique,
   business_id uuid not null references auth.users(id) on delete cascade,
@@ -37,7 +37,7 @@ create policy "Users manage their own whatsapp links"
   );
 
 create table if not exists public.whatsapp_sessions (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   phone_msisdn text not null,
   -- full conversation turns, newest last: [{role, content}]
   messages jsonb not null default '[]'::jsonb,

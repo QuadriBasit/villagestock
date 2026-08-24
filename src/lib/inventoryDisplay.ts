@@ -1,5 +1,4 @@
 import {
-  appleMobileShowsServicedBattery,
   isAppleDevice,
   isAppleMobileDevice,
   type AppleMobileDeviceDetails,
@@ -50,9 +49,6 @@ export function getInspectionFlags(item: InventoryItem): InspectionFlag[] {
   if (mobile?.important_battery_message || mobile?.mdm_ibm) flags.push('IBM');
   if (mobile?.mdm_icm) flags.push('ICM');
   if (item.status === 'defective' || item.status === 'with_engineer') flags.push('Repair');
-  if (mobile && appleMobileShowsServicedBattery(mobile) && !flags.includes('IBM')) {
-    flags.push('IBM');
-  }
   return flags;
 }
 

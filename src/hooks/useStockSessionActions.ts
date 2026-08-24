@@ -11,8 +11,10 @@ import type { InventoryItem, SerializedItemStatus, StockSession } from '@/types'
 import {
   buildSessionCloseSummary,
   computeExpectedClosingIds,
+  inventoryItemToSnapshot,
   loadInventoryMap,
   localSessionDateKey,
+  snapshotForSessionDevice,
 } from '@/lib/stockSessionUtils';
 
 export class PriorDayStockOpenError extends Error {
@@ -77,6 +79,7 @@ export function useStockSessionActions() {
       opened_at: now,
       opened_by_user_id: actorUserId,
       opening_snapshot_ids: inStock.map((i) => i.id),
+      opening_device_snapshots: inStock.map(inventoryItemToSnapshot),
       expected_closing_ids: [],
       actual_closing_ids: [],
       missing_item_ids: [],
@@ -174,17 +177,18 @@ export function useStockSessionActions() {
       const items = [...(await loadInventoryMap(shopOwnerId, session.location_id)).values()];
       const expectedIds = computeExpectedClosingIds(session, items);
       const summary = await buildSessionCloseSummary(shopOwnerId, session, items, expectedIds);
+      const checklistItems = (
+        await Promise.all(expectedIds.map((id) => db.inventory_items.get(id)))
+      ).filter((i): i is InventoryItem => !!i && !i.deleted);
 
       await db.stock_sessions.update(sessionId, {
         expected_closing_ids: expectedIds,
+        expected_closing_snapshots: checklistItems.map(inventoryItemToSnapshot),
         summary,
         sync_status: 'pending',
       });
 
       const fresh = await db.stock_sessions.get(sessionId);
-      const checklistItems = (
-        await Promise.all(expectedIds.map((id) => db.inventory_items.get(id)))
-      ).filter((i): i is InventoryItem => !!i && !i.deleted);
 
       return { session: fresh!, expectedIds, summary, checklistItems };
     },
@@ -254,11 +258,20 @@ export function useStockSessionActions() {
         }
       }
 
+      const closingSnapshots = await Promise.all(
+        [...actualSet].map(async (id) => {
+          const item = await db.inventory_items.get(id);
+          if (item && !item.deleted) return inventoryItemToSnapshot(item);
+          return snapshotForSessionDevice(id, session);
+        }),
+      );
+
       await db.stock_sessions.update(sessionId, {
         status: nextStatus,
         closed_at: now,
         closed_by_user_id: actorUserId,
         actual_closing_ids: [...actualSet],
+        closing_device_snapshots: closingSnapshots,
         missing_item_ids: missing,
         missing_notes_by_item_id: missing.reduce(
           (acc, id) => {

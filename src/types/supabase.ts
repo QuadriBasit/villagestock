@@ -396,6 +396,7 @@ export interface Database {
           business_id: string;
           member_user_id: string;
           role: string;
+          role_id: string | null;
           display_name: string | null;
           allowed_location_ids: string[] | null;
           created_at: string;
@@ -405,11 +406,46 @@ export interface Database {
           business_id: string;
           member_user_id: string;
           role: string;
+          role_id?: string | null;
           display_name?: string | null;
           allowed_location_ids?: string[] | null;
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['business_members']['Row']>;
+        Relationships: [
+          {
+            foreignKeyName: 'business_members_role_id_fkey';
+            columns: ['role_id'];
+            isOneToOne: false;
+            referencedRelation: 'shop_roles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      shop_roles: {
+        Row: {
+          id: string;
+          business_id: string;
+          name: string;
+          slug: string | null;
+          description: string | null;
+          permissions: Record<string, boolean>;
+          is_system: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          business_id: string;
+          name: string;
+          slug?: string | null;
+          description?: string | null;
+          permissions?: Record<string, boolean>;
+          is_system?: boolean;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['shop_roles']['Row']>;
         Relationships: [];
       };
       staff_invites: {
@@ -418,6 +454,7 @@ export interface Database {
           business_id: string;
           email: string;
           role: string;
+          role_id: string | null;
           display_name: string | null;
           allowed_location_ids: string[] | null;
           invited_by: string;
@@ -431,6 +468,7 @@ export interface Database {
           business_id: string;
           email: string;
           role: string;
+          role_id?: string | null;
           display_name?: string | null;
           allowed_location_ids?: string[] | null;
           invited_by: string;
@@ -520,6 +558,14 @@ export interface Database {
       accept_staff_invite: {
         Args: { p_token: string };
         Returns: undefined;
+      };
+      ensure_default_shop_roles: {
+        Args: { p_business_id: string };
+        Returns: undefined;
+      };
+      shop_member_has_permission: {
+        Args: { p_business_id: string; p_member_id: string; p_permission: string };
+        Returns: boolean;
       };
     };
     Enums: {

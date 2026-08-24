@@ -7,9 +7,11 @@ import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
 import { ModalSheetClose } from "@/components/ui/ModalSheetClose";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { DateTimeField, toLocalDatetimeValue } from "@/components/ui/DateTimeField";
 import { CategoryThumb } from "@/components/inventory/CategoryThumb";
 import { useSalesActions } from "@/hooks/useSalesActions";
+import { useShopAccess } from "@/context/ShopAccessContext";
 import { useShopProfile } from "@/hooks/useShopProfile";
 import { buildReceiptText, openWhatsApp } from "@/lib/whatsapp";
 import { db } from "@/lib/db";
@@ -31,6 +33,10 @@ const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   pos: "POS",
 };
 
+const PAYMENT_OPTIONS = (Object.entries(PAYMENT_LABELS) as [PaymentMethod, string][]).map(
+  ([value, label]) => ({ value, label }),
+);
+
 type SaleDetailModalProps = {
   sale: SalesRecord | null;
   canViewProfit: boolean;
@@ -50,21 +56,33 @@ export default function SaleDetailModal({
   onReturn,
   onRecordPayment,
 }: SaleDetailModalProps) {
-  const { updateSaleSoldAt } = useSalesActions();
+  const { updateSaleSoldAt, updateSalePaymentMethod } = useSalesActions();
+  const { hasPermission } = useShopAccess();
   const { profile } = useShopProfile();
   const liveSale = useLiveQuery(() => (sale ? db.sales_records.get(sale.id) : undefined), [sale?.id]) ?? sale;
   const [soldAt, setSoldAt] = useState(
     liveSale ? toLocalDatetimeValue(new Date(liveSale.sold_at)) : toLocalDatetimeValue(new Date()),
   );
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+    liveSale?.payment_method ?? "bank_transfer",
+  );
   const [savingDate, setSavingDate] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
 
   useEffect(() => {
     if (liveSale) {
       setSoldAt(toLocalDatetimeValue(new Date(liveSale.sold_at)));
+      setPaymentMethod(liveSale.payment_method ?? "bank_transfer");
     }
-  }, [liveSale?.id, liveSale?.sold_at]);
+  }, [liveSale?.id, liveSale?.sold_at, liveSale?.payment_method]);
 
   if (!sale || !liveSale) return null;
+
+  const canEditDeal =
+    liveSale.sale_type === "swap"
+      ? hasPermission("edit_swaps")
+      : hasPermission("edit_sales");
+  const canReturn = hasPermission("process_returns");
 
   const total = liveSale.sale_price * liveSale.quantity_sold;
   const owing =
@@ -91,6 +109,18 @@ export default function SaleDetailModal({
       toast.error(e instanceof Error ? e.message : "Could not update sale date");
     } finally {
       setSavingDate(false);
+    }
+  };
+
+  const savePaymentMethod = async () => {
+    setSavingPayment(true);
+    try {
+      await updateSalePaymentMethod(liveSale.id, paymentMethod);
+      toast.success("Payment method updated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update payment method");
+    } finally {
+      setSavingPayment(false);
     }
   };
 
@@ -168,8 +198,8 @@ export default function SaleDetailModal({
                 value={
                   owing
                     ? "Credit"
-                    : sale.payment_method
-                      ? PAYMENT_LABELS[sale.payment_method]
+                    : liveSale.payment_method
+                      ? PAYMENT_LABELS[liveSale.payment_method]
                       : "—"
                 }
               />
@@ -200,24 +230,48 @@ export default function SaleDetailModal({
               />
             </div>
 
-            <div className="mt-4 space-y-3 rounded-lg border border-shell-line bg-shell-surface-2/20 p-3.5">
-              <DateTimeField
-                id="sale_sold_at"
-                label="Date & time of sale"
-                hint="Backdate if this sale was recorded late."
-                value={soldAt}
-                onChange={setSoldAt}
-              />
-              <Button
-                variant="outline"
-                className="w-full border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
-                onClick={() => void saveSoldAt()}
-                disabled={savingDate}
-              >
-                {savingDate ? <Loader2 size={16} className="animate-spin" /> : null}
-                Save sale date
-              </Button>
-            </div>
+            {canEditDeal ? (
+              <div className="mt-4 space-y-3 rounded-lg border border-shell-line bg-shell-surface-2/20 p-3.5">
+                {!owing ? (
+                  <div>
+                    <p className="mb-2 text-xs font-semibold text-shell-muted">Payment method</p>
+                    <SegmentedTabs
+                      options={PAYMENT_OPTIONS}
+                      value={paymentMethod}
+                      onChange={setPaymentMethod}
+                    />
+                    <Button
+                      variant="outline"
+                      className="mt-3 w-full border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
+                      onClick={() => void savePaymentMethod()}
+                      disabled={
+                        savingPayment ||
+                        paymentMethod === (liveSale.payment_method ?? "bank_transfer")
+                      }
+                    >
+                      {savingPayment ? <Loader2 size={16} className="animate-spin" /> : null}
+                      Save payment method
+                    </Button>
+                  </div>
+                ) : null}
+                <DateTimeField
+                  id="sale_sold_at"
+                  label="Date & time of sale"
+                  hint="Backdate if this sale was recorded late."
+                  value={soldAt}
+                  onChange={setSoldAt}
+                />
+                <Button
+                  variant="outline"
+                  className="w-full border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
+                  onClick={() => void saveSoldAt()}
+                  disabled={savingDate}
+                >
+                  {savingDate ? <Loader2 size={16} className="animate-spin" /> : null}
+                  Save sale date
+                </Button>
+              </div>
+            ) : null}
 
             <div className="mt-4 grid grid-cols-2 gap-2">
               <Button
@@ -237,15 +291,17 @@ export default function SaleDetailModal({
                 <Shield size={16} />
                 Warranty slip
               </Button>
-              <Button
-                variant="outline"
-                className="h-10 border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
-                onClick={() => onReturn(liveSale)}
-                disabled={!!liveSale.returned}
-              >
-                <RotateCcw size={16} />
-                Return / RMA
-              </Button>
+              {canReturn ? (
+                <Button
+                  variant="outline"
+                  className="h-10 border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
+                  onClick={() => onReturn(liveSale)}
+                  disabled={!!liveSale.returned}
+                >
+                  <RotateCcw size={16} />
+                  Return / RMA
+                </Button>
+              ) : null}
               {owing ? (
                 <Button
                   className="h-10 bg-brand-400 text-[#04231d] hover:bg-brand-300"

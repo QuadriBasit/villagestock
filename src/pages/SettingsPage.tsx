@@ -24,14 +24,18 @@ import {
   Laptop,
   Users,
   Layers,
+  UserCircle,
+  Receipt,
 } from 'lucide-react';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useShopRoles } from '@/hooks/useShopRoles';
+import { ShopRolesPanel } from '@/components/settings/ShopRolesPanel';
 import { createShopLocation } from '@/lib/sync';
 import { useTheme, type ThemeMode } from '@/components/theme/ThemeProvider';
 import { useEffect, useState, useRef, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { ShopProfile, ReceiptTheme, Category, WarrantyPolicy, WarrantyDuration } from '@/types';
 import { Checkbox } from '@/components/ui/Checkbox';
@@ -41,6 +45,9 @@ import { ColorPickerField } from '@/components/ui/ColorPickerField';
 import { DEFAULT_RECEIPT_THEME } from '@/hooks/useShopProfile';
 import { extractDominantColor } from '@/lib/colorUtils';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { AnimatedAccordion } from '@/components/ui/AnimatedAccordion';
 import {
   settingsPanel,
   settingsField,
@@ -50,6 +57,7 @@ import {
   settingsBtnOutline,
   settingsBtnDanger,
   settingsRoleChip,
+  SettingsCard,
 } from '@/components/settings/settingsUi';
 import { applyShellAccent } from '@/lib/shellAccent';
 import {
@@ -86,24 +94,46 @@ type FormData = z.infer<typeof schema>;
 
 const panelClass = settingsPanel;
 
+const SETTINGS_TABS = ['shop', 'receipts', 'branches', 'team', 'account'] as const;
+type SettingsTab = (typeof SETTINGS_TABS)[number];
+type TeamSection = 'people' | 'roles';
+
+const TAB_META: Record<SettingsTab, { label: string; icon: ReactNode }> = {
+  shop: { label: 'Shop', icon: <Store size={15} /> },
+  receipts: { label: 'Receipts', icon: <Receipt size={15} /> },
+  branches: { label: 'Branches', icon: <MapPin size={15} /> },
+  team: { label: 'Team', icon: <Users size={15} /> },
+  account: { label: 'Account', icon: <UserCircle size={15} /> },
+};
+
+function isSettingsTab(value: string | null): value is SettingsTab {
+  return SETTINGS_TABS.includes(value as SettingsTab);
+}
+
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
-    role,
+    roleName,
     canManageBusinessSettings,
     canInviteTeamMembers,
+    canManageRoles,
     shopOwnerId,
     actorAllowedLocationIds,
+    isOwner,
   } = useShopAccess();
   const { locations } = useShopLocation();
   const team = useTeamMembers();
+  const shopRoles = useShopRoles();
+  const defaultAssignableRoleId =
+    shopRoles.roles.find(r => r.slug === 'staff')?.id ?? shopRoles.roles[0]?.id ?? '';
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteDisplayName, setInviteDisplayName] = useState('');
-  const [memberRole, setMemberRole] = useState<'manager' | 'staff'>('staff');
+  const [memberRoleId, setMemberRoleId] = useState('');
   const [addExistingEmail, setAddExistingEmail] = useState('');
   const [addExistingUserId, setAddExistingUserId] = useState('');
   const [addExistingDisplayName, setAddExistingDisplayName] = useState('');
-  const [addExistingRole, setAddExistingRole] = useState<'manager' | 'staff'>('staff');
+  const [addExistingRoleId, setAddExistingRoleId] = useState('');
   const [teamSubmitting, setTeamSubmitting] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
   const [branchSubmitting, setBranchSubmitting] = useState(false);
@@ -115,9 +145,29 @@ export default function SettingsPage() {
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [editMemberAllBranches, setEditMemberAllBranches] = useState(true);
   const [editMemberBranchIds, setEditMemberBranchIds] = useState<string[]>([]);
+  const [editingMemberRoleId, setEditingMemberRoleId] = useState<string | null>(null);
+  const [editMemberRoleId, setEditMemberRoleId] = useState('');
+  const [teamSection, setTeamSection] = useState<TeamSection>('people');
+  const [existingAccountOpen, setExistingAccountOpen] = useState(false);
   const { mode, setMode } = useTheme();
   const { profile, isLoading, saveProfile } = useShopProfile();
   const { profile: businessProfile, isLoading: isBizLoading } = useBusinessProfile();
+
+  useEffect(() => {
+    if (!memberRoleId && defaultAssignableRoleId) setMemberRoleId(defaultAssignableRoleId);
+    if (!addExistingRoleId && defaultAssignableRoleId) setAddExistingRoleId(defaultAssignableRoleId);
+  }, [defaultAssignableRoleId, memberRoleId, addExistingRoleId]);
+
+  useEffect(() => {
+    if (!canInviteTeamMembers && canManageRoles) setTeamSection('roles');
+    else if (canInviteTeamMembers) setTeamSection('people');
+  }, [canInviteTeamMembers, canManageRoles]);
+
+  const roleLabelForMember = (member: (typeof team.members)[number]) => {
+    if (member.role === 'owner') return 'Owner';
+    const matched = shopRoles.roles.find(role => role.id === member.role_id);
+    return matched?.name ?? member.role;
+  };
   const { user } = useAuthStore();
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | undefined>(undefined);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -210,6 +260,21 @@ export default function SettingsPage() {
   const fieldClass = settingsField;
   const labelClass = settingsLabel;
 
+  const tabParam = searchParams.get('tab');
+  const activeTab: SettingsTab = isSettingsTab(tabParam) ? tabParam : 'shop';
+
+  const setActiveTab = (value: string) => {
+    setSearchParams(
+      prev => {
+        const next = new URLSearchParams(prev);
+        if (value === 'shop') next.delete('tab');
+        else next.set('tab', value);
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
   if (isLoading || isBizLoading) {
     return (
       <div className="app-page flex justify-center py-20">
@@ -270,39 +335,51 @@ export default function SettingsPage() {
         subtitle="Shop profile, team and how Village Stock runs day to day"
       />
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 xl:grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
-      <section className={`${panelClass} space-y-3 lg:col-span-2 xl:col-span-full`}>
-        <h3 className="font-display text-sm font-semibold text-shell-ink">Appearance</h3>
-        <p className="text-xs text-shell-muted">Uses the header toggle for a quick switch; set default here.</p>
-        <div className="grid max-w-md grid-cols-3 gap-2">
-          {themeChoices.map(({ id, label, icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setMode(id)}
-              className={cn(
-                'flex flex-col items-center gap-1 rounded-xl border py-2.5 text-xs font-semibold transition-colors',
-                mode === id
-                  ? 'shell-accent-subtle shell-accent-subtle-border shell-accent-text-soft'
-                  : 'border-shell-line bg-shell-surface-2/40 text-shell-muted hover:text-shell-ink',
-              )}
-            >
-              {icon}
-              {label}
-            </button>
-          ))}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
+        <div className="overflow-x-auto pb-1 md:overflow-visible">
+          <TabsList className="inline-flex h-auto w-max min-w-full gap-1 p-1 md:grid md:w-full md:grid-cols-5">
+            {SETTINGS_TABS.map(tab => (
+              <TabsTrigger
+                key={tab}
+                value={tab}
+                className="inline-flex min-w-0 items-center justify-center gap-1.5 px-3 py-2 text-xs sm:min-w-22 sm:text-sm"
+              >
+                {TAB_META[tab].icon}
+                {TAB_META[tab].label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
-      </section>
 
-      {/* Shop Profile */}
-      <section className={`${panelClass} space-y-3`}>
-        <div className="mb-0.5 flex items-center gap-2">
-          <Store size={18} className="text-brand-300" />
-          <h3 className="font-display font-semibold text-shell-ink">Shop Profile</h3>
+        <TabsContent value="shop" className="mt-0 space-y-4">
+      <SettingsCard
+        icon={Store}
+        title="Shop profile"
+        subtitle="Name, logo and contact details — shown on every receipt."
+      >
+        <div className="space-y-4">
+        <div>
+          <p className={labelClass}>Default theme</p>
+          <p className="mb-2 text-[11px] text-shell-muted">Quick switch stays in the header — pick your default here.</p>
+          <div className="grid max-w-md grid-cols-3 gap-2">
+            {themeChoices.map(({ id, label, icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setMode(id)}
+                className={cn(
+                  'flex flex-col items-center gap-1 rounded-xl border py-2.5 text-xs font-semibold transition-colors',
+                  mode === id
+                    ? 'shell-accent-subtle shell-accent-subtle-border shell-accent-text-soft'
+                    : 'border-shell-line bg-shell-surface-2/40 text-shell-muted hover:text-shell-ink',
+                )}
+              >
+                {icon}
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-        <p className="-mt-1 text-xs text-shell-muted">
-          This information appears on every receipt you generate.
-        </p>
 
         {/* Logo picker */}
         <div className="flex items-center gap-4">
@@ -312,7 +389,7 @@ export default function SettingsPage() {
             className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-shell-line bg-shell-surface-2/40 transition-colors hover:border-brand-400/45"
           >
             {currentLogo ? (
-              <img src={currentLogo} alt="Shop logo" className="w-full h-full object-cover rounded-xl" />
+              <img src={currentLogo} alt="Shop logo" className="h-full w-full rounded-xl object-cover" />
             ) : (
               <Camera size={22} className="text-shell-muted" />
             )}
@@ -323,7 +400,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => logoInputRef.current?.click()}
-              className="text-xs text-brand-300 mt-1 hover:underline"
+              className="mt-1 text-xs text-brand-300 hover:underline"
             >
               {currentLogo ? 'Change logo' : 'Upload logo'}
             </button>
@@ -335,6 +412,7 @@ export default function SettingsPage() {
             className="hidden"
             onChange={handleLogoChange}
           />
+        </div>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -396,17 +474,15 @@ export default function SettingsPage() {
             )}
           </button>
         </form>
-      </section>
+      </SettingsCard>
+        </TabsContent>
 
-      <section className={`${panelClass} space-y-3`}>
-        <div className="mb-0.5 flex items-center gap-2">
-          <Layers size={18} className="text-brand-300" />
-          <h3 className="font-display font-semibold text-shell-ink">Receipt Design</h3>
-        </div>
-        <p className="-mt-1 text-xs text-shell-muted">
-          Set one receipt style for the whole shop. Every receipt preview, print, and export will use this design.
-        </p>
-
+        <TabsContent value="receipts" className="mt-0 space-y-4">
+      <SettingsCard
+        icon={Layers}
+        title="Receipt design"
+        subtitle="One style for every receipt preview, print, and export."
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           <ColorPickerField
             label="Header color"
@@ -492,18 +568,13 @@ export default function SettingsPage() {
             </span>
           )}
         </div>
-      </section>
+      </SettingsCard>
 
-      <section className={`${panelClass} space-y-3`}>
-        <div className="mb-0.5 flex items-center gap-2">
-          <Shield size={18} className="text-brand-300" />
-          <h3 className="font-display font-semibold text-shell-ink">Warranty &amp; returns</h3>
-        </div>
-        <p className="-mt-1 text-xs text-shell-muted">
-          Set return/warranty cover by product type and stock condition (new, used, UK used, refurb).
-          Use days or months — e.g. 7 days, 14 days, 1 month. New sales pick this up automatically.
-        </p>
-
+      <SettingsCard
+        icon={Shield}
+        title="Warranty & returns"
+        subtitle="Cover by product type and stock condition. New sales pick this up automatically."
+      >
         <div className="overflow-x-auto rounded-xl border border-shell-line">
           <table className="min-w-full text-left text-xs">
             <thead>
@@ -609,16 +680,15 @@ export default function SettingsPage() {
             </span>
           )}
         </div>
-      </section>
+      </SettingsCard>
+        </TabsContent>
 
-      <section className={`${panelClass} space-y-3`}>
-        <div className="flex items-center gap-2">
-          <Layers size={18} className="text-brand-300" />
-          <h3 className="font-display font-semibold text-shell-ink">Branches</h3>
-        </div>
-        <p className="text-xs text-shell-muted">
-          Inventory, sales, and stock sessions are scoped to the branch you select in the header. Each branch has its own stock.
-        </p>
+        <TabsContent value="branches" className="mt-0 space-y-4">
+      <SettingsCard
+        icon={MapPin}
+        title="Branches"
+        subtitle="Each branch has its own stock. Switch branches from the header."
+      >
         <div className="space-y-2">
           <p className="text-xs font-medium text-shell-ink">Your locations</p>
           {locations.length === 0 ? (
@@ -687,28 +757,38 @@ export default function SettingsPage() {
             Only the owner or a manager with access to all branches can add or rename branches.
           </p>
         )}
-      </section>
+      </SettingsCard>
+        </TabsContent>
 
-      <section className={`${panelClass} space-y-3`}>
-        <div className="flex items-center gap-2">
-          <Users size={18} className="text-brand-300" />
-          <h3 className="font-display font-semibold text-shell-ink">Team &amp; roles</h3>
+        <TabsContent value="team" className="mt-0 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-shell-line bg-shell-surface-2/30 px-4 py-3">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-wide text-shell-muted">Your access</p>
+          <p className="mt-0.5 text-sm font-semibold text-shell-ink">{roleName}</p>
         </div>
-        <p className="text-sm text-shell-muted">
-          Your role:{' '}
-          <span className="font-semibold capitalize text-shell-ink">{role}</span>
+        <p className="max-w-sm text-[11px] leading-relaxed text-shell-muted">
+          Only the owner can remove people or change roles. Branch access can be limited per person.
         </p>
-        <p className="text-xs leading-relaxed text-shell-muted">
-          <strong className="text-shell-muted">Staff</strong> can sell and manage stock but not profit,
-          credits, reports, or billing. <strong className="text-shell-muted">Managers</strong> have
-          wider access. You can limit each person to specific branches or give them the whole shop. Only the{' '}
-          <strong className="text-shell-muted">Owner</strong> can remove people.{' '}
-          <strong className="text-shell-muted">Owner</strong> or a{' '}
-          <strong className="text-shell-muted">manager with all branches</strong> can edit branch access
-          after someone joins.
-        </p>
+      </div>
 
-        {canInviteTeamMembers ? (
+      {canManageRoles && canInviteTeamMembers ? (
+        <SegmentedTabs
+          options={[
+            { value: 'people', label: 'People' },
+            { value: 'roles', label: 'Roles' },
+          ]}
+          value={teamSection}
+          onChange={setTeamSection}
+        />
+      ) : null}
+
+      {teamSection === 'roles' && canManageRoles ? (
+        <section className={panelClass}>
+          <ShopRolesPanel fieldClass={fieldClass} labelClass={labelClass} />
+        </section>
+      ) : null}
+
+      {teamSection === 'people' && canInviteTeamMembers ? (
           <>
             {team.error ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
@@ -757,20 +837,17 @@ export default function SettingsPage() {
               <div>
                 <p className={`${labelClass} mb-2`}>Role</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {(
-                    [
-                      { id: 'staff' as const, title: 'Staff', hint: 'Sales & stock' },
-                      { id: 'manager' as const, title: 'Manager', hint: 'Staff + reports & invites' },
-                    ]
-                  ).map(opt => (
+                  {shopRoles.roles.map(opt => (
                     <button
                       key={opt.id}
                       type="button"
-                      onClick={() => setMemberRole(opt.id)}
-                      className={settingsRoleChip(memberRole === opt.id)}
+                      onClick={() => setMemberRoleId(opt.id)}
+                      className={settingsRoleChip(memberRoleId === opt.id)}
                     >
-                      <span className="block font-semibold">{opt.title}</span>
-                      <span className="mt-0.5 block text-[10px] text-shell-muted">{opt.hint}</span>
+                      <span className="block font-semibold">{opt.name}</span>
+                      {opt.description ? (
+                        <span className="mt-0.5 block text-[10px] text-shell-muted">{opt.description}</span>
+                      ) : null}
                     </button>
                   ))}
                 </div>
@@ -837,7 +914,7 @@ export default function SettingsPage() {
                   try {
                     await team.inviteStaff({
                       email: inviteEmail.trim(),
-                      role: memberRole,
+                      roleId: memberRoleId || defaultAssignableRoleId,
                       displayName: inviteDisplayName,
                       allowedLocationIds: inviteAllowedLocationPayload(),
                     });
@@ -857,11 +934,14 @@ export default function SettingsPage() {
                 {teamSubmitting ? 'Sending…' : 'Send invitation email'}
               </button>
 
-              <details className="rounded-lg border border-shell-line bg-shell-surface-2/30">
-                <summary className="cursor-pointer select-none px-3 py-2 text-[11px] font-medium text-shell-muted">
-                  They already have a VillageStock account?
-                </summary>
-                <div className="space-y-2 border-t border-shell-line px-3 py-3">
+              <AnimatedAccordion
+                nested
+                open={existingAccountOpen}
+                onToggle={() => setExistingAccountOpen(current => !current)}
+                title="They already have a VillageStock account?"
+                subtitle="Add by login email or user UUID"
+              >
+                <div className="space-y-2">
                   <p className="text-[10px] text-shell-muted">
                     Add them by the email they use to sign in, or paste their Auth user UUID if they have no email on file.
                   </p>
@@ -894,14 +974,14 @@ export default function SettingsPage() {
                     autoComplete="off"
                   />
                   <div className="grid grid-cols-2 gap-2">
-                    {(['staff', 'manager'] as const).map(r => (
+                    {shopRoles.roles.map(opt => (
                       <button
-                        key={r}
+                        key={opt.id}
                         type="button"
-                        onClick={() => setAddExistingRole(r)}
-                        className={cn(settingsRoleChip(addExistingRole === r), 'rounded-lg px-2 py-1.5 text-[11px] font-medium capitalize')}
+                        onClick={() => setAddExistingRoleId(opt.id)}
+                        className={cn(settingsRoleChip(addExistingRoleId === opt.id), 'rounded-lg px-2 py-1.5 text-[11px] font-medium')}
                       >
-                        {r}
+                        {opt.name}
                       </button>
                     ))}
                   </div>
@@ -966,7 +1046,7 @@ export default function SettingsPage() {
                         await team.addMember({
                           memberEmail: addExistingEmail.trim() || undefined,
                           memberUserId: addExistingUserId.trim() || undefined,
-                          role: addExistingRole,
+                          roleId: addExistingRoleId || defaultAssignableRoleId,
                           displayName: addExistingDisplayName,
                           allowedLocationIds: addExistingAllowedLocationPayload(),
                         });
@@ -987,7 +1067,7 @@ export default function SettingsPage() {
                     Add existing account to shop
                   </button>
                 </div>
-              </details>
+              </AnimatedAccordion>
             </div>
 
             <div className="space-y-2">
@@ -1009,17 +1089,74 @@ export default function SettingsPage() {
                             {m.display_name?.trim() || (m.role === 'owner' ? 'Owner' : 'Team member')}
                           </span>
                           <span
-                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                               m.role === 'owner'
                                 ? 'bg-brand-400/15 text-brand-200'
-                                : m.role === 'manager'
-                                  ? 'bg-blue-400/15 text-blue-200'
-                                  : 'bg-shell-surface-2 text-shell-muted'
+                                : 'bg-shell-surface-2 text-shell-muted'
                             }`}
                           >
-                            {m.role}
+                            {roleLabelForMember(m)}
                           </span>
                         </div>
+                        {isOwner && m.role !== 'owner' ? (
+                          <div className="mt-2 w-full border-t border-shell-line pt-2">
+                            {editingMemberRoleId === m.id ? (
+                              <div className="space-y-2">
+                                <div className="flex flex-wrap gap-2">
+                                  {shopRoles.roles.map(opt => (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      onClick={() => setEditMemberRoleId(opt.id)}
+                                      className={cn(
+                                        settingsRoleChip(editMemberRoleId === opt.id),
+                                        'rounded-lg px-2 py-1 text-[10px]',
+                                      )}
+                                    >
+                                      {opt.name}
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={!editMemberRoleId}
+                                    className={cn(settingsBtnPrimary, 'rounded-lg px-2 py-1 text-[11px]')}
+                                    onClick={async () => {
+                                      try {
+                                        await team.updateMemberRole(m, editMemberRoleId);
+                                        setEditingMemberRoleId(null);
+                                        toast.success('Role updated.');
+                                      } catch (e) {
+                                        toast.error(e instanceof Error ? e.message : 'Update failed');
+                                      }
+                                    }}
+                                  >
+                                    Save role
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="rounded-lg border border-shell-line px-2 py-1 text-[11px] text-shell-muted"
+                                    onClick={() => setEditingMemberRoleId(null)}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="text-[11px] font-medium text-brand-300 hover:underline"
+                                onClick={() => {
+                                  setEditingMemberRoleId(m.id);
+                                  setEditMemberRoleId(m.role_id ?? defaultAssignableRoleId);
+                                }}
+                              >
+                                Change role
+                              </button>
+                            )}
+                          </div>
+                        ) : null}
                         {locations.length > 1 && m.role !== 'owner' ? (
                           <p className="mt-1 text-[10px] text-shell-muted">
                             Branches:{' '}
@@ -1117,7 +1254,7 @@ export default function SettingsPage() {
                           </div>
                         ) : null}
                       </div>
-                      {role === 'owner' && m.role !== 'owner' ? (
+                      {isOwner && m.role !== 'owner' ? (
                         <button
                           type="button"
                           onClick={async () => {
@@ -1140,56 +1277,21 @@ export default function SettingsPage() {
               )}
             </div>
           </>
-        ) : (
-          <p className="text-xs text-shell-muted">
-            Inviting teammates is available to owners and managers.
-          </p>
-        )}
-      </section>
-
-      {/* Subscription / plan picker hidden — restore when billing returns.
-      <section className={`${panelClass} space-y-3`}>
-        <div className="flex items-center gap-2">
-          <CreditCard size={18} className="text-brand-300" />
-          <h3 className="font-display font-semibold text-shell-ink">Subscription</h3>
-        </div>
-        {businessProfile ? (
-          <div className="space-y-1 rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-3 text-sm">
-            <p>
-              <span className="text-shell-muted">Current plan:</span>{' '}
-              <span className="font-semibold text-shell-ink">{formatPlanLabel(businessProfile.plan)}</span>
-            </p>
-            <p>
-              <span className="text-shell-muted">Status:</span>{' '}
-              <span className="font-medium text-shell-ink">{formatPlanStatus(businessProfile.plan_status)}</span>
-            </p>
-            {businessProfile.plan === 'trial' && trialEndLabel ? (
-              <p>
-                <span className="text-shell-muted">Trial ends:</span>{' '}
-                <span className="font-medium text-shell-ink">{trialEndLabel}</span>
-              </p>
-            ) : null}
-          </div>
         ) : null}
-        <div>
-          <p className="mb-2 text-xs font-medium text-shell-ink">Compare plans</p>
-          <PlanPickerGrid variant="compact" />
-        </div>
-        <p className="text-[11px] leading-relaxed text-shell-muted">
-          Payments are not live yet. When Paystack is connected, you will subscribe from here. Until then, enjoy full access
-          during your trial.
-        </p>
-      </section>
-      */}
 
-      <section className={`${panelClass} space-y-3`}>
-        <div className="flex items-center gap-2">
-          <FileBarChart2 size={18} className="text-brand-300" />
-          <h3 className="font-display font-semibold text-shell-ink">Reporting</h3>
-        </div>
-        <p className="text-sm text-shell-muted">
-          Review daily, weekly, and custom performance reports and export them as PDF.
+      {!canInviteTeamMembers && !canManageRoles ? (
+        <p className="text-xs text-shell-muted">
+          Team management is available to owners and managers.
         </p>
+      ) : null}
+        </TabsContent>
+
+        <TabsContent value="account" className="mt-0 space-y-4">
+      <SettingsCard
+        icon={FileBarChart2}
+        title="Reporting"
+        subtitle="Daily, weekly, and custom performance reports with PDF export."
+      >
         <button
           onClick={() => navigate('/reports')}
           className={cn(settingsBtnOutline, 'w-full justify-between px-4 py-3 text-sm font-medium text-shell-ink hover:bg-shell-surface-2/60')}
@@ -1197,12 +1299,10 @@ export default function SettingsPage() {
           <span>Open Reports</span>
           <ChevronRight size={16} className="text-shell-muted" />
         </button>
-      </section>
+      </SettingsCard>
 
-      {/* Account info */}
-      <section className={`${panelClass} space-y-3`}>
-        <h3 className="font-display font-semibold text-shell-ink">Account</h3>
-        <div className="flex items-center justify-between">
+      <SettingsCard icon={UserCircle} title="Account" subtitle="Your sign-in details for this shop.">
+        <div className="space-y-4">
           <div>
             <p className="text-sm font-medium text-shell-ink">{accountPrimary}</p>
             <p className="mt-0.5 text-xs text-shell-muted">{ownerName ? 'Owner' : 'Account'}</p>
@@ -1210,23 +1310,18 @@ export default function SettingsPage() {
               <p className="mt-1 text-xs text-shell-muted">{user?.email}</p>
             ) : null}
             {accountShowPhone ? (
-              <p
-                className={`text-xs text-shell-muted ${accountShowEmail ? 'mt-0.5' : 'mt-1'}`}
-              >
+              <p className={`text-xs text-shell-muted ${accountShowEmail ? 'mt-0.5' : 'mt-1'}`}>
                 {user?.phone}
               </p>
             ) : null}
           </div>
+          <button onClick={handleSignOut} className={settingsBtnDanger}>
+            <LogOut size={16} /> Sign Out
+          </button>
         </div>
-        <button
-          onClick={handleSignOut}
-          className={settingsBtnDanger}
-        >
-          <LogOut size={16} /> Sign Out
-        </button>
-      </section>
-
-      </div>
+      </SettingsCard>
+        </TabsContent>
+      </Tabs>
 
       {/* App info */}
       <div className="pb-2 text-center text-xs text-shell-muted">

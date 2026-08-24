@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/Select';
 import {Label} from '@/components/ui/Label';
 import {Input} from '@/components/ui/Input';
+import {PercentDraftInput} from '@/components/ui/PercentDraftInput';
 import {Checkbox} from '@/components/ui/Checkbox';
 import {Textarea} from '@/components/ui/Textarea';
 import {CurrencyInput} from '@/components/ui/CurrencyInput';
@@ -478,9 +479,6 @@ export default function ItemForm({
             ...(data.important_camera_message
               ? {important_camera_message: true}
               : {}),
-            serviced_battery_third_party:
-              typeof data.battery_health === 'number' &&
-              data.battery_health < 80,
             ...(data.mdm_ibm ? {mdm_ibm: true} : {}),
             ...(data.mdm_idm ? {mdm_idm: true} : {}),
             ...(data.mdm_icm ? {mdm_icm: true} : {}),
@@ -867,11 +865,26 @@ export default function ItemForm({
           <section className={sectionClass}>
             <h3 className={sectionHeadingClass}>Apple Device Details</h3>
             <div className='grid grid-cols-2 gap-3'>
-              <NumberField
-                id='battery_health'
-                label='Battery Health'
-                register={register('battery_health')}
-                suffix='%'
+              <Controller
+                name='battery_health'
+                control={control}
+                render={({field}) => (
+                  <div>
+                    <Label className={shellLabelClass} htmlFor='battery_health'>
+                      Battery Health
+                    </Label>
+                    <PercentDraftInput
+                      id='battery_health'
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      min={0}
+                      max={100}
+                      suffix='%'
+                      className={shellFieldClass}
+                    />
+                  </div>
+                )}
               />
               <NumberField
                 id='battery_cycle_count'
@@ -1066,11 +1079,26 @@ export default function ItemForm({
                 label='Battery Cycle Count'
                 register={register('battery_cycle_count')}
               />
-              <NumberField
-                id='battery_health'
-                label='Battery Health'
-                register={register('battery_health')}
-                suffix='%'
+              <Controller
+                name='battery_health'
+                control={control}
+                render={({field}) => (
+                  <div>
+                    <Label className={shellLabelClass} htmlFor='battery_health_laptop'>
+                      Battery Health
+                    </Label>
+                    <PercentDraftInput
+                      id='battery_health_laptop'
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      min={0}
+                      max={100}
+                      suffix='%'
+                      className={shellFieldClass}
+                    />
+                  </div>
+                )}
               />
             </div>
             <div className='grid grid-cols-2 gap-3'>

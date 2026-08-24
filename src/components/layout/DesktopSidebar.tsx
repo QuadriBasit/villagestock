@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 
 export default function DesktopSidebar() {
   const location = useLocation();
-  const { canAccessFinancialNav } = useShopAccess();
+  const { hasPermission } = useShopAccess();
   const { profile } = useBusinessProfile();
   const { user } = useAuthStore();
   const { mobileOpen, closeMobile } = useSidebarLayout();
@@ -49,8 +49,8 @@ export default function DesktopSidebar() {
     };
   }, [mobileOpen]);
 
-  const mainNav = MAIN_NAV.filter(item => canAccessFinancialNav || !item.financial);
-  const secondaryNav = SECONDARY_NAV.filter(item => canAccessFinancialNav || !item.financial);
+  const mainNav = MAIN_NAV.filter(item => !item.permission || hasPermission(item.permission));
+  const secondaryNav = SECONDARY_NAV.filter(item => !item.permission || hasPermission(item.permission));
   const avatar = getAccountInitial({
     ownerName: profile?.owner_name,
     email: user?.email,

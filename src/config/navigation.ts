@@ -16,34 +16,39 @@ import {
   Settings,
   HandCoins,
 } from 'lucide-react';
+import type { ShopPermissionKey } from '@/lib/shopPermissions';
 
 export type NavItem = {
   to: string;
   icon: LucideIcon;
   label: string;
-  /** Hide for staff without financial nav access */
-  financial?: boolean;
+  permission?: ShopPermissionKey | ShopPermissionKey[];
 };
 
 export const MAIN_NAV: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/till', icon: Zap, label: 'Quick till' },
-  { to: '/inventory', icon: Package, label: 'Inventory' },
-  { to: '/sales', icon: ShoppingCart, label: 'Sales' },
-  { to: '/share', icon: Share2, label: 'Price list' },
-  { to: '/cashup', icon: Wallet, label: 'Cash & expenses', financial: true },
-  { to: '/repair', icon: Wrench, label: 'Repairs' },
-  { to: '/contacts', icon: Users, label: 'Contacts' },
-  { to: '/purchasing', icon: ShoppingBag, label: 'Purchasing', financial: true },
+  { to: '/till', icon: Zap, label: 'Quick till', permission: 'access_till' },
+  { to: '/inventory', icon: Package, label: 'Inventory', permission: 'view_inventory' },
+  { to: '/sales', icon: ShoppingCart, label: 'Sales', permission: 'access_sales' },
+  { to: '/share', icon: Share2, label: 'Price list', permission: 'access_price_list' },
+  { to: '/cashup', icon: Wallet, label: 'Cash & expenses', permission: 'access_cashup' },
+  { to: '/repair', icon: Wrench, label: 'Repairs', permission: 'access_repairs' },
+  { to: '/contacts', icon: Users, label: 'Contacts', permission: 'access_contacts' },
+  { to: '/purchasing', icon: ShoppingBag, label: 'Purchasing', permission: 'access_purchasing' },
 ];
 
 export const SECONDARY_NAV: NavItem[] = [
-  { to: '/analytics', icon: BarChart3, label: 'Pricing & profit', financial: true },
-  { to: '/reports/stock-sessions', icon: ScanLine, label: 'Stock-take', financial: true },
-  { to: '/credits', icon: HandCoins, label: 'Credits', financial: true },
-  { to: '/alerts', icon: Bell, label: 'Alerts' },
-  { to: '/audit-log', icon: ClipboardList, label: 'Audit log', financial: true },
-  { to: '/settings', icon: Settings, label: 'Settings', financial: true },
+  { to: '/analytics', icon: BarChart3, label: 'Pricing & profit', permission: 'access_analytics' },
+  { to: '/reports/stock-sessions', icon: ScanLine, label: 'Stock-take', permission: 'access_stock_take' },
+  { to: '/credits', icon: HandCoins, label: 'Credits', permission: 'manage_credits' },
+  { to: '/alerts', icon: Bell, label: 'Alerts', permission: 'access_alerts' },
+  { to: '/audit-log', icon: ClipboardList, label: 'Audit log', permission: 'access_audit_log' },
+  {
+    to: '/settings',
+    icon: Settings,
+    label: 'Settings',
+    permission: ['access_settings', 'manage_shop_settings', 'manage_team', 'manage_roles'],
+  },
 ];
 
 export const PAGE_TITLES: Record<string, string> = {

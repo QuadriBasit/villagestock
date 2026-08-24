@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Fuel, Plus, Wallet } from 'lucide-react';
 import { setSetting, getSetting } from '@/lib/db';
+import { EXPENSE_CATEGORY_ICONS, expenseCategoryLabel } from '@/lib/expenseCategories';
 import { useTodayExpenses } from '@/hooks/useExpenses';
 import { useExpenseActions } from '@/hooks/useExpenseActions';
 import { useTodayTill } from '@/hooks/useTodayTill';
@@ -14,19 +15,12 @@ import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import AddExpenseModal from '@/components/cash/AddExpenseModal';
+import { CashOverviewSection } from '@/components/cash/CashOverviewSection';
 import CashCountModal from '@/components/cash/CashCountModal';
 import { cn, formatCurrency } from '@/lib/utils';
 import type { CashSessionRecord, ExpenseCategory, ExpenseRecord, PaymentMethod } from '@/types';
 
-const EXPENSE_ICONS: Record<ExpenseCategory, typeof Fuel> = {
-  generator: Fuel,
-  nepa: Fuel,
-  transport: Fuel,
-  feeding: Fuel,
-  rent: Wallet,
-  supplies: Fuel,
-  other: Wallet,
-};
+const EXPENSE_ICONS = EXPENSE_CATEGORY_ICONS;
 
 const PAY_LABELS: Record<PaymentMethod, string> = {
   cash: 'Cash',
@@ -54,7 +48,7 @@ export default function CashUpPage() {
   const { closeCashDay } = useCashSessionActions();
   const { activeLocationId } = useShopLocation();
 
-  const openingFloat = useLiveQuery(() => getSetting<number>('opening_float', 50_000), []);
+  const openingFloat = useLiveQuery(() => getSetting<number>('opening_float', 0), []);
 
   const [addOpen, setAddOpen] = useState(false);
   const [countOpen, setCountOpen] = useState(false);
@@ -126,6 +120,8 @@ export default function CashUpPage() {
         />
       </StatGrid>
 
+      <CashOverviewSection />
+
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]">
         <Card className="overflow-hidden border-shell-line bg-shell-surface p-0 shadow-none">
           <div className="flex items-center justify-between border-b border-shell-line px-4 py-3">
@@ -193,7 +189,9 @@ export default function CashUpPage() {
           <Card className="border-shell-line bg-shell-surface shadow-none">
             <CardContent className="space-y-2 p-4">
               <h3 className="font-display text-sm font-semibold text-shell-ink">Opening float</h3>
-              <p className="text-xs text-shell-muted">Cash you started the day with in the drawer.</p>
+              <p className="text-xs text-shell-muted">
+                Cash you started the day with in the drawer. Leave at ₦0 if you don&apos;t keep float in the drawer.
+              </p>
               <CurrencyInput
                 value={openingFloat ?? till.openingFloat}
                 onValueChange={v => void setSetting('opening_float', v ?? 0)}
@@ -282,7 +280,7 @@ function ExpenseRow({ expense: e }: { expense: ExpenseRecord }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium text-shell-ink">{e.label}</p>
         <p className="text-[11px] capitalize text-shell-muted">
-          {e.category.replace('_', ' ')} · {formatTime(e.recorded_at)}
+          {expenseCategoryLabel(e.category)} · {formatTime(e.recorded_at)}
         </p>
       </div>
       <div className="text-right">

@@ -1,9 +1,9 @@
 import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  appleMobileShowsServicedBattery,
   isAppleLaptopDevice,
   isAppleMobileDevice,
+  appleMobileShowsBatteryIBM,
   type AppleLaptopDeviceDetails,
   type AppleMobileDeviceDetails,
   type InventoryItem,
@@ -50,7 +50,7 @@ export function ItemInspectionPanel({ item }: { item: InventoryItem }) {
   if (!mobile && !laptop && !item.condition) return null;
 
   const idm = mobile?.important_display_message || mobile?.mdm_idm;
-  const ibm = mobile?.important_battery_message || mobile?.mdm_ibm || (mobile && appleMobileShowsServicedBattery(mobile));
+  const ibm = mobile ? appleMobileShowsBatteryIBM(mobile) : false;
   const icm = mobile?.mdm_icm;
 
   const alerts = [
@@ -139,8 +139,7 @@ function buildInspectionRows(
   if (mobile) {
     const batt = mobile.battery_health;
     const idm = mobile.important_display_message || mobile.mdm_idm;
-    const ibm =
-      mobile.important_battery_message || mobile.mdm_ibm || appleMobileShowsServicedBattery(mobile);
+    const ibm = appleMobileShowsBatteryIBM(mobile);
     return [
       {
         label: 'Display',

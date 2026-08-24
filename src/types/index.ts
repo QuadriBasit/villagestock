@@ -111,11 +111,14 @@ export function isAppleDevice(brand: string, category: Category): boolean {
   return isAppleMobileDevice(brand, category) || isAppleLaptopDevice(brand, category);
 }
 
-/** Serviced / low-health battery disclosure for iPhone & iPad: health under 80%, or legacy stored flag. */
+/** Battery was replaced — Important Battery Message / IBM disclosure at sale. */
+export function appleMobileShowsBatteryIBM(d: AppleMobileDeviceDetails): boolean {
+  return !!(d.important_battery_message || d.mdm_ibm);
+}
+
+/** Replacement battery disclosure (IBM). Not triggered by low health on an original battery. */
 export function appleMobileShowsServicedBattery(d: AppleMobileDeviceDetails): boolean {
-  const h = d.battery_health;
-  if (typeof h === 'number' && h < 80) return true;
-  return d.serviced_battery_third_party === true;
+  return appleMobileShowsBatteryIBM(d);
 }
 
 const APPLE_MOBILE_SEARCH_FLAG_LABELS: Record<string, string> = {
@@ -409,6 +412,15 @@ export interface StockSessionSummary {
   expected_remaining: number;
 }
 
+/** Frozen device row for stock-take history (survives sold/deleted inventory). */
+export interface StockSessionDeviceSnapshot {
+  id: string;
+  name: string;
+  brand: string;
+  imei?: string;
+  serial_number?: string;
+}
+
 /** Daily stock accountability session (local-first; optional remote sync later). */
 export interface StockSession {
   id: string;
@@ -424,12 +436,18 @@ export interface StockSession {
   closed_by_user_id?: string;
   /** Serialized item ids that were in_stock at open */
   opening_snapshot_ids: string[];
+  /** Device details captured at open — used in past session detail */
+  opening_device_snapshots?: StockSessionDeviceSnapshot[];
   /** Ids physically confirmed present when opening stock */
   opening_confirmed_ids?: string[];
   /** Ids we expect on hand at close (computed before/during reconcile) */
   expected_closing_ids: string[];
+  /** Expected devices at close — captured when the close checklist loads */
+  expected_closing_snapshots?: StockSessionDeviceSnapshot[];
   /** Ids physically confirmed present */
   actual_closing_ids: string[];
+  /** Devices physically confirmed at close */
+  closing_device_snapshots?: StockSessionDeviceSnapshot[];
   missing_item_ids: string[];
   /** Required note per missing item before close when discrepancy */
   missing_notes_by_item_id: Record<string, string>;
@@ -462,13 +480,21 @@ export interface ContactRecord {
 }
 
 export type ExpenseCategory =
+  | 'rent'
+  | 'salary'
+  | 'security'
+  | 'lawma'
+  | 'market_levy'
   | 'generator'
   | 'nepa'
+  | 'internet'
   | 'transport'
   | 'feeding'
-  | 'rent'
+  | 'repairs'
   | 'supplies'
   | 'other';
+
+export type ExpenseRecurrence = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 export interface ExpenseRecord {
   id: string;
@@ -479,6 +505,20 @@ export interface ExpenseRecord {
   amount: number;
   payment_method: PaymentMethod;
   recorded_at: string;
+  created_at: string;
+}
+
+/** Fixed shop costs — rent, levies, etc. Used for period P&L estimates. */
+export interface RecurringExpenseRecord {
+  id: string;
+  user_id: string;
+  location_id: string;
+  category: ExpenseCategory;
+  label: string;
+  amount: number;
+  payment_method: PaymentMethod;
+  recurrence: ExpenseRecurrence;
+  active: boolean;
   created_at: string;
 }
 
@@ -523,6 +563,10 @@ export interface PurchaseRecord {
 
 export type ContactRecordInput = Omit<ContactRecord, 'id' | 'user_id' | 'deal_count' | 'created_at' | 'updated_at'>;
 export type ExpenseRecordInput = Omit<ExpenseRecord, 'id' | 'user_id' | 'created_at'>;
+export type RecurringExpenseInput = Omit<
+  RecurringExpenseRecord,
+  'id' | 'user_id' | 'location_id' | 'created_at' | 'active'
+> & { active?: boolean };
 export type CashSessionInput = Omit<
   CashSessionRecord,
   'id' | 'user_id' | 'location_id' | 'closed_at' | 'closed_by_label'

@@ -86,7 +86,7 @@ export function blankNetworkState(): NetworkState {
 }
 
 export function simConfigNeedsEsimStatus(sim: SimConfiguration | ''): boolean {
-  return sim === 'esim_only' || sim === 'physical_plus_esim';
+  return sim === 'esim_only';
 }
 
 export function networkStatusNeedsSimConfig(status: NetworkUnlockStatus | ''): boolean {

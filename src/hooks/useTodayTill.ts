@@ -76,7 +76,7 @@ export function useTodayTill(expenses: { amount: number; payment_method: Payment
       .filter(e => e.payment_method !== 'cash')
       .reduce((a, e) => a + e.amount, 0);
 
-    const openingFloat = await getSetting<number>('opening_float', 50_000);
+    const openingFloat = await getSetting<number>('opening_float', 0);
 
     return {
       openingFloat,

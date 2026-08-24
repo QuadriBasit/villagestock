@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import type { BusinessProfile, InventoryItem, StockSession, StockSessionSummary } from '@/types';
+import type { BusinessProfile, InventoryItem, StockSession, StockSessionDeviceSnapshot, StockSessionSummary } from '@/types';
 
 export function localSessionDateKey(d = new Date()): string {
   const y = d.getFullYear();
@@ -121,3 +121,52 @@ export async function buildSessionCloseSummary(
 }
 
 export const tradingBlockedMessage = 'Open stock to start trading';
+
+export function inventoryItemToSnapshot(item: InventoryItem): StockSessionDeviceSnapshot {
+  return {
+    id: item.id,
+    name: item.name,
+    brand: item.brand,
+    imei: item.imei,
+    serial_number: item.serial_number,
+  };
+}
+
+export function placeholderDeviceSnapshot(id: string): StockSessionDeviceSnapshot {
+  return {
+    id,
+    name: 'Device no longer in inventory',
+    brand: '',
+  };
+}
+
+/** Best-effort label for a device id using snapshots already on the session. */
+export function snapshotForSessionDevice(
+  id: string,
+  session: Pick<
+    StockSession,
+    'expected_closing_snapshots' | 'opening_device_snapshots'
+  >,
+): StockSessionDeviceSnapshot {
+  return (
+    session.expected_closing_snapshots?.find(s => s.id === id) ??
+    session.opening_device_snapshots?.find(s => s.id === id) ??
+    placeholderDeviceSnapshot(id)
+  );
+}
+
+/** Prefer frozen snapshots; fall back to live inventory; then placeholder. */
+export function resolveSessionDeviceList(
+  ids: string[],
+  snapshots: StockSessionDeviceSnapshot[] | undefined,
+  liveItems: Map<string, InventoryItem> | undefined,
+): StockSessionDeviceSnapshot[] {
+  if (snapshots?.length) {
+    const byId = new Map(snapshots.map(s => [s.id, s]));
+    return ids.map(id => byId.get(id) ?? placeholderDeviceSnapshot(id));
+  }
+  return ids.map(id => {
+    const live = liveItems?.get(id);
+    return live ? inventoryItemToSnapshot(live) : placeholderDeviceSnapshot(id);
+  });
+}

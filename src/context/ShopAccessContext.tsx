@@ -19,6 +19,21 @@ import {
   subscribeShopRemoteChanges,
   tryConsumeShopBootstrap,
 } from '@/lib/sync';
+import {
+  editSalesAllowed,
+  editSwapsAllowed,
+  financialNavAllowed,
+  hasAnyShopPermission,
+  inviteTeamAllowed,
+  manageBusinessSettingsAllowed,
+  manageRolesAllowed,
+  normalizeShopPermissions,
+  permissionsFromLegacyRole,
+  resolveMemberPermissions,
+  viewProfitAllowed,
+  type ShopPermissionKey,
+  type ShopPermissions,
+} from '@/lib/shopPermissions';
 import type { ShopRole } from '@/types';
 
 export type ShopAccessStatus = 'idle' | 'loading' | 'ready';
@@ -30,44 +45,100 @@ export interface ShopAccessValue {
   /** Signed-in account (owner, manager, or staff). */
   actorUserId: string | null;
   role: ShopRole;
+  /** Display name for the assigned shop role (Owner, Staff, custom role, …). */
+  roleName: string;
+  roleId: string | null;
+  permissions: ShopPermissions;
   /**
    * Null or empty = can work in all branches. Non-empty = only these `shop_locations.id` values.
    * Owners always have null here (full access).
    */
   actorAllowedLocationIds: string[] | null;
-  /** Shop-wide settings (profile, branches, billing) — not branch-only managers. */
+  isOwner: boolean;
   canManageBusinessSettings: boolean;
-  /** Invite or add teammates (owners and all managers, including branch-scoped). */
   canInviteTeamMembers: boolean;
+  canManageRoles: boolean;
   canViewProfit: boolean;
   canAccessFinancialNav: boolean;
+  canEditSales: boolean;
+  canEditSwaps: boolean;
+  hasPermission: (key: ShopPermissionKey | ShopPermissionKey[]) => boolean;
   refetch: () => void;
 }
+
+const defaultPermissions = permissionsFromLegacyRole('owner');
 
 const defaultValue: ShopAccessValue = {
   status: 'idle',
   shopOwnerId: null,
   actorUserId: null,
   role: 'owner',
+  roleName: 'Owner',
+  roleId: null,
+  permissions: defaultPermissions,
   actorAllowedLocationIds: null,
+  isOwner: true,
   canViewProfit: true,
   canAccessFinancialNav: true,
   canManageBusinessSettings: true,
   canInviteTeamMembers: true,
+  canManageRoles: true,
+  canEditSales: true,
+  canEditSwaps: true,
+  hasPermission: () => true,
   refetch: () => {},
 };
 
 const ShopAccessContext = createContext<ShopAccessValue>(defaultValue);
 
+type MemberLookupRow = {
+  business_id: string;
+  role: string;
+  allowed_location_ids: string[] | null;
+  role_id: string | null;
+  shop_roles: {
+    name: string;
+    slug: string | null;
+    permissions: unknown;
+  } | null;
+};
+
+function deriveLegacyRole(role: string, slug: string | null): ShopRole {
+  if (role === 'owner') return 'owner';
+  if (slug === 'manager' || role === 'manager') return 'manager';
+  if (slug === 'staff' || role === 'staff') return 'staff';
+  return 'staff';
+}
+
+function buildCapabilityFlags(
+  permissions: ShopPermissions,
+  isOwner: boolean,
+  branchRestricted: boolean,
+) {
+  const effective = resolveMemberPermissions({
+    isOwner,
+    rolePermissions: permissions,
+    branchRestricted,
+  });
+  return {
+    permissions: effective,
+    canViewProfit: viewProfitAllowed(effective),
+    canAccessFinancialNav: financialNavAllowed(effective),
+    canManageBusinessSettings: manageBusinessSettingsAllowed(effective),
+    canInviteTeamMembers: inviteTeamAllowed(effective),
+    canManageRoles: manageRolesAllowed(effective),
+    canEditSales: editSalesAllowed(effective),
+    canEditSwaps: editSwapsAllowed(effective),
+  };
+}
+
 export function ShopAccessProvider({ children }: { children: ReactNode }) {
-  /** Use stable id only — `user` from Supabase is a new object on every auth event / token refresh. */
   const userId = useAuthStore(s => s.user?.id ?? null);
   const latestUserIdRef = useRef<string | null>(userId);
   latestUserIdRef.current = userId;
 
   const loadInFlight = useRef(false);
   const loadCoalesceRef = useRef<{ userId: string; promise: Promise<void>; token: symbol } | null>(null);
-  /** After first successful `business_members` resolution for this login — do not flip `loading` again (avoids unmounting the whole app on every auth heartbeat → request storm). */
   const completedForUserIdRef = useRef<string | null>(null);
   const [state, setState] = useState<
     Omit<
@@ -77,13 +148,22 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
       | 'canAccessFinancialNav'
       | 'canManageBusinessSettings'
       | 'canInviteTeamMembers'
-    >
+      | 'canManageRoles'
+      | 'canEditSales'
+      | 'canEditSwaps'
+      | 'hasPermission'
+      | 'permissions'
+    > & { rolePermissions: unknown }
   >({
     status: 'idle',
     shopOwnerId: null,
     actorUserId: null,
     role: 'owner',
+    roleName: 'Owner',
+    roleId: null,
     actorAllowedLocationIds: null,
+    isOwner: true,
+    rolePermissions: permissionsFromLegacyRole('owner'),
   });
 
   const load = useCallback(async () => {
@@ -96,7 +176,11 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
         shopOwnerId: null,
         actorUserId: null,
         role: 'owner',
+        roleName: 'Owner',
+        roleId: null,
         actorAllowedLocationIds: null,
+        isOwner: true,
+        rolePermissions: permissionsFromLegacyRole('owner'),
       });
       return;
     }
@@ -113,7 +197,6 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
     const loadPromise = (async () => {
       loadInFlight.current = true;
 
-      /** Owner invite: accept before `business_members` lookup so staff are not treated as solo owners. */
       try {
         const { data: sessionData } = await supabase.auth.getUser();
         const u = sessionData?.user;
@@ -148,7 +231,11 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
           shopOwnerId: null,
           actorUserId: capturedUserId,
           role: 'owner',
+          roleName: 'Owner',
+          roleId: null,
           actorAllowedLocationIds: null,
+          isOwner: true,
+          rolePermissions: permissionsFromLegacyRole('owner'),
         });
       }
 
@@ -162,7 +249,11 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
         shopOwnerId: string;
         actorUserId: string;
         role: ShopRole;
+        roleName: string;
+        roleId: string | null;
         actorAllowedLocationIds: string[] | null;
+        isOwner: boolean;
+        rolePermissions: unknown;
       }) => {
         if (latestUserIdRef.current !== capturedUserId) return;
         setState({
@@ -175,7 +266,11 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
         shopOwnerId: string;
         actorUserId: string;
         role: ShopRole;
+        roleName: string;
+        roleId: string | null;
         actorAllowedLocationIds: string[] | null;
+        isOwner: boolean;
+        rolePermissions: unknown;
       }) => {
         try {
           await pullRemoteBusinessProfile(patch.shopOwnerId);
@@ -189,7 +284,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
       try {
         const { data, error } = await supabase
           .from('business_members')
-          .select('business_id, role, allowed_location_ids')
+          .select('business_id, role, allowed_location_ids, role_id, shop_roles(name, slug, permissions)')
           .eq('member_user_id', capturedUserId)
           .order('created_at', { ascending: true })
           .limit(1)
@@ -201,7 +296,11 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
             shopOwnerId: capturedUserId,
             actorUserId: capturedUserId,
             role: 'owner',
+            roleName: 'Owner',
+            roleId: null,
             actorAllowedLocationIds: null,
+            isOwner: true,
+            rolePermissions: permissionsFromLegacyRole('owner'),
           });
           return;
         }
@@ -211,20 +310,35 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
             shopOwnerId: capturedUserId,
             actorUserId: capturedUserId,
             role: 'owner',
+            roleName: 'Owner',
+            roleId: null,
             actorAllowedLocationIds: null,
+            isOwner: true,
+            rolePermissions: permissionsFromLegacyRole('owner'),
           });
           return;
         }
 
-        const role = data.role as ShopRole;
-        const raw = data.allowed_location_ids as string[] | null | undefined;
+        const row = data as MemberLookupRow;
+        const isOwner = row.role === 'owner' || row.business_id === capturedUserId;
+        const raw = row.allowed_location_ids;
         const actorAllowedLocationIds =
-          raw && raw.length > 0 ? raw : null;
+          isOwner ? null : raw && raw.length > 0 ? raw : null;
+        const roleName = isOwner
+          ? 'Owner'
+          : row.shop_roles?.name?.trim() || (row.role === 'manager' ? 'Manager' : row.role === 'staff' ? 'Staff' : 'Team member');
+        const rolePermissions = isOwner
+          ? permissionsFromLegacyRole('owner')
+          : row.shop_roles?.permissions ?? permissionsFromLegacyRole(row.role);
         await finishWithPatch({
-          shopOwnerId: data.business_id,
+          shopOwnerId: row.business_id,
           actorUserId: capturedUserId,
-          role: role === 'manager' || role === 'staff' ? role : 'owner',
-          actorAllowedLocationIds: role === 'owner' ? null : actorAllowedLocationIds,
+          role: isOwner ? 'owner' : deriveLegacyRole(row.role, row.shop_roles?.slug ?? null),
+          roleName,
+          roleId: isOwner ? null : row.role_id,
+          actorAllowedLocationIds,
+          isOwner,
+          rolePermissions,
         });
       } catch (e) {
         console.warn('[shop access] business_members network error; using solo-owner fallback', e);
@@ -232,7 +346,11 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
           shopOwnerId: capturedUserId,
           actorUserId: capturedUserId,
           role: 'owner',
+          roleName: 'Owner',
+          roleId: null,
           actorAllowedLocationIds: null,
+          isOwner: true,
+          rolePermissions: permissionsFromLegacyRole('owner'),
         });
       } finally {
         loadInFlight.current = false;
@@ -250,24 +368,17 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
   }, [load]);
 
   const value = useMemo<ShopAccessValue>(() => {
-    // const role = state.role;
-    // const staffLike = role === 'staff';
-    // const branchRestrictedManager =
-    //   role === 'manager' &&
-    //   !!state.actorAllowedLocationIds &&
-    //   state.actorAllowedLocationIds.length > 0;
+    const branchRestricted =
+      !state.isOwner &&
+      !!state.actorAllowedLocationIds &&
+      state.actorAllowedLocationIds.length > 0;
+    const rawPermissions = normalizeShopPermissions(state.rolePermissions);
+    const caps = buildCapabilityFlags(rawPermissions, state.isOwner, branchRestricted);
     return {
       ...state,
-      // Role-based feature caps disabled (everyone full app access).
-      // canViewProfit: !staffLike,
-      // canAccessFinancialNav: !staffLike,
-      // canManageBusinessSettings:
-      //   role === 'owner' || (role === 'manager' && !branchRestrictedManager),
-      // canInviteTeamMembers: role === 'owner' || role === 'manager',
-      canViewProfit: true,
-      canAccessFinancialNav: true,
-      canManageBusinessSettings: true,
-      canInviteTeamMembers: true,
+      ...caps,
+      hasPermission: (key: ShopPermissionKey | ShopPermissionKey[]) =>
+        state.isOwner ? true : hasAnyShopPermission(caps.permissions, key),
       refetch: () => { void load(); },
     };
   }, [state, load]);
@@ -279,10 +390,6 @@ export function useShopAccess() {
   return useContext(ShopAccessContext);
 }
 
-/**
- * Sync + Realtime. Initial full pull is module-deduped (`tryConsumeShopBootstrap`) so remounts / effect
- * churn cannot spam Supabase; sign-out clears the set via `resetShopBootstrapDedupe`.
- */
 export function ShopSyncEffects() {
   const { shopOwnerId, status, actorUserId } = useShopAccess();
 

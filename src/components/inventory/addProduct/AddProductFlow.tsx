@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, Loader2, ScanLine, Wrench } from 'lucide-react';
+import { PercentDraftInput } from '@/components/ui/PercentDraftInput';
 import { normalizeImeiDigits } from '@/lib/serializedIdentifiers';
 import { useInventoryItem } from '@/hooks/useInventory';
 import { useInventoryActions } from '@/hooks/useInventoryActions';
@@ -718,20 +719,19 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                       />
                     ) : null}
                     <APLabel label="Battery health" hint="1–100%">
-                      <APTextField
-                        type="number"
-                        min={1}
-                        max={100}
-                        inputMode="numeric"
+                      <PercentDraftInput
                         value={state.insp.batteryHealth}
-                        onChange={e =>
+                        onChange={batteryHealth =>
                           set({
                             insp: {
                               ...state.insp,
-                              batteryHealth: Math.min(100, Math.max(1, Number(e.target.value) || 1)),
+                              batteryHealth: batteryHealth ?? state.insp.batteryHealth,
                             },
                           })
                         }
+                        min={1}
+                        max={100}
+                        emptyDefault={100}
                         className="font-mono"
                       />
                     </APLabel>
@@ -767,20 +767,19 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                       />
                     </APLabel>
                     <APLabel label="Battery health" hint="1–100%">
-                      <APTextField
-                        type="number"
-                        min={1}
-                        max={100}
-                        inputMode="numeric"
+                      <PercentDraftInput
                         value={state.insp.batteryHealth}
-                        onChange={e =>
+                        onChange={batteryHealth =>
                           set({
                             insp: {
                               ...state.insp,
-                              batteryHealth: Math.min(100, Math.max(1, Number(e.target.value) || 1)),
+                              batteryHealth: batteryHealth ?? state.insp.batteryHealth,
                             },
                           })
                         }
+                        min={1}
+                        max={100}
+                        emptyDefault={100}
                         className="font-mono"
                       />
                     </APLabel>

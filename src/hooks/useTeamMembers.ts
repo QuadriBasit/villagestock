@@ -19,8 +19,20 @@ function functionsInvokeErrorMessage(error: unknown, data: unknown): string {
   return 'Invite request failed';
 }
 
+async function resolveLegacyRoleText(roleId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('shop_roles')
+    .select('slug, name')
+    .eq('id', roleId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Selected role was not found.');
+  const slug = (data as { slug: string | null; name: string }).slug;
+  return slug ?? 'member';
+}
+
 export function useTeamMembers() {
-  const { shopOwnerId, actorUserId, canInviteTeamMembers, canManageBusinessSettings } = useShopAccess();
+  const { shopOwnerId, actorUserId, canInviteTeamMembers, canManageBusinessSettings, isOwner } = useShopAccess();
   const [members, setMembers] = useState<TeamMemberRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,23 +62,20 @@ export function useTeamMembers() {
     void refetch();
   }, [refetch]);
 
-  /**
-   * Sends Supabase Auth invite email; user sets password from link, then `accept_staff_invite` runs in ShopAccessProvider.
-   */
   const inviteStaff = useCallback(
     async (params: {
       email: string;
-      role: 'manager' | 'staff';
+      roleId: string;
       displayName: string;
-      /** Omit or null = all branches */
       allowedLocationIds?: string[] | null;
     }) => {
       if (!shopOwnerId || !actorUserId) throw new Error('Not authenticated');
-      if (!canInviteTeamMembers) throw new Error('Only owners and managers can invite team members.');
+      if (!canInviteTeamMembers) throw new Error('You do not have permission to invite team members.');
       const displayName = params.displayName.trim();
       if (!displayName) throw new Error('Name on receipts is required.');
       const email = params.email.trim().toLowerCase();
       if (!email || !email.includes('@')) throw new Error('Enter a valid email address.');
+      if (!params.roleId) throw new Error('Choose a role.');
       const {
         data: { session: initialSession },
       } = await supabase.auth.getSession();
@@ -86,7 +95,7 @@ export function useTeamMembers() {
         body: {
           business_id: shopOwnerId,
           email,
-          role: params.role,
+          role_id: params.roleId,
           display_name: displayName,
           allowed_location_ids,
         },
@@ -103,26 +112,26 @@ export function useTeamMembers() {
         action: 'team.member_invited',
         entityType: 'staff_invite',
         entityId: email,
-        metadata: { role: params.role, name: displayName },
+        metadata: { role_id: params.roleId, name: displayName },
         actorLabel,
       });
     },
     [shopOwnerId, actorUserId, canInviteTeamMembers]
   );
 
-  /** For accounts that already exist in Auth (no email invite). */
   const addMember = useCallback(
     async (params: {
       memberEmail?: string;
       memberUserId?: string;
-      role: 'manager' | 'staff';
+      roleId: string;
       displayName: string;
       allowedLocationIds?: string[] | null;
     }) => {
       if (!shopOwnerId || !actorUserId) throw new Error('Not authenticated');
-      if (!canInviteTeamMembers) throw new Error('Only owners and managers can add team members.');
+      if (!canInviteTeamMembers) throw new Error('You do not have permission to add team members.');
       const display_name = params.displayName.trim();
       if (!display_name) throw new Error('Name on receipts is required.');
+      if (!params.roleId) throw new Error('Choose a role.');
       const email = params.memberEmail?.trim() ?? '';
       const rawId = params.memberUserId?.trim() ?? '';
       let id: string;
@@ -147,10 +156,12 @@ export function useTeamMembers() {
       if (id === shopOwnerId) throw new Error('The shop owner is already a member.');
       const loc = params.allowedLocationIds;
       const allowed_location_ids = loc && loc.length > 0 ? loc : null;
+      const role = await resolveLegacyRoleText(params.roleId);
       const { error: e } = await supabase.from('business_members').insert({
         business_id: shopOwnerId,
         member_user_id: id,
-        role: params.role,
+        role,
+        role_id: params.roleId,
         display_name,
         allowed_location_ids,
       } as never);
@@ -162,7 +173,7 @@ export function useTeamMembers() {
         action: 'team.member_added',
         entityType: 'business_member',
         entityId: id,
-        metadata: { role: params.role, name: display_name },
+        metadata: { role_id: params.roleId, name: display_name },
         actorLabel,
       });
       await refetch();
@@ -175,7 +186,7 @@ export function useTeamMembers() {
       if (!shopOwnerId || !actorUserId) throw new Error('Not authenticated');
       if (!canManageBusinessSettings) {
         throw new Error(
-          'Only the shop owner or a manager with access to all branches can change branch access for teammates.'
+          'Only teammates with shop settings access can change branch access for others.'
         );
       }
       if (row.role === 'owner') throw new Error('Cannot change branch access for the owner.');
@@ -201,6 +212,32 @@ export function useTeamMembers() {
     [shopOwnerId, actorUserId, canManageBusinessSettings, refetch]
   );
 
+  const updateMemberRole = useCallback(
+    async (row: TeamMemberRow, roleId: string) => {
+      if (!shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+      if (!isOwner) throw new Error('Only the shop owner can change someone’s role.');
+      if (row.role === 'owner') throw new Error('Cannot change the owner’s role.');
+      const role = await resolveLegacyRoleText(roleId);
+      const { error: e } = await supabase
+        .from('business_members')
+        .update({ role_id: roleId, role } as never)
+        .eq('id', row.id);
+      if (e) throw new Error(e.message);
+      const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
+      void logShopAudit({
+        businessId: shopOwnerId,
+        actorUserId,
+        action: 'team.member_role_updated',
+        entityType: 'business_member',
+        entityId: row.member_user_id,
+        metadata: { role_id: roleId },
+        actorLabel,
+      });
+      await refetch();
+    },
+    [shopOwnerId, actorUserId, isOwner, refetch]
+  );
+
   const removeMember = useCallback(
     async (row: TeamMemberRow) => {
       if (!shopOwnerId || !actorUserId) throw new Error('Not authenticated');
@@ -215,7 +252,7 @@ export function useTeamMembers() {
         action: 'team.member_removed',
         entityType: 'business_member',
         entityId: row.member_user_id,
-        metadata: { role: row.role },
+        metadata: { role: row.role, role_id: row.role_id },
         actorLabel,
       });
       await refetch();
@@ -232,5 +269,6 @@ export function useTeamMembers() {
     addMember,
     removeMember,
     updateMemberBranchAccess,
+    updateMemberRole,
   };
 }

@@ -5,6 +5,7 @@ import LandingPage from '@/pages/LandingPage';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { useIsAdminUser } from '@/hooks/useIsAdminUser';
 import { useShopAccess } from '@/context/ShopAccessContext';
+import { RequirePermission } from '@/components/auth/RequirePermission';
 import { ShopAccessProvider, ShopSyncEffects } from '@/context/ShopAccessContext';
 import { ShopLocationProvider } from '@/context/ShopLocationContext';
 import { AppLoadingScreen } from '@/components/ui/AppLoadingScreen';
@@ -72,12 +73,8 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function StaffRedirect({ children }: { children: React.ReactNode }) {
-  // Staff blocked from audit/credits/reports/settings — disabled so all roles have full routes.
-  // const { role, status } = useShopAccess();
-  // if (status !== 'ready') return null;
-  // if (role === 'staff') return <Navigate to="/dashboard" replace />;
-  return <>{children}</>;
+function PermissionRoute({ children }: { children: React.ReactNode }) {
+  return <RequirePermission>{children}</RequirePermission>;
 }
 
 function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -248,104 +245,104 @@ export default function App() {
           }
         >
           <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="till" element={<QuickTillPage />} />
-          <Route path="inventory" element={<InventoryPage />} />
-          <Route path="inventory/new" element={<AddItemPage />} />
-          <Route path="inventory/:id/edit" element={<EditItemPage />} />
-          <Route path="inventory/:id" element={<ItemDetailPage />} />
-          <Route path="alerts" element={<AlertsPage />} />
-          <Route path="sales" element={<SalesHistoryPage />} />
-          <Route path="share" element={<PriceListPage />} />
+          <Route path="till" element={<PermissionRoute><QuickTillPage /></PermissionRoute>} />
+          <Route path="inventory" element={<PermissionRoute><InventoryPage /></PermissionRoute>} />
+          <Route path="inventory/new" element={<PermissionRoute><AddItemPage /></PermissionRoute>} />
+          <Route path="inventory/:id/edit" element={<PermissionRoute><EditItemPage /></PermissionRoute>} />
+          <Route path="inventory/:id" element={<PermissionRoute><ItemDetailPage /></PermissionRoute>} />
+          <Route path="alerts" element={<PermissionRoute><AlertsPage /></PermissionRoute>} />
+          <Route path="sales" element={<PermissionRoute><SalesHistoryPage /></PermissionRoute>} />
+          <Route path="share" element={<PermissionRoute><PriceListPage /></PermissionRoute>} />
           <Route
             path="cashup"
             element={
-              <StaffRedirect>
+              <PermissionRoute>
                 <CashUpPage />
-              </StaffRedirect>
+              </PermissionRoute>
             }
           />
-          <Route path="contacts" element={<ContactsPage />} />
+          <Route path="contacts" element={<PermissionRoute><ContactsPage /></PermissionRoute>} />
           <Route
             path="purchasing"
             element={
-              <StaffRedirect>
+              <PermissionRoute>
                 <PurchasingPage />
-              </StaffRedirect>
+              </PermissionRoute>
             }
           />
           <Route
             path="analytics"
             element={
-              <StaffRedirect>
+              <PermissionRoute>
                 <AnalyticsPage />
-              </StaffRedirect>
+              </PermissionRoute>
             }
           />
           <Route
             path="audit-log"
             element={
-              <StaffRedirect>
+              <PermissionRoute>
                 <AuditLogPage />
-              </StaffRedirect>
+              </PermissionRoute>
             }
           />
           <Route
             path="credits"
             element={
-              <StaffRedirect>
+              <PermissionRoute>
                 <CreditsPage />
-              </StaffRedirect>
+              </PermissionRoute>
             }
           />
-          <Route path="repair" element={<RepairPage />} />
+          <Route path="repair" element={<PermissionRoute><RepairPage /></PermissionRoute>} />
           <Route path="repairs" element={<Navigate to="/repair" replace />} />
           <Route path="engineers" element={<Navigate to="/repair" replace />} />
           <Route
             path="reports"
             element={
-              <StaffRedirect>
+              <PermissionRoute>
                 <ReportsPage />
-              </StaffRedirect>
+              </PermissionRoute>
             }
           />
           <Route
             path="reports/stock-sessions"
             element={
-              <StaffRedirect>
+              <PermissionRoute>
                 <StockSessionsPage />
-              </StaffRedirect>
+              </PermissionRoute>
             }
           />
           <Route
             path="reports/stock-sessions/:sessionId"
             element={
-              <StaffRedirect>
+              <PermissionRoute>
                 <StockSessionDetailPage />
-              </StaffRedirect>
+              </PermissionRoute>
             }
           />
           <Route
             path="stock/open/:sessionId"
             element={
-              <StaffRedirect>
+              <PermissionRoute>
                 <OpenStockPage />
-              </StaffRedirect>
+              </PermissionRoute>
             }
           />
           <Route
             path="stock/close/:sessionId"
             element={
-              <StaffRedirect>
+              <PermissionRoute>
                 <CloseStockPage />
-              </StaffRedirect>
+              </PermissionRoute>
             }
           />
           <Route
             path="settings"
             element={
-              <StaffRedirect>
+              <PermissionRoute>
                 <SettingsPage />
-              </StaffRedirect>
+              </PermissionRoute>
             }
           />
         </Route>

@@ -51,7 +51,7 @@ export default function ItemDetailPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { item, isLoading } = useInventoryItem(id);
-  const { canViewProfit } = useShopAccess();
+  const { canViewProfit, hasPermission } = useShopAccess();
   const { locations } = useShopLocation();
   const tradingGate = useTradingGateState();
   const { repairs } = useActiveRepairs();
@@ -111,9 +111,14 @@ export default function ItemDetailPage() {
   const margin = getMarginPct(item);
   const flags = getInspectionFlags(item);
   const tradeLocked = tradingGate.gateApplies && tradingGate.isReady && tradingGate.tradingBlocked;
-  const canSell = !tradeLocked && (isSerialized ? status === 'in_stock' : item.quantity > 0);
-  const canSwap = !tradeLocked && isSerialized && status === 'in_stock';
-  const canEngineer = !tradeLocked && isSerialized && status === 'in_stock';
+  const stockCanSell = !tradeLocked && (isSerialized ? status === 'in_stock' : item.quantity > 0);
+  const stockCanSwap = !tradeLocked && isSerialized && status === 'in_stock';
+  const stockCanEngineer = !tradeLocked && isSerialized && status === 'in_stock';
+  const canSell = stockCanSell && hasPermission('record_sales');
+  const canSwap = stockCanSwap && hasPermission('record_swaps');
+  const canEngineer = stockCanEngineer && hasPermission('access_repairs');
+  const canEditItem = hasPermission('edit_items');
+  const canTransfer = hasPermission('transfer_stock');
   const engineerName = repairs.find(r => r.item_id === item.id)?.engineer_name;
   const idKind = identifierKindForItem(item);
   const idCode = primaryIdentifier(item);
@@ -253,6 +258,7 @@ export default function ItemDetailPage() {
               <Button
                 variant="outline"
                 className="h-10 w-full justify-start border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
+                disabled={!canEditItem}
                 onClick={openEdit}
               >
                 <Pencil size={16} />
@@ -283,7 +289,7 @@ export default function ItemDetailPage() {
               <Button
                 variant="ghost"
                 className="h-9 w-full justify-between text-shell-muted hover:text-shell-ink disabled:opacity-50"
-                disabled={locations.length < 2 || !item.location_id || qty <= 0}
+                disabled={locations.length < 2 || !item.location_id || qty <= 0 || !canTransfer}
                 onClick={() => setTransferOpen(true)}
               >
                 Transfer between branches
