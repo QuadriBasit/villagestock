@@ -96,11 +96,16 @@ export default function InventoryPage() {
   const [sellTarget, setSellTarget] = useState<InventoryItem | null>(null);
   const [swapTarget, setSwapTarget] = useState<InventoryItem | null>(null);
   const [engineerTarget, setEngineerTarget] = useState<InventoryItem | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
-  const [editItemId, setEditItemId] = useState<string | null>(null);
+  const [addOpenManual, setAddOpenManual] = useState(false);
+  const [editItemIdManual, setEditItemIdManual] = useState<string | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const activeRepairByItem = new Map(repairs.map(record => [record.item_id, record]));
+
+  const addFromUrl = searchParams.get('add') === '1';
+  const editFromUrl = searchParams.get('edit');
+  const addOpen = addFromUrl || addOpenManual;
+  const editItemId = editFromUrl ?? editItemIdManual;
 
   const groups = useMemo(() => {
     const grouped = groupInventoryItems(items);
@@ -138,37 +143,28 @@ export default function InventoryPage() {
     return () => resetFilters();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (searchParams.get('add') !== '1') return;
-    setAddOpen(true);
+  const clearParam = (key: string) => {
     setSearchParams(
       prev => {
+        if (!prev.has(key)) return prev;
         const next = new URLSearchParams(prev);
-        next.delete('add');
+        next.delete(key);
         return next;
       },
       { replace: true },
     );
-  }, [searchParams, setSearchParams]);
+  };
 
-  useEffect(() => {
-    const id = searchParams.get('edit');
-    if (!id) return;
-    setEditItemId(id);
-    setSearchParams(
-      prev => {
-        const next = new URLSearchParams(prev);
-        next.delete('edit');
-        return next;
-      },
-      { replace: true },
-    );
-  }, [searchParams, setSearchParams]);
-
-  const openAddProduct = () => setAddOpen(true);
-  const closeAddProduct = () => setAddOpen(false);
-  const openEditProduct = (id: string) => setEditItemId(id);
-  const closeEditProduct = () => setEditItemId(null);
+  const openAddProduct = () => setAddOpenManual(true);
+  const closeAddProduct = () => {
+    setAddOpenManual(false);
+    clearParam('add');
+  };
+  const openEditProduct = (id: string) => setEditItemIdManual(id);
+  const closeEditProduct = () => {
+    setEditItemIdManual(null);
+    clearParam('edit');
+  };
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;

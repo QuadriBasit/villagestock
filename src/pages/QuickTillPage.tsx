@@ -735,10 +735,8 @@ function TillCartPanel({
             {checkoutError}
           </p>
         ) : null}
-        </div>
-      </div>
 
-      <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] z-10 shrink-0 border-t border-shell-line bg-shell-surface p-4 xl:static xl:bottom-auto">
+        {/* Charge stays in document flow on mobile so it never covers date/time; page scroll reaches it. */}
         <button
           type="button"
           disabled={!canCharge}
@@ -764,6 +762,7 @@ function TillCartPanel({
             {formatCurrency(payTerms === 'paid' ? total : paidNow || total)}
           </span>
         </button>
+        </div>
       </div>
     </Card>
   );
