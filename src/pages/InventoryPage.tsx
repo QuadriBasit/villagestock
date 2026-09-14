@@ -634,9 +634,15 @@ function GroupActions({
   onEngineer: () => void;
   onDelete: () => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const run = (fn: () => void) => {
+    setOpen(false);
+    fn();
+  };
+
   return (
     <div className="flex justify-end" onClick={e => e.stopPropagation()}>
-      <Popover>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
@@ -647,18 +653,22 @@ function GroupActions({
             <MoreHorizontal size={16} />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-44 border-shell-line bg-shell-surface p-1">
-          <RowAction icon={ShoppingCart} label="Sell" disabled={!canSell} title={tradeLocked ? tradeLockedMessage : undefined} onClick={onSell} />
+        <PopoverContent
+          align="end"
+          onCloseAutoFocus={event => event.preventDefault()}
+          className="w-44 border-shell-line bg-shell-surface p-1 data-[state=closed]:pointer-events-none data-[state=closed]:opacity-0"
+        >
+          <RowAction icon={ShoppingCart} label="Sell" disabled={!canSell} title={tradeLocked ? tradeLockedMessage : undefined} onClick={() => run(onSell)} />
           {isSerialized && (
             <>
-              <RowAction icon={ArrowRightLeft} label="Swap" disabled={!canSwap} title={tradeLocked ? tradeLockedMessage : undefined} onClick={onSwap} />
-              <RowAction icon={Wrench} label="Send for repair" disabled={!canEngineer} onClick={onEngineer} />
+              <RowAction icon={ArrowRightLeft} label="Swap" disabled={!canSwap} title={tradeLocked ? tradeLockedMessage : undefined} onClick={() => run(onSwap)} />
+              <RowAction icon={Wrench} label="Send for repair" disabled={!canEngineer} onClick={() => run(onEngineer)} />
             </>
           )}
-          <RowAction icon={Eye} label="View" onClick={onView} />
-          <RowAction icon={Pencil} label="Edit" onClick={onEdit} />
+          <RowAction icon={Eye} label="View" onClick={() => run(onView)} />
+          <RowAction icon={Pencil} label="Edit" onClick={() => run(onEdit)} />
           {canDelete ? (
-            <RowAction icon={Trash2} label="Delete" destructive onClick={onDelete} />
+            <RowAction icon={Trash2} label="Delete" destructive onClick={() => run(onDelete)} />
           ) : null}
         </PopoverContent>
       </Popover>

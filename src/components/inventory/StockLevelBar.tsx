@@ -20,7 +20,7 @@ export function StockLevelBar({
 
   return (
     <div className={cn('h-1.5 w-12 overflow-hidden rounded-full bg-shell-surface-2', className)}>
-      <div className={cn('h-full rounded-full transition-all', tone)} style={{ width: `${pct}%` }} />
+      <div className={cn('h-full rounded-full transition-[width]', tone)} style={{ width: `${pct}%` }} />
     </div>
   );
 }

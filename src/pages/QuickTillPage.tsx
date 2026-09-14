@@ -1,6 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check, Minus, Plus, Search, ShoppingCart } from 'lucide-react';
+import { ArrowRightLeft, Check, Minus, Plus, Search, ShoppingCart } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
@@ -19,7 +19,12 @@ import { DatePickerField } from '@/components/ui/DatePickerField';
 import { DateTimeField, toLocalDatetimeValue } from '@/components/ui/DateTimeField';
 import { Input } from '@/components/ui/Input';
 import { CategoryThumb } from '@/components/inventory/CategoryThumb';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { settingsField } from '@/components/settings/settingsUi';
+
+const SwapForm = lazy(() => import('@/components/sales/SwapForm'));
+
+type TillMode = 'sell' | 'swap';
 
 type CartLine = { item: InventoryItem; qty: number };
 type PayTerms = 'paid' | 'part' | 'credit';
@@ -104,6 +109,8 @@ export default function QuickTillPage() {
   }, [shopOwnerId, activeLocationId, locationReady]);
 
   const [cart, setCart] = useState<Record<string, CartLine>>({});
+  const [tillMode, setTillMode] = useState<TillMode>('sell');
+  const [swapTarget, setSwapTarget] = useState<InventoryItem | null>(null);
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<CategoryTab>('All');
   const [customerName, setCustomerName] = useState('');
@@ -164,12 +171,21 @@ export default function QuickTillPage() {
   const tradeLocked = tradingGate.gateApplies && tradingGate.isReady && tradingGate.tradingBlocked;
 
   const add = (item: InventoryItem) => {
-    if (tradeLocked) return;
+    if (tradeLocked || tillMode !== 'sell') return;
     setCart(c => {
       const cur = c[item.id]?.qty ?? 0;
       if (cur >= maxQty(item)) return c;
       return { ...c, [item.id]: { item, qty: cur + 1 } };
     });
+  };
+
+  const tapItem = (item: InventoryItem) => {
+    if (tillMode === 'swap') {
+      if (tradeLocked || item.mode !== 'serialized') return;
+      setSwapTarget(item);
+      return;
+    }
+    add(item);
   };
 
   const setQty = (id: string, qty: number) => {
@@ -301,7 +317,22 @@ export default function QuickTillPage() {
 
   return (
     <div className="app-page space-y-4 py-4 md:py-5">
-      <PageHeader title="Quick till" subtitle="Tap to sell — stock, sales and the drawer all update at once">
+      <PageHeader
+        title="Quick till"
+        subtitle={
+          tillMode === 'swap'
+            ? 'Tap a phone or laptop to record a swap / trade-in'
+            : 'Tap to sell — stock, sales and the drawer all update at once'
+        }
+      >
+        <SegmentedTabs
+          value={tillMode}
+          onChange={setTillMode}
+          options={[
+            { value: 'sell', label: 'Sell' },
+            { value: 'swap', label: 'Swap' },
+          ]}
+        />
         <Badge className="gap-1.5 border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
           <span className="size-1.5 rounded-full bg-emerald-400" />
           Till open
@@ -324,9 +355,14 @@ export default function QuickTillPage() {
               <ProductTile
                 key={item.id}
                 item={item}
-                inCart={cart[item.id]?.qty ?? 0}
-                disabled={tradeLocked || (cart[item.id]?.qty ?? 0) >= maxQty(item)}
-                onAdd={() => add(item)}
+                inCart={tillMode === 'sell' ? (cart[item.id]?.qty ?? 0) : 0}
+                disabled={
+                  tradeLocked ||
+                  (tillMode === 'swap'
+                    ? item.mode !== 'serialized'
+                    : (cart[item.id]?.qty ?? 0) >= maxQty(item))
+                }
+                onAdd={() => tapItem(item)}
               />
             ))}
             {prods.length === 0 && (
@@ -339,6 +375,9 @@ export default function QuickTillPage() {
 
         {/* Cart */}
         <div className="xl:sticky xl:top-20">
+          {tillMode === 'swap' ? (
+            <TillSwapHint />
+          ) : (
           <TillCartPanel
             lines={lines}
             count={count}
@@ -372,8 +411,19 @@ export default function QuickTillPage() {
             checkingOut={checkingOut}
             tradeLocked={tradeLocked}
           />
+          )}
         </div>
       </div>
+
+      {swapTarget ? (
+        <Suspense fallback={null}>
+          <SwapForm
+            item={swapTarget}
+            onClose={() => setSwapTarget(null)}
+            onSuccess={() => setSwapTarget(null)}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }
@@ -447,8 +497,8 @@ function TillCartPanel({
   const needsCreditDetails = payTerms !== 'paid';
 
   return (
-    <Card className="flex max-h-[calc(100vh-6rem)] flex-col overflow-hidden border-shell-line bg-shell-surface p-0 shadow-none">
-      <div className="flex items-center justify-between gap-3 border-b border-shell-line px-4 py-3">
+    <Card className="flex flex-col border-shell-line bg-shell-surface p-0 shadow-none xl:max-h-[calc(100dvh-6.5rem)] xl:overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-shell-line px-4 py-3">
         <div className="inline-flex min-w-0 items-center gap-2">
           <ShoppingCart size={17} className="shrink-0 text-shell-muted" />
           <span className="font-display text-[15px] font-semibold text-shell-ink">Cart</span>
@@ -469,41 +519,42 @@ function TillCartPanel({
         ) : null}
       </div>
 
-      <div className="min-h-[7rem] flex-1 overflow-y-auto">
-        {lines.length === 0 ? (
-          <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-            <div className="mb-3 grid size-11 place-items-center rounded-lg border border-shell-line bg-shell-surface-2/60 text-shell-muted">
-              <ShoppingCart size={20} strokeWidth={1.6} />
+      <div className="min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-y-contain">
+        <div className="min-h-[7rem]">
+          {lines.length === 0 ? (
+            <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
+              <div className="mb-3 grid size-11 place-items-center rounded-lg border border-shell-line bg-shell-surface-2/60 text-shell-muted">
+                <ShoppingCart size={20} strokeWidth={1.6} />
+              </div>
+              <p className="text-sm font-medium text-shell-ink">No items yet</p>
+              <p className="mt-1 max-w-[200px] text-xs leading-relaxed text-shell-muted">
+                Tap a product on the left to add it here.
+              </p>
             </div>
-            <p className="text-sm font-medium text-shell-ink">No items yet</p>
-            <p className="mt-1 max-w-[200px] text-xs leading-relaxed text-shell-muted">
-              Tap a product on the left to add it here.
-            </p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-shell-line">
-            {lines.map(({ item, qty }) => (
-              <li key={item.id} className="flex items-center gap-3 px-4 py-3">
-                <CategoryThumb category={item.category} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-shell-ink">{item.name}</p>
-                  <p className="mt-0.5 font-mono text-[11px] text-shell-muted">
-                    {formatCurrency(item.price)}
-                    {qty > 1 ? ` × ${qty}` : ''}
-                  </p>
-                </div>
-                <QtyStepper
-                  qty={qty}
-                  onDec={() => onQtyChange(item.id, qty - 1)}
-                  onInc={() => onQtyChange(item.id, qty + 1)}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+          ) : (
+            <ul className="divide-y divide-shell-line">
+              {lines.map(({ item, qty }) => (
+                <li key={item.id} className="flex items-center gap-3 px-4 py-3">
+                  <CategoryThumb category={item.category} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium text-shell-ink">{item.name}</p>
+                    <p className="mt-0.5 font-mono text-[11px] text-shell-muted">
+                      {formatCurrency(item.price)}
+                      {qty > 1 ? ` × ${qty}` : ''}
+                    </p>
+                  </div>
+                  <QtyStepper
+                    qty={qty}
+                    onDec={() => onQtyChange(item.id, qty - 1)}
+                    onInc={() => onQtyChange(item.id, qty + 1)}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-      <div className="space-y-3 border-t border-shell-line p-4">
+        <div className="space-y-3 border-t border-shell-line p-4 pb-5">
         {(count > 0 || canViewProfit) && (
           <div className="rounded-lg border border-shell-line bg-shell-surface-2/35 px-3 py-2.5">
             <div className="flex items-baseline justify-between gap-3">
@@ -684,7 +735,10 @@ function TillCartPanel({
             {checkoutError}
           </p>
         ) : null}
+        </div>
+      </div>
 
+      <div className="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] z-10 shrink-0 border-t border-shell-line bg-shell-surface p-4 xl:static xl:bottom-auto">
         <button
           type="button"
           disabled={!canCharge}
@@ -710,6 +764,22 @@ function TillCartPanel({
             {formatCurrency(payTerms === 'paid' ? total : paidNow || total)}
           </span>
         </button>
+      </div>
+    </Card>
+  );
+}
+
+function TillSwapHint() {
+  return (
+    <Card className="border-shell-line bg-shell-surface p-0 shadow-none">
+      <div className="flex flex-col items-center px-6 py-14 text-center">
+        <div className="mb-3 grid size-11 place-items-center rounded-lg border border-shell-line bg-shell-surface-2/60 text-shell-muted">
+          <ArrowRightLeft size={20} strokeWidth={1.6} />
+        </div>
+        <p className="text-sm font-medium text-shell-ink">Record a swap</p>
+        <p className="mt-1 max-w-[240px] text-xs leading-relaxed text-shell-muted">
+          Tap a phone or laptop that is in stock. Accessories stay on Sell.
+        </p>
       </div>
     </Card>
   );
@@ -802,7 +872,7 @@ function ProductTile({
       disabled={disabled}
       onClick={onAdd}
       className={cn(
-        'relative flex flex-col gap-2 rounded-[14px] border p-3 text-left transition-all',
+        'relative flex flex-col gap-2 rounded-[14px] border p-3 text-left transition-[transform,border-color,opacity] duration-150 ease-out',
         'bg-shell-surface hover:border-brand-400/50 hover:-translate-y-0.5',
         inCart > 0 ? 'border-brand-400/55' : 'border-shell-line',
         disabled && 'opacity-55 hover:translate-y-0'
