@@ -55,8 +55,12 @@ export function getInspectionFlags(item: InventoryItem): InspectionFlag[] {
 export function itemSpecLine(item: InventoryItem): string {
   const parts: string[] = [];
   if (item.brand) parts.push(item.brand);
-  const mobile = item.deviceDetails as AppleMobileDeviceDetails | undefined;
-  if (mobile?.storage) parts.push(mobile.storage);
+  const dd = item.deviceDetails as
+    | AppleMobileDeviceDetails
+    | { ram?: string; storage?: string }
+    | undefined;
+  if (dd && 'ram' in dd && dd.ram) parts.push(String(dd.ram));
+  if (dd && 'storage' in dd && dd.storage) parts.push(dd.storage);
   if (item.imei) parts.push(`IMEI …${item.imei.slice(-4)}`);
   else if (item.serial_number) parts.push(`S/N …${item.serial_number.slice(-4)}`);
   return parts.join(' · ') || item.category;

@@ -9,11 +9,13 @@ export function productGroupKey(item: InventoryItem): string {
 /** Stable key for a variant SKU within a product line. */
 export function variantKeyForItem(item: InventoryItem): string {
   const dd = item.deviceDetails;
-  if (dd && 'storage' in dd && dd.storage) {
-    const mobile = dd as AppleMobileDeviceDetails;
-    return `phone:${mobile.storage}|${mobile.color ?? ''}`;
+  if (item.category === 'phones' || item.category === 'tablets') {
+    const mobile = (dd ?? {}) as AppleMobileDeviceDetails;
+    if (mobile.ram || mobile.storage || mobile.color) {
+      return `phone:${mobile.ram ?? ''}|${mobile.storage ?? ''}|${mobile.color ?? ''}`;
+    }
   }
-  if (dd && 'ram' in dd) {
+  if (item.category === 'laptops' && dd && ('ram' in dd || 'storage' in dd)) {
     const laptop = dd as AppleLaptopDeviceDetails;
     return `laptop:${laptop.ram ?? ''}|${laptop.storage ?? ''}`;
   }
@@ -54,11 +56,12 @@ function variantLabelFromDescription(description?: string): string {
 
 export function variantLabelForItem(item: InventoryItem): string {
   const dd = item.deviceDetails;
-  if (dd && 'storage' in dd && dd.storage) {
-    const mobile = dd as AppleMobileDeviceDetails;
-    return [mobile.storage, mobile.color].filter(Boolean).join(' · ') || 'Standard';
+  if (item.category === 'phones' || item.category === 'tablets') {
+    const mobile = (dd ?? {}) as AppleMobileDeviceDetails;
+    const fromSpecs = [mobile.ram, mobile.storage, mobile.color].filter(Boolean).join(' · ');
+    if (fromSpecs) return fromSpecs;
   }
-  if (dd && ('ram' in dd || 'storage' in dd)) {
+  if (item.category === 'laptops' && dd && ('ram' in dd || 'storage' in dd)) {
     const laptop = dd as AppleLaptopDeviceDetails;
     return [laptop.ram, laptop.storage].filter(Boolean).join(' · ') || 'Standard';
   }

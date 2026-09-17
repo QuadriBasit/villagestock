@@ -85,6 +85,7 @@ export const CAT_META: Record<
     brands: ['Apple', 'Samsung', 'Tecno', 'Infinix', 'Xiaomi', 'Oppo', 'Itel'],
     colors: ['Black', 'White', 'Blue', 'Green', 'Gold', 'Silver', 'Purple', 'Titanium'],
     storages: ['64GB', '128GB', '256GB', '512GB', '1TB'],
+    rams: ['2GB', '3GB', '4GB', '6GB', '8GB', '12GB', '16GB'],
   },
   Laptop: {
     icon: 'laptop',
@@ -148,7 +149,7 @@ export function cartesian(axes: { key: string; vals: string[] }[]): Record<strin
 }
 
 export function variantLabel(cat: ProductCat, attrs: Record<string, string | undefined>): string {
-  if (cat === 'Phone') return [attrs.storage, attrs.color].filter(Boolean).join(' · ') || 'Standard';
+  if (cat === 'Phone') return [attrs.ram, attrs.storage, attrs.color].filter(Boolean).join(' · ') || 'Standard';
   if (cat === 'Laptop') return [attrs.ram, attrs.rom].filter(Boolean).join(' · ') || 'Standard';
   return 'Stock';
 }
@@ -158,6 +159,7 @@ export function syncVariants(state: AddProductState, patch: Partial<AddProductSt
   let combos: Record<string, string>[];
   if (st.cat === 'Phone') {
     combos = cartesian([
+      { key: 'ram', vals: st.rams },
       { key: 'storage', vals: st.storages },
       { key: 'color', vals: st.colors },
     ]);

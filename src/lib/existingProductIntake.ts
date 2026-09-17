@@ -78,21 +78,22 @@ export function applyExistingProductToState(
 
   for (const item of existing) {
     const dd = item.deviceDetails;
-    if (dd && 'storage' in dd && dd.storage) {
-      storages.add(dd.storage);
-      if ('color' in dd && dd.color) colors.add(dd.color);
-    }
-    if (dd && 'ram' in dd && dd.ram) {
-      rams.add(String(dd.ram));
-      if ('storage' in dd && dd.storage) roms.add(dd.storage);
+    if (state.cat === 'Phone') {
+      if (dd && 'ram' in dd && dd.ram) rams.add(String(dd.ram));
+      if (dd && 'storage' in dd && dd.storage) storages.add(dd.storage);
+      if (dd && 'color' in dd && dd.color) colors.add(dd.color);
+    } else if (state.cat === 'Laptop') {
+      if (dd && 'ram' in dd && dd.ram) rams.add(String(dd.ram));
+      if (dd && 'storage' in dd && dd.storage) roms.add(dd.storage);
     }
 
     const label = variantLabelForItem(item);
     const key = variantKeyForItem(item);
     if (!variantByKey.has(key)) {
       const attrs: Record<string, string | undefined> = {};
-      if (state.cat === 'Phone' && dd && 'storage' in dd) {
-        attrs.storage = dd.storage;
+      if (state.cat === 'Phone' && dd) {
+        if ('ram' in dd) attrs.ram = dd.ram ? String(dd.ram) : undefined;
+        if ('storage' in dd) attrs.storage = dd.storage;
         if ('color' in dd) attrs.color = dd.color;
       }
       if (state.cat === 'Laptop' && dd && 'ram' in dd) {

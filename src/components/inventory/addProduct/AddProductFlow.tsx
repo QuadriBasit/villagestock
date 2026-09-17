@@ -452,6 +452,14 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
               <>
                 {state.cat === 'Phone' ? (
                   <>
+                    <APLabel label="RAM" hint="skip for iPhone if it doesn’t matter">
+                      <APMulti
+                        options={meta.rams ?? []}
+                        value={state.rams}
+                        onChange={v => setState(s => syncVar(s, { rams: v }))}
+                        addLabel="RAM"
+                      />
+                    </APLabel>
                     <APLabel label="Storage" hint="pick all you carry">
                       <APMulti
                         options={meta.storages ?? []}
@@ -499,7 +507,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                 </div>
                 {state.variants.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-shell-line py-[18px] text-center text-[13px] text-shell-muted">
-                    Pick a {state.cat === 'Phone' ? 'storage or colour' : 'RAM or storage'} above to build variants.
+                    Pick a {state.cat === 'Phone' ? 'RAM, storage, or colour' : 'RAM or storage'} above to build variants.
                   </div>
                 ) : (
                   <VariantTable

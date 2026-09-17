@@ -54,6 +54,8 @@ export interface AppleMobileDeviceDetails {
   esim_status?: EsimActivationStatus;
   biometric_status?: AppleBiometricStatus;
   storage?: '64GB' | '128GB' | '256GB' | '512GB' | '1TB';
+  /** Android / some tablets — optional; iPhones usually leave this empty. */
+  ram?: string;
   color?: string;
   /**
    * iOS Settings → Battery / Parts history: “Unable to verify genuine Apple battery” / Unknown Part (battery).

@@ -126,7 +126,7 @@ const baseSchema = {
   color: z.string().optional(),
   ram: z.preprocess(
     v => (v === '' ? undefined : v),
-    z.enum(['8GB', '16GB', '18GB', '24GB', '32GB', '36GB', '64GB']).optional(),
+    z.string().optional(),
   ),
   chip: z.string().optional(),
   screen_size: z.preprocess(
@@ -258,7 +258,12 @@ const MOBILE_STORAGE_OPTIONS = [
 ] as const;
 const LAPTOP_STORAGE_OPTIONS = ['256GB', '512GB', '1TB', '2TB'] as const;
 const RAM_OPTIONS = [
+  '2GB',
+  '3GB',
+  '4GB',
+  '6GB',
   '8GB',
+  '12GB',
   '16GB',
   '18GB',
   '24GB',
@@ -469,6 +474,7 @@ export default function ItemForm({
               | '512GB'
               | '1TB'
               | undefined,
+            ram: data.ram || undefined,
             color: data.color || undefined,
             ...(data.important_battery_message
               ? {important_battery_message: true}
@@ -493,7 +499,15 @@ export default function ItemForm({
                 | '1TB'
                 | '2TB'
                 | undefined,
-              ram: data.ram,
+              ram: data.ram as
+                | '8GB'
+                | '16GB'
+                | '18GB'
+                | '24GB'
+                | '32GB'
+                | '36GB'
+                | '64GB'
+                | undefined,
               chip: data.chip || undefined,
               screen_size: data.screen_size,
               keyboard_status: data.keyboard_status,
@@ -1037,6 +1051,21 @@ export default function ItemForm({
               </div>
             ) : null}
             <div className='grid grid-cols-2 gap-3'>
+              <Controller
+                name='ram'
+                control={control}
+                render={({field}) => (
+                  <OptionalStringSelect
+                    id='phone_ram'
+                    label='RAM'
+                    labelClassName={labelClass}
+                    placeholder='Select RAM'
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={RAM_OPTIONS.map(o => ({value: o, label: o}))}
+                  />
+                )}
+              />
               <Controller
                 name='storage'
                 control={control}

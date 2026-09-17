@@ -37,11 +37,19 @@ function buildDescription(state: AddProductState, variant: VariantRow): string |
   return parts.length ? parts.join(' · ') : undefined;
 }
 
-function buildAppleMobileDetails(state: AddProductState, variant: VariantRow): AppleMobileDeviceDetails {
-  const storage = variant.attrs.storage as AppleMobileDeviceDetails['storage'] | undefined;
+function phoneSpecDetails(variant: VariantRow): Pick<AppleMobileDeviceDetails, 'ram' | 'storage' | 'color'> {
   return {
-    storage,
-    color: variant.attrs.color,
+    ...(variant.attrs.ram ? { ram: variant.attrs.ram } : {}),
+    ...(variant.attrs.storage
+      ? { storage: variant.attrs.storage as AppleMobileDeviceDetails['storage'] }
+      : {}),
+    ...(variant.attrs.color ? { color: variant.attrs.color } : {}),
+  };
+}
+
+function buildAppleMobileDetails(state: AddProductState, variant: VariantRow): AppleMobileDeviceDetails {
+  return {
+    ...phoneSpecDetails(variant),
     battery_health: state.insp.batteryHealth,
     biometric_status: state.insp.faceId ? 'working' : 'not_working',
     ...mobileNetworkDeviceDetails(state.network),
@@ -74,8 +82,11 @@ function buildDeviceDetails(state: AddProductState, variant: VariantRow) {
   const brand = state.brand;
   if (isAppleMobileDevice(brand, category)) return buildAppleMobileDetails(state, variant);
   if (isAppleLaptopDevice(brand, category)) return buildAppleLaptopDetails(state, variant);
-  if (state.cat === 'Phone' && state.network.status) {
-    return mobileNetworkDeviceDetails(state.network);
+  if (state.cat === 'Phone') {
+    const specs = phoneSpecDetails(variant);
+    const network = state.network.status ? mobileNetworkDeviceDetails(state.network) : {};
+    const details = { ...specs, ...network };
+    return Object.values(details).some(v => v !== undefined && v !== '') ? details : undefined;
   }
   return undefined;
 }
