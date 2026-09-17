@@ -7,12 +7,15 @@ import {
   CalendarRange,
   ChevronRight,
   FileDown,
+  Fuel,
   Laptop,
   PiggyBank,
   RotateCcw,
   Smartphone,
   Tablet,
+  TrendingDown,
   TrendingUp,
+  Wallet,
   Warehouse,
 } from 'lucide-react';
 import {
@@ -112,6 +115,15 @@ export default function ReportsPage() {
       writeMetric('Net profit', formatCurrency(metrics.netProfit));
       y += 3;
 
+      writeLine('Cash & costs', { size: 13, bold: true });
+      writeMetric('Logged expenses', formatCurrency(metrics.loggedExpenses));
+      writeMetric('Cash expenses (drawer)', formatCurrency(metrics.cashExpenses));
+      writeMetric('Non-cash expenses', formatCurrency(metrics.nonCashExpenses));
+      writeMetric('Recurring (est.)', formatCurrency(metrics.recurringEstimate));
+      writeMetric('Total costs', formatCurrency(metrics.totalCosts));
+      writeMetric('Net after costs', formatCurrency(metrics.netAfterCosts));
+      y += 3;
+
       writeLine('Serialized Counts', { size: 13, bold: true });
       writeMetric('Phones sold', String(metrics.serializedCounts.phones));
       writeMetric('Laptops sold', String(metrics.serializedCounts.laptops));
@@ -152,6 +164,14 @@ export default function ReportsPage() {
         writeMetric('Payment breakdown', 'No data');
       } else {
         metrics.paymentBreakdown.forEach(entry => writeMetric(entry.label, formatCurrency(entry.value)));
+      }
+      y += 3;
+
+      writeLine('Expenses by Category', { size: 13, bold: true });
+      if (metrics.expenseBreakdown.length === 0) {
+        writeMetric('Expense breakdown', 'No expenses logged');
+      } else {
+        metrics.expenseBreakdown.forEach(entry => writeMetric(entry.label, formatCurrency(entry.value)));
       }
 
       const fileName = `${(profile.shop_name || 'villagestock').replace(/\s+/g, '-').toLowerCase()}-report-${format(new Date(), 'yyyyMMdd-HHmm')}.pdf`;
@@ -334,9 +354,67 @@ export default function ReportsPage() {
             value={formatCurrency(metrics.netProfit)}
             icon={TrendingUp}
             iconClassName="text-brand-300"
-            hint="After returns"
+            hint="After returns, before expenses"
           />
         </StatGrid>
+      </ReportSection>
+
+      <ReportSection title="Cash & costs">
+        <StatGrid className="sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard
+            label="Logged expenses"
+            value={formatCurrency(metrics.loggedExpenses)}
+            hint={`${metrics.expenseCount} item${metrics.expenseCount === 1 ? '' : 's'}`}
+            icon={Fuel}
+            iconClassName="text-amber-300"
+          />
+          <StatCard
+            label="Cash out of drawer"
+            value={formatCurrency(metrics.cashExpenses)}
+            hint="Expenses paid in cash"
+            icon={Wallet}
+            iconClassName="text-red-400"
+          />
+          <StatCard
+            label="Non-cash expenses"
+            value={formatCurrency(metrics.nonCashExpenses)}
+            hint="Transfer / POS spends"
+            icon={TrendingDown}
+            iconClassName="text-orange-300"
+          />
+          <StatCard
+            label="Recurring (est.)"
+            value={formatCurrency(metrics.recurringEstimate)}
+            hint="Rent, salaries, etc. for this period"
+            icon={TrendingDown}
+            iconClassName="text-amber-300"
+          />
+          <StatCard
+            label="Total costs"
+            value={formatCurrency(metrics.totalCosts)}
+            hint="Logged + recurring"
+            icon={Fuel}
+            iconClassName="text-red-400"
+          />
+          <StatCard
+            label="Net after costs"
+            value={formatCurrency(metrics.netAfterCosts)}
+            hint="Sales net profit minus all costs"
+            icon={PiggyBank}
+            iconClassName={metrics.netAfterCosts >= 0 ? 'text-brand-300' : 'text-red-400'}
+          />
+        </StatGrid>
+        <button
+          type="button"
+          onClick={() => navigate('/cashup')}
+          className="flex w-full items-center gap-3 rounded-xl border border-dashed border-shell-line bg-shell-surface/60 px-4 py-3 text-left transition-colors hover:border-shell-line hover:bg-shell-surface-2/40"
+        >
+          <Wallet size={16} className="shrink-0 text-shell-muted" />
+          <span className="min-w-0 flex-1 text-xs text-shell-muted">
+            Set opening float and log expenses on Cash &amp; expenses — cash spends deduct from the drawer there.
+          </span>
+          <ChevronRight size={16} className="shrink-0 text-shell-muted" />
+        </button>
       </ReportSection>
 
       <ReportSection title="Swaps">
@@ -390,6 +468,14 @@ export default function ReportsPage() {
           valueFormatter={value => formatCurrency(value)}
         />
       </section>
+
+      <BreakdownCard
+        title="Expenses by category"
+        description="Logged one-off spends in this period"
+        emptyLabel="No expenses logged for this period. Add them from Cash & expenses."
+        data={metrics.expenseBreakdown}
+        valueFormatter={value => formatCurrency(value)}
+      />
     </div>
   );
 }

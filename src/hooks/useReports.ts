@@ -3,7 +3,18 @@ import { endOfDay, endOfWeek, format, startOfDay, startOfWeek, subDays } from 'd
 import { db } from '@/lib/db';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
-import type { Category, PaymentMethod, ReturnRecord, SalesRecord, SwapRecord } from '@/types';
+import { expenseCategoryLabel } from '@/lib/expenseCategories';
+import { recurringCostInRange } from '@/lib/moneyPeriods';
+import type {
+  Category,
+  ExpenseCategory,
+  ExpenseRecord,
+  PaymentMethod,
+  RecurringExpenseRecord,
+  ReturnRecord,
+  SalesRecord,
+  SwapRecord,
+} from '@/types';
 
 export type ReportPreset = 'today' | 'week' | 'custom';
 
@@ -31,7 +42,16 @@ export interface ReportMetrics {
   profit: number;
   returnsCount: number;
   refundValue: number;
+  /** Sales profit after refunds (before shop expenses). */
   netProfit: number;
+  loggedExpenses: number;
+  cashExpenses: number;
+  nonCashExpenses: number;
+  recurringEstimate: number;
+  totalCosts: number;
+  /** Net profit after logged + recurring shop costs. */
+  netAfterCosts: number;
+  expenseCount: number;
   totalSwaps: number;
   totalTradeInValue: number;
   averageBalanceCollected: number;
@@ -40,9 +60,11 @@ export interface ReportMetrics {
   highestProfitItem: { label: string; profit: number } | null;
   categoryBreakdown: ReportBreakdownPoint[];
   paymentBreakdown: ReportBreakdownPoint[];
+  expenseBreakdown: ReportBreakdownPoint[];
   sales: SalesRecord[];
   returns: ReturnRecord[];
   swaps: SwapRecord[];
+  expenses: ExpenseRecord[];
 }
 
 const CATEGORY_LABELS: Record<Category, string> = {
@@ -72,6 +94,17 @@ const PAYMENT_COLORS: Record<PaymentMethod, string> = {
   bank_transfer: '#0284c7',
   pos: '#f59e0b',
 };
+
+const EXPENSE_COLORS = [
+  '#ef4444',
+  '#f59e0b',
+  '#ea580c',
+  '#e11d48',
+  '#dc2626',
+  '#b45309',
+  '#c2410c',
+  '#be123c',
+];
 
 export function getPresetRange(preset: Exclude<ReportPreset, 'custom'>): ReportRange {
   const now = new Date();
@@ -158,7 +191,27 @@ export function useReportMetrics(range: ReportRange) {
       })
       .toArray();
 
-    return buildMetrics(range, sales, returns, swaps);
+    const startIso = range.start.toISOString();
+    const endIso = range.end.toISOString();
+
+    const expenses = await db.expense_records
+      .where('user_id')
+      .equals(shopOwnerId)
+      .filter(
+        e =>
+          e.location_id === activeLocationId &&
+          e.recorded_at >= startIso &&
+          e.recorded_at <= endIso,
+      )
+      .toArray();
+
+    const recurring = await db.recurring_expenses
+      .where('user_id')
+      .equals(shopOwnerId)
+      .filter((e: RecurringExpenseRecord) => e.location_id === activeLocationId && e.active)
+      .toArray();
+
+    return buildMetrics(range, sales, returns, swaps, expenses, recurring);
   }, [shopOwnerId, activeLocationId, locationReady, range.start.getTime(), range.end.getTime(), range.label]);
 
   return { metrics: metrics ?? emptyReport(range), isLoading: metrics === undefined };
@@ -173,6 +226,13 @@ function emptyReport(range: ReportRange): ReportMetrics {
     returnsCount: 0,
     refundValue: 0,
     netProfit: 0,
+    loggedExpenses: 0,
+    cashExpenses: 0,
+    nonCashExpenses: 0,
+    recurringEstimate: 0,
+    totalCosts: 0,
+    netAfterCosts: 0,
+    expenseCount: 0,
     totalSwaps: 0,
     totalTradeInValue: 0,
     averageBalanceCollected: 0,
@@ -185,17 +245,27 @@ function emptyReport(range: ReportRange): ReportMetrics {
     highestProfitItem: null,
     categoryBreakdown: [],
     paymentBreakdown: [],
+    expenseBreakdown: [],
     sales: [],
     returns: [],
     swaps: [],
+    expenses: [],
   };
 }
 
-function buildMetrics(range: ReportRange, sales: SalesRecord[], returns: ReturnRecord[], swaps: SwapRecord[]): ReportMetrics {
+function buildMetrics(
+  range: ReportRange,
+  sales: SalesRecord[],
+  returns: ReturnRecord[],
+  swaps: SwapRecord[],
+  expenses: ExpenseRecord[],
+  recurring: RecurringExpenseRecord[],
+): ReportMetrics {
   const categoryTotals = new Map<Category, number>();
   const paymentTotals = new Map<PaymentMethod, number>();
   const modelTotals = new Map<string, number>();
   const itemProfitTotals = new Map<string, number>();
+  const expenseTotals = new Map<ExpenseCategory, number>();
 
   let salesCount = 0;
   let revenue = 0;
@@ -239,6 +309,32 @@ function buildMetrics(range: ReportRange, sales: SalesRecord[], returns: ReturnR
   const bestSellingModel = getHighestEntry(modelTotals, 'units');
   const highestProfitItem = getHighestEntry(itemProfitTotals, 'profit');
 
+  const loggedExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const cashExpenses = expenses
+    .filter(e => e.payment_method === 'cash')
+    .reduce((sum, e) => sum + e.amount, 0);
+  const nonCashExpenses = loggedExpenses - cashExpenses;
+
+  for (const expense of expenses) {
+    expenseTotals.set(expense.category, (expenseTotals.get(expense.category) ?? 0) + expense.amount);
+  }
+
+  const recurringEstimate = recurring.reduce(
+    (sum, item) => sum + recurringCostInRange(item.amount, item.recurrence, range.start, range.end),
+    0,
+  );
+  const totalCosts = loggedExpenses + recurringEstimate;
+  const netProfit = profit - refundValue;
+  const netAfterCosts = netProfit - totalCosts;
+
+  const expenseBreakdown = [...expenseTotals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, value], index) => ({
+      label: expenseCategoryLabel(category),
+      value,
+      color: EXPENSE_COLORS[index % EXPENSE_COLORS.length],
+    }));
+
   return {
     range,
     salesCount,
@@ -246,7 +342,14 @@ function buildMetrics(range: ReportRange, sales: SalesRecord[], returns: ReturnR
     profit,
     returnsCount: returns.length,
     refundValue,
-    netProfit: profit - refundValue,
+    netProfit,
+    loggedExpenses,
+    cashExpenses,
+    nonCashExpenses,
+    recurringEstimate,
+    totalCosts,
+    netAfterCosts,
+    expenseCount: expenses.length,
     totalSwaps: swaps.length,
     totalTradeInValue,
     averageBalanceCollected: swaps.length > 0 ? totalBalanceCollected / swaps.length : 0,
@@ -267,9 +370,11 @@ function buildMetrics(range: ReportRange, sales: SalesRecord[], returns: ReturnR
         color: PAYMENT_COLORS[paymentMethod],
       }))
       .filter((entry) => entry.value > 0),
+    expenseBreakdown,
     sales,
     returns,
     swaps,
+    expenses,
   };
 }
 
