@@ -597,6 +597,14 @@ export type WarrantyDuration = {
 /** Warranty / return cover per category and stock condition. */
 export type WarrantyPolicy = Record<Category, Record<WarrantyStockCondition, WarrantyDuration>>;
 
+/** Shop-editable warranty wording shown on slips and receipts. */
+export type WarrantyTerms = {
+  /** What the warranty covers (one short sentence). */
+  covers: string;
+  /** Things the warranty does not cover. */
+  exclusions: string[];
+};
+
 export interface ShopProfile {
   shop_name: string;
   address: string;
@@ -605,6 +613,7 @@ export interface ShopProfile {
   logo_path?: string;
   receipt_theme?: ReceiptTheme;
   warranty_policy?: WarrantyPolicy;
+  warranty_terms?: WarrantyTerms;
 }
 
 export interface AppSetting<T = string> {

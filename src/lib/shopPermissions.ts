@@ -32,12 +32,12 @@ export const SHOP_PERMISSION_GROUPS = [
       {
         key: 'edit_sales',
         label: 'Edit completed sales',
-        hint: 'Correct sale date, customer details, and price on closed sales.',
+        hint: 'Correct sale date, payment method, and price on closed sales. Price correction is for managers when the amount received was wrong.',
       },
       {
         key: 'edit_swaps',
         label: 'Edit completed swaps',
-        hint: 'Correct swap date, customer details, and amounts on closed swaps.',
+        hint: 'Correct swap date, payment method, and amounts on closed swaps. Amount correction is for managers when the money received was wrong.',
       },
     ],
   },

@@ -26,6 +26,8 @@ import {
   Layers,
   UserCircle,
   Receipt,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
@@ -37,10 +39,12 @@ import { useTheme, type ThemeMode } from '@/components/theme/ThemeProvider';
 import { useEffect, useState, useRef, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import type { ShopProfile, ReceiptTheme, Category, WarrantyPolicy, WarrantyDuration } from '@/types';
+import type { ShopProfile, ReceiptTheme, Category, WarrantyPolicy, WarrantyDuration, WarrantyTerms } from '@/types';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { Button } from '@/components/ui/Button';
 import { ColorPickerField } from '@/components/ui/ColorPickerField';
 import { DEFAULT_RECEIPT_THEME } from '@/hooks/useShopProfile';
 import { extractDominantColor } from '@/lib/colorUtils';
@@ -62,7 +66,9 @@ import {
 import { applyShellAccent } from '@/lib/shellAccent';
 import {
   DEFAULT_WARRANTY_POLICY,
+  DEFAULT_WARRANTY_TERMS,
   mergeWarrantyPolicy,
+  mergeWarrantyTerms,
   WARRANTY_CATEGORY_LABELS,
   WARRANTY_STOCK_CONDITIONS,
   WARRANTY_STOCK_CONDITION_LABELS,
@@ -176,6 +182,10 @@ export default function SettingsPage() {
   const [warrantyPolicy, setWarrantyPolicy] = useState<WarrantyPolicy>(
     mergeWarrantyPolicy(profile.warranty_policy),
   );
+  const [warrantyTerms, setWarrantyTerms] = useState<WarrantyTerms>(() =>
+    mergeWarrantyTerms(profile.warranty_terms),
+  );
+  const [exclusionDraft, setExclusionDraft] = useState('');
   const [warrantySaved, setWarrantySaved] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [receiptTheme, setReceiptTheme] = useState<ReceiptTheme>(
@@ -185,7 +195,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setWarrantyPolicy(mergeWarrantyPolicy(profile.warranty_policy));
-  }, [profile.warranty_policy]);
+    setWarrantyTerms(mergeWarrantyTerms(profile.warranty_terms));
+  }, [profile.warranty_policy, profile.warranty_terms]);
 
   useEffect(() => {
     setReceiptTheme(effectiveReceiptTheme);
@@ -649,6 +660,89 @@ export default function SettingsPage() {
           </table>
         </div>
 
+        <div className="space-y-3 rounded-xl border border-shell-line bg-shell-surface-2/30 p-4">
+          <div>
+            <p className="text-sm font-semibold text-shell-ink">What it covers</p>
+            <p className="mt-0.5 text-xs text-shell-muted">
+              Shown on warranty slips and receipts.
+            </p>
+          </div>
+          <Textarea
+            value={warrantyTerms.covers}
+            onChange={e => setWarrantyTerms(current => ({ ...current, covers: e.target.value }))}
+            rows={2}
+            className={cn(settingsField, 'min-h-[4.5rem] resize-y')}
+            placeholder="This warranty covers manufacturing defects under normal use."
+          />
+
+          <div>
+            <p className="text-sm font-semibold text-shell-ink">Does not cover</p>
+            <p className="mt-0.5 text-xs text-shell-muted">
+              Add exclusions customers should see (liquid damage, abuse, etc.).
+            </p>
+          </div>
+          <ul className="divide-y divide-shell-line overflow-hidden rounded-lg border border-shell-line">
+            {warrantyTerms.exclusions.length === 0 ? (
+              <li className="px-3 py-4 text-center text-xs text-shell-muted">No exclusions yet.</li>
+            ) : (
+              warrantyTerms.exclusions.map((line, index) => (
+                <li key={`${line}-${index}`} className="flex items-center gap-2 px-3 py-2">
+                  <span className="min-w-0 flex-1 text-sm text-shell-ink">{line}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${line}`}
+                    className="rounded-lg p-1.5 text-shell-muted transition-colors hover:bg-red-500/10 hover:text-red-300"
+                    onClick={() =>
+                      setWarrantyTerms(current => ({
+                        ...current,
+                        exclusions: current.exclusions.filter((_, i) => i !== index),
+                      }))
+                    }
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+          <div className="flex gap-2">
+            <Input
+              value={exclusionDraft}
+              onChange={e => setExclusionDraft(e.target.value)}
+              placeholder="e.g. Screen cracks from drops"
+              className={cn(settingsField, 'h-10')}
+              onKeyDown={e => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                const next = exclusionDraft.trim();
+                if (!next) return;
+                setWarrantyTerms(current => ({
+                  ...current,
+                  exclusions: [...current.exclusions, next],
+                }));
+                setExclusionDraft('');
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 border-shell-line"
+              onClick={() => {
+                const next = exclusionDraft.trim();
+                if (!next) return;
+                setWarrantyTerms(current => ({
+                  ...current,
+                  exclusions: [...current.exclusions, next],
+                }));
+                setExclusionDraft('');
+              }}
+            >
+              <Plus size={14} />
+              Add
+            </Button>
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -657,6 +751,7 @@ export default function SettingsPage() {
                 ...profile,
                 receipt_theme: profile.receipt_theme ?? receiptTheme,
                 warranty_policy: warrantyPolicy,
+                warranty_terms: mergeWarrantyTerms(warrantyTerms),
               });
               setWarrantySaved(true);
               toast.success('Warranty policy saved');
@@ -668,7 +763,10 @@ export default function SettingsPage() {
           </button>
           <button
             type="button"
-            onClick={() => setWarrantyPolicy(DEFAULT_WARRANTY_POLICY)}
+            onClick={() => {
+              setWarrantyPolicy(DEFAULT_WARRANTY_POLICY);
+              setWarrantyTerms(DEFAULT_WARRANTY_TERMS);
+            }}
             className={settingsBtnOutline}
           >
             Reset to defaults

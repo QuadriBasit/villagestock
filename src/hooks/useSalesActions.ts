@@ -8,6 +8,7 @@ import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import { buildCreditPayment, getCreditStatus } from '@/lib/creditUtils';
+import { computeSalePriceCorrection } from '@/lib/salePriceCorrection';
 import { saleBlockedMissingIdentifiers } from '@/lib/serializedIdentifiers';
 import { getShopWarrantyPolicy, stockConditionFromItem, warrantyCoverFor } from '@/lib/warranty';
 import type { CreditRecord, CreditRecordInput, InventoryItem, PaymentMethod, SalesRecord, SalesRecordInput } from '@/types';
@@ -36,7 +37,7 @@ type RecordSaleOptions = {
 
 export function useSalesActions() {
   const { user } = useAuthStore();
-  const { shopOwnerId, actorUserId } = useShopAccess();
+  const { shopOwnerId, actorUserId, hasPermission } = useShopAccess();
   const { activeLocationId, ready: locationReady } = useShopLocation();
 
   async function recordSale(input: SalesRecordInput, options?: RecordSaleOptions): Promise<SalesRecord> {
@@ -498,5 +499,76 @@ export function useSalesActions() {
     });
   }
 
-  return { recordSale, checkoutQuickTill, updateSaleSoldAt, updateSalePaymentMethod };
+  async function updateSalePrice(saleId: string, salePrice: number): Promise<void> {
+    if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
+    const existing = await db.sales_records.get(saleId);
+    if (!existing) throw new Error('Sale not found');
+    if (existing.returned) throw new Error('Cannot edit a returned sale');
+
+    const required = existing.sale_type === 'swap' ? 'edit_swaps' : 'edit_sales';
+    if (!hasPermission(required)) {
+      throw new Error('Only a manager can change sale price');
+    }
+
+    const nextPrice = Math.round(salePrice);
+    if (!Number.isFinite(nextPrice) || nextPrice <= 0) {
+      throw new Error('Sale price must be greater than 0');
+    }
+    if (nextPrice === existing.sale_price) return;
+
+    const credit = await db.credit_records.where('sale_id').equals(saleId).first();
+    const { salePatch, swapPatch, creditPatch } = computeSalePriceCorrection({
+      sale: existing,
+      salePrice: nextPrice,
+      credit,
+    });
+
+    await db.transaction(
+      'rw',
+      [db.sales_records, db.swap_records, db.credit_records, db.sync_queue],
+      async () => {
+        await db.sales_records.update(saleId, salePatch);
+        const latestSale = await db.sales_records.get(saleId);
+        if (latestSale) {
+          await queueSync('sales_records', 'update', latestSale as unknown as Record<string, unknown>);
+        }
+
+        if (swapPatch && existing.swap_record_id) {
+          await db.swap_records.update(existing.swap_record_id, swapPatch);
+          const swap = await db.swap_records.get(existing.swap_record_id);
+          if (swap) {
+            await queueSync('swap_records', 'update', swap as unknown as Record<string, unknown>);
+          }
+        }
+
+        if (creditPatch && credit) {
+          await db.credit_records.update(credit.id, creditPatch);
+          const updatedCredit = await db.credit_records.get(credit.id);
+          if (updatedCredit) {
+            await queueSync('credit_records', 'update', updatedCredit as unknown as Record<string, unknown>);
+          }
+        }
+      },
+    );
+
+    await flushSyncQueue();
+
+    const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
+    void logShopAudit({
+      businessId: shopOwnerId,
+      actorUserId,
+      action: 'sale.price_updated',
+      entityType: 'sales_record',
+      entityId: saleId,
+      metadata: {
+        receipt: existing.receipt_number,
+        item: existing.item_name,
+        from: existing.sale_price,
+        to: nextPrice,
+      },
+      actorLabel,
+    });
+  }
+
+  return { recordSale, checkoutQuickTill, updateSaleSoldAt, updateSalePaymentMethod, updateSalePrice };
 }

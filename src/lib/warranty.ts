@@ -7,6 +7,7 @@ import type {
   WarrantyDuration,
   WarrantyPolicy,
   WarrantyStockCondition,
+  WarrantyTerms,
 } from '@/types';
 
 const DAY_MS = 86_400_000;
@@ -81,6 +82,39 @@ export const WARRANTY_COVER_PRESETS: WarrantyDuration[] = [
   { value: 1, unit: 'months' },
   { value: 2, unit: 'months' },
 ];
+
+export const DEFAULT_WARRANTY_TERMS: WarrantyTerms = {
+  covers: 'This warranty covers manufacturing defects under normal use.',
+  exclusions: [
+    'Accidental damage',
+    'Liquid / water damage',
+    'Unauthorised repairs or software modifications',
+    'Physical abuse or neglect',
+    'Missing accessories or packaging when required for service',
+  ],
+};
+
+export function mergeWarrantyTerms(partial?: Partial<WarrantyTerms> | null): WarrantyTerms {
+  const covers =
+    typeof partial?.covers === 'string' && partial.covers.trim()
+      ? partial.covers.trim()
+      : DEFAULT_WARRANTY_TERMS.covers;
+  const exclusions = Array.isArray(partial?.exclusions)
+    ? partial.exclusions.map(line => line.trim()).filter(Boolean)
+    : [...DEFAULT_WARRANTY_TERMS.exclusions];
+  return {
+    covers,
+    exclusions: exclusions.length > 0 ? exclusions : [...DEFAULT_WARRANTY_TERMS.exclusions],
+  };
+}
+
+export function formatWarrantyTermsText(terms: WarrantyTerms): string {
+  const exclusions =
+    terms.exclusions.length > 0
+      ? ` Does not cover: ${terms.exclusions.join('; ')}.`
+      : '';
+  return `${terms.covers}${exclusions}`.trim();
+}
 
 export type WarrantyStatus = {
   cover: WarrantyDuration;

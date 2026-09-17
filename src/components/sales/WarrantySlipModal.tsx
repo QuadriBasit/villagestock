@@ -13,6 +13,7 @@ import {
   formatWarrantyCover,
   getSaleWarrantyCover,
   identifierLabel,
+  mergeWarrantyTerms,
   saleIdentifier,
   saleWarrantyStatus,
 } from "@/lib/warranty";
@@ -33,6 +34,7 @@ export default function WarrantySlipModal({
 
   const cover = getSaleWarrantyCover(sale);
   const warranty = saleWarrantyStatus(sale);
+  const terms = mergeWarrantyTerms(profile.warranty_terms);
   const idKind = identifierLabel(sale);
   const idCode = saleIdentifier(sale);
   const purchaseDate = new Date(sale.sold_at).toLocaleDateString("en-NG", {
@@ -138,11 +140,20 @@ export default function WarrantySlipModal({
                 </div>
               </div>
 
-              <p className="mt-4 text-[11px] leading-relaxed text-shell-muted">
-                This warranty covers manufacturing defects under normal use.
-                Accidental damage, liquid damage, and unauthorised repairs are
-                excluded. Present this slip with the device for service.
-              </p>
+              <div className="mt-4 space-y-2 text-[11px] leading-relaxed text-shell-muted">
+                <p>{terms.covers}</p>
+                {terms.exclusions.length > 0 ? (
+                  <div>
+                    <p className="font-semibold text-shell-ink/80">Does not cover:</p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                      {terms.exclusions.map(line => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                <p>Present this slip with the device for service.</p>
+              </div>
             </div>
           </div>
 

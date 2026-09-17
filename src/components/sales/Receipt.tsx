@@ -10,7 +10,7 @@ import {
   type ShopProfile,
 } from "@/types";
 import { formatCurrency } from "@/lib/utils";
-import { getSaleWarrantyCover, saleWarrantyStatus, formatWarrantyCover } from "@/lib/warranty";
+import { getSaleWarrantyCover, saleWarrantyStatus, formatWarrantyCover, mergeWarrantyTerms } from "@/lib/warranty";
 import { formatNetworkDescription } from "@/lib/networkLock";
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -106,6 +106,7 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
       overrides?.paper_color || shop.receipt_theme?.paper_color || RC.white;
     const warrantyCover = getSaleWarrantyCover(sale);
     const warranty = saleWarrantyStatus(sale);
+    const warrantyTerms = mergeWarrantyTerms(shop.warranty_terms);
     const mutedColor =
       textColor === RC.dark ? RC.muted : withAlpha(textColor, 0.68);
     const borderColor =
@@ -641,16 +642,40 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
         {/* Footer */}
         <div style={{ padding: "20px 24px", textAlign: "center" }}>
           {warrantyCover.value > 0 ? (
-            <p
-              style={{
-                fontSize: 12,
-                color: textColor,
-                margin: "0 0 8px",
-                fontWeight: 600,
-              }}
-            >
-              Warranty: {formatWarrantyCover(warrantyCover)} — valid until {warranty.label}
-            </p>
+            <>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: textColor,
+                  margin: "0 0 6px",
+                  fontWeight: 600,
+                }}
+              >
+                Warranty: {formatWarrantyCover(warrantyCover)} — valid until {warranty.label}
+              </p>
+              <p
+                style={{
+                  fontSize: 10,
+                  color: mutedColor,
+                  margin: "0 0 4px",
+                  lineHeight: 1.45,
+                }}
+              >
+                {warrantyTerms.covers}
+              </p>
+              {warrantyTerms.exclusions.length > 0 ? (
+                <p
+                  style={{
+                    fontSize: 10,
+                    color: mutedColor,
+                    margin: "0 0 8px",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Does not cover: {warrantyTerms.exclusions.join("; ")}.
+                </p>
+              ) : null}
+            </>
           ) : (
             <p style={{ fontSize: 11, color: mutedColor, margin: "0 0 8px" }}>
               No warranty on this sale.
@@ -674,7 +699,7 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
               marginBottom: 0,
             }}
           >
-            Goods sold are not returnable.
+            Goods sold are not returnable except under warranty terms above.
           </p>
           <p
             style={{

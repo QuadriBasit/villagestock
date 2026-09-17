@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { DateTimeField, toLocalDatetimeValue } from "@/components/ui/DateTimeField";
+import { CurrencyInput } from "@/components/ui/CurrencyInput";
+import { Label } from "@/components/ui/Label";
 import { CategoryThumb } from "@/components/inventory/CategoryThumb";
 import { useSalesActions } from "@/hooks/useSalesActions";
 import { useShopAccess } from "@/context/ShopAccessContext";
@@ -17,6 +19,8 @@ import { buildReceiptText, openWhatsApp } from "@/lib/whatsapp";
 import { db } from "@/lib/db";
 import { cn, formatCurrency } from "@/lib/utils";
 import { modalSheetBodyScroll, modalSheetPanelMd } from '@/lib/modalSheet';
+import { salesField } from "@/components/sales/salesModalUi";
+import { expectedSaleCashAmount } from "@/lib/salePriceCorrection";
 import type { PaymentMethod, SalesRecord } from "@/types";
 import {
   formatIdentifierDisplay,
@@ -56,7 +60,7 @@ export default function SaleDetailModal({
   onReturn,
   onRecordPayment,
 }: SaleDetailModalProps) {
-  const { updateSaleSoldAt, updateSalePaymentMethod } = useSalesActions();
+  const { updateSaleSoldAt, updateSalePaymentMethod, updateSalePrice } = useSalesActions();
   const { hasPermission } = useShopAccess();
   const { profile } = useShopProfile();
   const liveSale = useLiveQuery(() => (sale ? db.sales_records.get(sale.id) : undefined), [sale?.id]) ?? sale;
@@ -66,15 +70,18 @@ export default function SaleDetailModal({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     liveSale?.payment_method ?? "bank_transfer",
   );
+  const [salePrice, setSalePrice] = useState(liveSale?.sale_price ?? 0);
   const [savingDate, setSavingDate] = useState(false);
   const [savingPayment, setSavingPayment] = useState(false);
+  const [savingPrice, setSavingPrice] = useState(false);
 
   useEffect(() => {
     if (liveSale) {
       setSoldAt(toLocalDatetimeValue(new Date(liveSale.sold_at)));
       setPaymentMethod(liveSale.payment_method ?? "bank_transfer");
+      setSalePrice(liveSale.sale_price);
     }
-  }, [liveSale?.id, liveSale?.sold_at, liveSale?.payment_method]);
+  }, [liveSale?.id, liveSale?.sold_at, liveSale?.payment_method, liveSale?.sale_price]);
 
   if (!sale || !liveSale) return null;
 
@@ -124,6 +131,18 @@ export default function SaleDetailModal({
     }
   };
 
+  const saveSalePrice = async () => {
+    setSavingPrice(true);
+    try {
+      await updateSalePrice(liveSale.id, salePrice);
+      toast.success("Sale price updated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update sale price");
+    } finally {
+      setSavingPrice(false);
+    }
+  };
+
   const sendWhatsAppReceipt = () => {
     openWhatsApp(liveSale.customer_phone, buildReceiptText(liveSale, profile));
     toast.success(
@@ -148,15 +167,15 @@ export default function SaleDetailModal({
 
           <div className={cn(modalSheetBodyScroll, "px-5 py-4")}>
             <div className="flex items-center gap-3 rounded-lg border border-shell-line bg-shell-surface-2/35 p-3">
-              <CategoryThumb category={sale.item_category} size="sm" />
+              <CategoryThumb category={liveSale.item_category} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-shell-ink">
-                  {sale.item_name}
+                  {liveSale.item_name}
                 </p>
                 <p className="text-xs text-shell-muted">
-                  {sale.quantity_sold > 1 ? `${sale.quantity_sold}× ` : ""}
-                  {formatCurrency(sale.sale_price)}
-                  {sale.item_brand ? ` · ${sale.item_brand}` : ""}
+                  {liveSale.quantity_sold > 1 ? `${liveSale.quantity_sold}× ` : ""}
+                  {formatCurrency(liveSale.sale_price)}
+                  {liveSale.item_brand ? ` · ${liveSale.item_brand}` : ""}
                 </p>
                 {idKind && idCode ? (
                   <p className="mt-1 font-mono text-[11px] text-shell-muted">
@@ -176,7 +195,7 @@ export default function SaleDetailModal({
                     Paid {formatCurrency(paid)} of {formatCurrency(total)}
                   </span>
                   <span className="font-semibold text-amber-200">
-                    {formatCurrency(sale.balance_owed ?? 0)} outstanding
+                    {formatCurrency(liveSale.balance_owed ?? 0)} outstanding
                   </span>
                 </div>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-shell-surface-2">
@@ -191,7 +210,7 @@ export default function SaleDetailModal({
             <div className="mt-4 divide-y divide-shell-line rounded-lg border border-shell-line">
               <DetailRow
                 label="Customer"
-                value={sale.customer_name || "Walk-in"}
+                value={liveSale.customer_name || "Walk-in"}
               />
               <DetailRow
                 label="Payment"
@@ -218,7 +237,7 @@ export default function SaleDetailModal({
               {canViewProfit ? (
                 <DetailRow
                   label="Profit"
-                  value={formatCurrency(sale.profit)}
+                  value={formatCurrency(liveSale.profit)}
                   mono
                 />
               ) : null}
@@ -232,6 +251,47 @@ export default function SaleDetailModal({
 
             {canEditDeal ? (
               <div className="mt-4 space-y-3 rounded-lg border border-shell-line bg-shell-surface-2/20 p-3.5">
+                {!liveSale.returned ? (
+                  <div>
+                    <Label htmlFor="sale_price_correction" className="mb-1 block text-sm font-medium text-shell-muted">
+                      Sale price
+                    </Label>
+                    <p className="mb-3 text-[11px] leading-snug text-shell-muted">
+                      Correct if the amount received doesn’t match what was recorded.
+                    </p>
+                    <CurrencyInput
+                      id="sale_price_correction"
+                      value={salePrice}
+                      onValueChange={v => setSalePrice(v ?? 0)}
+                      className={salesField}
+                    />
+                    <p className="mt-1.5 text-[11px] text-shell-muted">
+                      {liveSale.quantity_sold > 1
+                        ? `New total ${formatCurrency(salePrice * liveSale.quantity_sold)}`
+                        : liveSale.sale_type === "swap"
+                          ? `Cash difference ${formatCurrency(
+                              expectedSaleCashAmount({ ...liveSale, sale_price: salePrice }),
+                            )}`
+                          : `Recorded as ${formatCurrency(salePrice)}`}
+                      {canViewProfit
+                        ? ` · Profit ${formatCurrency((salePrice - liveSale.cost_price) * liveSale.quantity_sold)}`
+                        : ""}
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="mt-3 w-full border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
+                      onClick={() => void saveSalePrice()}
+                      disabled={
+                        savingPrice ||
+                        salePrice <= 0 ||
+                        salePrice === liveSale.sale_price
+                      }
+                    >
+                      {savingPrice ? <Loader2 size={16} className="animate-spin" /> : null}
+                      Save sale price
+                    </Button>
+                  </div>
+                ) : null}
                 {!owing ? (
                   <div>
                     <p className="mb-2 text-xs font-semibold text-shell-muted">Payment method</p>
@@ -337,7 +397,7 @@ export default function SaleDetailModal({
                   owing ? "border-amber-500/30 text-amber-200" : undefined
                 }
               >
-                {sale.returned ? "Returned" : owing ? "Owing" : "Paid"}
+                {liveSale.returned ? "Returned" : owing ? "Owing" : "Paid"}
               </Badge>
               {cover.value > 0 ? (
                 <Badge
@@ -350,7 +410,7 @@ export default function SaleDetailModal({
                   {warranty.active ? "In warranty" : "Warranty expired"}
                 </Badge>
               ) : null}
-              {sale.sale_type === "swap" ? (
+              {liveSale.sale_type === "swap" ? (
                 <Badge className="border-brand-400/25 bg-brand-400/10 text-brand-200">
                   Swap
                 </Badge>
