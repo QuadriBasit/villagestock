@@ -555,6 +555,10 @@ export interface Database {
         Args: { p_business_id: string; p_email: string };
         Returns: string | null;
       };
+      accept_open_staff_invite_for_me: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
       accept_staff_invite: {
         Args: { p_token: string };
         Returns: undefined;
