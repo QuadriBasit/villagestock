@@ -10,18 +10,55 @@ export type TeamMemberRow = Database['public']['Tables']['business_members']['Ro
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+function readErrorField(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.startsWith('{')) {
+      try {
+        return readErrorField(JSON.parse(trimmed) as unknown);
+      } catch {
+        return trimmed;
+      }
+    }
+    return trimmed || null;
+  }
+  if (value && typeof value === 'object' && 'error' in value && (value as { error?: unknown }).error != null) {
+    return readErrorField((value as { error: unknown }).error);
+  }
+  return null;
+}
+
+function friendlyInviteError(raw: string): string {
+  const text = raw.trim();
+  if (/open invite already exists|already exists for this email/i.test(text)) {
+    return 'This email already has a pending invite. Try Send invitation again to resend the link.';
+  }
+  if (/you cannot invite your own email/i.test(text)) {
+    return 'You cannot invite your own email.';
+  }
+  return text;
+}
+
 function functionsInvokeErrorMessage(error: unknown, data: unknown): string {
-  if (data && typeof data === 'object' && 'error' in data && (data as { error?: unknown }).error) {
-    return String((data as { error: unknown }).error);
+  const parsed =
+    readErrorField(data) ??
+    (error && typeof error === 'object' && 'context' in error
+      ? readErrorField((error as { context?: unknown }).context)
+      : null) ??
+    (error && typeof error === 'object' && 'message' in error && typeof (error as { message: unknown }).message === 'string'
+      ? readErrorField((error as { message: string }).message)
+      : null);
+  if (parsed && !/non-2xx/i.test(parsed)) {
+    return friendlyInviteError(parsed);
   }
   if (error && typeof error === 'object' && 'message' in error && typeof (error as { message: unknown }).message === 'string') {
     const message = (error as { message: string }).message;
     if (/non-2xx/i.test(message)) {
       return 'Could not send the invite. Check the email and try again.';
     }
-    return message;
+    return friendlyInviteError(message);
   }
-  return 'Invite request failed';
+  return 'Could not send the invite. Check the email and try again.';
 }
 
 async function resolveLegacyRoleText(roleId: string): Promise<string> {
@@ -73,7 +110,7 @@ export function useTeamMembers() {
       roleId: string;
       displayName: string;
       allowedLocationIds?: string[] | null;
-    }): Promise<{ inviteUrl: string }> => {
+    }): Promise<{ inviteUrl: string; emailSent: boolean; emailError: string | null }> => {
       if (!shopOwnerId || !actorUserId) throw new Error('Not authenticated');
       if (!canInviteTeamMembers) throw new Error('You do not have permission to invite team members.');
       const displayName = params.displayName.trim();
@@ -109,13 +146,20 @@ export function useTeamMembers() {
       });
       if (fnErr) throw new Error(functionsInvokeErrorMessage(fnErr, data));
       if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
-        throw new Error(String((data as { error: string }).error));
+        throw new Error(friendlyInviteError(String((data as { error: string }).error)));
       }
       const inviteUrl =
         data && typeof data === 'object' && 'invite_url' in data
           ? String((data as { invite_url: unknown }).invite_url ?? '')
           : '';
       if (!inviteUrl) throw new Error('Invite was created but no link came back. Try again.');
+      const emailSent = data && typeof data === 'object' && 'email_sent' in data
+        ? (data as { email_sent?: unknown }).email_sent === true
+        : false;
+      const emailError =
+        data && typeof data === 'object' && 'email_error' in data && (data as { email_error?: unknown }).email_error
+          ? String((data as { email_error: unknown }).email_error)
+          : null;
       const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
@@ -126,7 +170,7 @@ export function useTeamMembers() {
         metadata: { role_id: params.roleId, name: displayName },
         actorLabel,
       });
-      return { inviteUrl };
+      return { inviteUrl, emailSent, emailError };
     },
     [shopOwnerId, actorUserId, canInviteTeamMembers]
   );

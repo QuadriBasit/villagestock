@@ -55,7 +55,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
-  const { status: shopStatus, shopOwnerId } = useShopAccess();
+  const { status: shopStatus, shopOwnerId, isOwner } = useShopAccess();
   const q = useBusinessProfileQuery(shopStatus === 'ready' ? shopOwnerId ?? undefined : undefined);
   const { data: isAdmin, isLoading: adminLoading } = useIsAdminUser(user?.id);
   if (user && (shopStatus === 'loading' || shopStatus === 'idle')) {
@@ -67,7 +67,8 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   if (isAdmin) {
     return <Navigate to="/admin" replace />;
   }
-  if (!q.profile?.onboarding_complete) {
+  const joinedExistingShop = Boolean(user && shopOwnerId && (shopOwnerId !== user.id || !isOwner));
+  if (!q.profile?.onboarding_complete && !joinedExistingShop) {
     return <Navigate to="/onboarding" replace />;
   }
   return <>{children}</>;
@@ -109,14 +110,15 @@ function RouteFallback() {
 /** Signed-in users should never see the marketing landing page. */
 function LandingRoute() {
   const { user, isLoading } = useAuthStore();
-  const { status: shopStatus, shopOwnerId } = useShopAccess();
+  const { status: shopStatus, shopOwnerId, isOwner } = useShopAccess();
   const q = useBusinessProfileQuery(shopStatus === 'ready' ? shopOwnerId ?? undefined : undefined);
 
   if (isLoading) return <AppLoadingScreen label="Loading…" />;
   if (!user) return <LandingPage />;
   if (shopStatus === 'loading' || shopStatus === 'idle') return <AppLoadingScreen label="Loading…" />;
   if (q.status === 'pending') return <AppLoadingScreen label="Loading…" />;
-  if (q.profile?.onboarding_complete) return <Navigate to="/dashboard" replace />;
+  const joinedExistingShop = Boolean(shopOwnerId && (shopOwnerId !== user.id || !isOwner));
+  if (q.profile?.onboarding_complete || joinedExistingShop) return <Navigate to="/dashboard" replace />;
   return <Navigate to="/onboarding" replace />;
 }
 

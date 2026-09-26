@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import { Package, Loader2, Store, User, MapPin, Mail, Phone, ArrowRight, Sparkles } from 'lucide-react';
 import FeatureTour from '@/components/onboarding/FeatureTour';
 import { Input } from '@/components/ui/Input';
@@ -25,6 +26,7 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuthStore();
   const { profile, isReady, saveDraft, startTrialAndCompleteOnboarding } = useBusinessProfile();
+  const { status: shopStatus, shopOwnerId, isOwner } = useShopAccess();
   const [step, setStep] = useState<2 | 3>(2);
   const [submitError, setSubmitError] = useState('');
   const [finishing, setFinishing] = useState(false);
@@ -81,6 +83,11 @@ export default function OnboardingPage() {
   }
 
   if (profile?.onboarding_complete) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  const joinedExistingShop = Boolean(user && shopOwnerId && (shopOwnerId !== user.id || !isOwner));
+  if (shopStatus === 'ready' && joinedExistingShop) {
     return <Navigate to="/dashboard" replace />;
   }
 

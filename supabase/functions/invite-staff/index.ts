@@ -35,21 +35,71 @@ function isLocalhostOrigin(origin: string): boolean {
   }
 }
 
-function isEmailExistsError(err: { message?: string; code?: string } | null): boolean {
-  const code = (err?.code ?? '').toLowerCase();
-  const msg = (err?.message ?? '').toLowerCase();
-  return (
-    code === 'email_exists' ||
-    msg.includes('already been registered') ||
-    msg.includes('already registered') ||
-    msg.includes('already exists')
-  );
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
-/** Prefer the page they invited from. Never send localhost to production Auth. */
-function resolveInviteSiteUrl(bodySiteUrl?: string): string {
-  const fromClient = parseHttpOrigin(bodySiteUrl);
-  if (fromClient && !isLocalhostOrigin(fromClient)) return fromClient;
+async function sendInviteEmail(params: {
+  to: string;
+  shopName: string;
+  inviteUrl: string;
+  displayName: string;
+}): Promise<{ sent: boolean; error?: string }> {
+  const apiKey = Deno.env.get('RESEND_API_KEY')?.trim();
+  if (!apiKey) {
+    return {
+      sent: false,
+      error:
+        'Invite email is off until RESEND_API_KEY is set and villagestock.online is verified on Resend.',
+    };
+  }
+  const from =
+    Deno.env.get('INVITE_FROM_EMAIL')?.trim() || 'VillageStock <invite@villagestock.online>';
+  const shop = params.shopName.trim() || 'a VillageStock shop';
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to: [params.to],
+      subject: `Join ${shop} on VillageStock`,
+      text: `Hi ${params.displayName},
+
+You were invited to join ${shop} on VillageStock as a team member.
+
+This is not a new-business signup. Open this join link and sign in with ${params.to}:
+
+${params.inviteUrl}
+
+If you did not expect this, ignore the email.`,
+      html: `<p>Hi ${escapeHtml(params.displayName)},</p>
+<p>You were invited to join <strong>${escapeHtml(shop)}</strong> on VillageStock as a team member.</p>
+<p><strong>Do not register a new business.</strong> Sign in with <strong>${escapeHtml(params.to)}</strong> (Google or email) and you will be added to this shop.</p>
+<p><a href="${escapeHtml(params.inviteUrl)}">Open the join link</a></p>
+<p style="word-break:break-all;font-size:13px;color:#555">${escapeHtml(params.inviteUrl)}</p>
+<p>If you did not expect this, ignore the email.</p>`,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    return {
+      sent: false,
+      error: body.includes('not verified')
+        ? 'Resend rejected the send: verify villagestock.online at resend.com/domains.'
+        : `Could not send email (${res.status}).`,
+    };
+  }
+  return { sent: true };
+}
+
+function resolveInviteSiteUrl(_bodySiteUrl?: string): string {
   const fromEnv = parseHttpOrigin(
     Deno.env.get('INVITE_PUBLIC_SITE_URL') ?? Deno.env.get('PUBLIC_SITE_URL') ?? ''
   );
@@ -258,9 +308,8 @@ Deno.serve(async (req: Request) => {
   }
 
   const siteUrl = resolveInviteSiteUrl(body.site_url);
-  const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth`;
-
-  const token = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 14 * 864e5).toISOString();
+  let token = crypto.randomUUID();
 
   const { error: insErr } = await admin.from('staff_invites').insert({
     business_id: businessId,
@@ -271,80 +320,82 @@ Deno.serve(async (req: Request) => {
     allowed_location_ids: allowedLocationIds,
     invited_by: authData.user.id,
     token,
-    expires_at: new Date(Date.now() + 14 * 864e5).toISOString(),
+    expires_at: expiresAt,
   });
 
   if (insErr) {
-    return new Response(
-      JSON.stringify({
-        error:
-          insErr.code === '23505'
-            ? 'An open invite already exists for this email. Wait until they accept or ask support to clear it.'
-            : insErr.message,
-      }),
-      { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } }
-    );
+    if (insErr.code !== '23505') {
+      return new Response(JSON.stringify({ error: insErr.message || 'Could not create the invite.' }), {
+        status: 400,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: existing, error: existErr } = await admin
+      .from('staff_invites')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('email', email)
+      .is('accepted_at', null)
+      .maybeSingle();
+
+    if (existErr || !existing) {
+      return new Response(
+        JSON.stringify({
+          error: 'This email already has a pending invite. Try sending again in a moment.',
+        }),
+        { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    token = crypto.randomUUID();
+    const { error: updErr } = await admin
+      .from('staff_invites')
+      .update({
+        token,
+        role,
+        role_id: roleId,
+        display_name: displayName,
+        allowed_location_ids: allowedLocationIds,
+        invited_by: authData.user.id,
+        expires_at: expiresAt,
+      })
+      .eq('id', existing.id);
+
+    if (updErr) {
+      return new Response(
+        JSON.stringify({ error: 'This email already has a pending invite. Try sending again in a moment.' }),
+        { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } }
+      );
+    }
   }
 
-  // generateLink does not send SMTP. Auth invite emails fail because
-  // Resend has not verified villagestock.online.
-  const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-    type: 'invite',
-    email,
-    options: {
-      redirectTo,
-      data: { staff_invite_token: token },
-    },
+  const inviteUrl = `${siteUrl.replace(/\/$/, '')}/auth?invite=${token}`;
+
+  const { data: shopRow } = await admin
+    .from('business_profiles')
+    .select('shop_name')
+    .eq('id', businessId)
+    .maybeSingle();
+  const shopName = (shopRow?.shop_name as string | undefined)?.trim() || 'a VillageStock shop';
+
+  const mailed = await sendInviteEmail({
+    to: email,
+    shopName,
+    inviteUrl,
+    displayName,
   });
 
-  let inviteUrl = linkData?.properties?.action_link ?? '';
-
-  if (linkErr && isEmailExistsError(linkErr)) {
-    const lookup = await fetch(
-      `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
-      { headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey } }
-    );
-    const lookupJson = (await lookup.json()) as { users?: Array<{ id: string; user_metadata?: Record<string, unknown> }> };
-    const existing = lookupJson.users?.find(Boolean);
-    if (!existing) {
-      await admin.from('staff_invites').delete().eq('token', token);
-      return new Response(
-        JSON.stringify({
-          error:
-            'This email already has a VillageStock account. Use “They already have a VillageStock account?” below and add them by email.',
-        }),
-        { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } }
-      );
-    }
-    await admin.auth.admin.updateUserById(existing.id, {
-      user_metadata: { ...(existing.user_metadata ?? {}), staff_invite_token: token },
-    });
-    const { data: magic, error: magicErr } = await admin.auth.admin.generateLink({
-      type: 'magiclink',
-      email,
-      options: { redirectTo },
-    });
-    if (magicErr || !magic?.properties?.action_link) {
-      await admin.from('staff_invites').delete().eq('token', token);
-      return new Response(
-        JSON.stringify({
-          error:
-            'This email already has a VillageStock account. Use “They already have a VillageStock account?” below and add them by email.',
-        }),
-        { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } }
-      );
-    }
-    inviteUrl = magic.properties.action_link;
-  } else if (linkErr || !inviteUrl) {
-    await admin.from('staff_invites').delete().eq('token', token);
-    return new Response(JSON.stringify({ error: linkErr?.message ?? 'Could not create an invite link.' }), {
-      status: 400,
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      invite_url: inviteUrl,
+      email_sent: mailed.sent,
+      email_error: mailed.error ?? null,
+    }),
+    {
+      status: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
-    });
-  }
-
-  return new Response(JSON.stringify({ ok: true, invite_url: inviteUrl }), {
-    status: 200,
-    headers: { ...cors, 'Content-Type': 'application/json' },
-  });
+    }
+  );
 });

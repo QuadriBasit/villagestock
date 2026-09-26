@@ -35,6 +35,7 @@ import {
   type ShopPermissions,
 } from '@/lib/shopPermissions';
 import type { ShopRole } from '@/types';
+import { clearStaffInviteToken, readStaffInviteToken } from '@/lib/staffInviteToken';
 
 export type ShopAccessStatus = 'idle' | 'loading' | 'ready';
 
@@ -208,21 +209,34 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
         const u = sessionData?.user;
         if (u?.id === capturedUserId) {
           const rawToken = u.user_metadata?.staff_invite_token;
-          const tokenStr = typeof rawToken === 'string' ? rawToken.trim() : '';
+          const tokenStr =
+            (typeof rawToken === 'string' ? rawToken.trim() : '') || readStaffInviteToken() || '';
+          let accepted = false;
           if (tokenStr) {
             const { error: accErr } = await supabase.rpc('accept_staff_invite', { p_token: tokenStr });
             if (!accErr) {
+              accepted = true;
+              clearStaffInviteToken();
               await supabase.auth.updateUser({ data: { staff_invite_token: null } });
             } else {
               console.warn('[shop access] accept_staff_invite', accErr.message);
               const msg = accErr.message ?? '';
-              if (
-                msg.includes('Invalid or expired') ||
-                msg.includes('same email') ||
-                msg.includes('no email')
-              ) {
+              // Keep the token on email mismatch so they can sign out and retry.
+              if (msg.includes('Invalid or expired')) {
+                clearStaffInviteToken();
                 await supabase.auth.updateUser({ data: { staff_invite_token: null } });
               }
+            }
+          }
+          if (!accepted) {
+            const { data: acceptedByEmail, error: openErr } = await supabase.rpc(
+              'accept_open_staff_invite_for_me'
+            );
+            if (openErr) {
+              console.warn('[shop access] accept_open_staff_invite_for_me', openErr.message);
+            } else if (acceptedByEmail) {
+              accepted = true;
+              clearStaffInviteToken();
             }
           }
         }

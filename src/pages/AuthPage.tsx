@@ -8,6 +8,8 @@ import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { authCallbackUrl } from '@/lib/authSiteUrl';
+import { signOutApp } from '@/lib/signOutApp';
+import { isStaffInviteToken, persistStaffInviteToken, readStaffInviteToken } from '@/lib/staffInviteToken';
 import { AuroraBackground } from '@/components/landing/AuroraBackground';
 import '@/components/landing/landing.css';
 import '@/components/auth/auth-page.css';
@@ -18,7 +20,7 @@ const FIELD = 'vs-auth-field';
 
 export default function AuthPage() {
   const { user, isLoading: authLoading } = useAuthStore();
-  const { status: shopStatus, shopOwnerId } = useShopAccess();
+  const { status: shopStatus, shopOwnerId, isOwner } = useShopAccess();
   const q = useBusinessProfileQuery(shopStatus === 'ready' ? shopOwnerId ?? undefined : undefined);
 
   const [panel, setPanel] = useState<Panel>('signin');
@@ -36,16 +38,45 @@ export default function AuthPage() {
   const [passwordSetupKind, setPasswordSetupKind] = useState<'invite' | 'reset' | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [newPassword2, setNewPassword2] = useState('');
+  const [joiningInvite, setJoiningInvite] = useState(false);
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
+    const query = new URLSearchParams(window.location.search);
+    const invite = query.get('invite')?.trim() ?? '';
+    if (isStaffInviteToken(invite)) {
+      persistStaffInviteToken(invite);
+      setJoiningInvite(true);
+    } else if (readStaffInviteToken()) {
+      setJoiningInvite(true);
+    }
+
+    const tokenHash = query.get('token_hash')?.trim();
+    const queryType = query.get('type')?.trim();
+    if (tokenHash && queryType === 'recovery') {
+      setRecoveryMode(true);
+      setPasswordSetupKind('reset');
+      void (async () => {
+        setBusy(true);
+        const { error: verifyErr } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        });
+        window.history.replaceState(null, '', window.location.pathname);
+        setBusy(false);
+        if (verifyErr) {
+          setRecoveryMode(false);
+          setPasswordSetupKind(null);
+          setError(verifyErr.message || 'This reset link is invalid or has already been used.');
+        }
+      })();
+      return;
+    }
+
     const raw = window.location.hash.replace(/^#/, '');
     if (!raw) return;
     const type = new URLSearchParams(raw).get('type');
-    if (type === 'invite') {
-      setRecoveryMode(true);
-      setPasswordSetupKind('invite');
-    } else if (type === 'recovery') {
+    if (type === 'recovery') {
       setRecoveryMode(true);
       setPasswordSetupKind('reset');
     }
@@ -90,8 +121,22 @@ export default function AuthPage() {
 
   if (authLoading) return <AuthSpinner />;
 
-  if (user && !recoveryMode) {
+  const joinedExistingShop = Boolean(
+    user && shopOwnerId && (shopOwnerId !== user.id || !isOwner)
+  );
+  const inviteJoinPending = Boolean(
+    user &&
+      joiningInvite &&
+      !recoveryMode &&
+      shopStatus === 'ready' &&
+      q.status !== 'pending' &&
+      !joinedExistingShop &&
+      !q.profile?.onboarding_complete
+  );
+
+  if (user && !recoveryMode && !inviteJoinPending) {
     if (shopStatus === 'loading' || shopStatus === 'idle') return <AuthSpinner />;
+    if (joinedExistingShop) return <Navigate to="/dashboard" replace />;
     if (q.status === 'pending') return <AuthSpinner />;
     if (q.profile?.onboarding_complete) return <Navigate to="/dashboard" replace />;
     return <Navigate to="/onboarding" replace />;
@@ -104,7 +149,7 @@ export default function AuthPage() {
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: authCallbackUrl(),
+          redirectTo: inviteAwareAuthCallbackUrl(),
           queryParams: { prompt: 'select_account' },
         },
       });
@@ -158,7 +203,7 @@ export default function AuthPage() {
       const { data, error: err } = await supabase.auth.signUp({
         email,
         password: signupPassword,
-        options: { emailRedirectTo: authCallbackUrl() },
+        options: { emailRedirectTo: inviteAwareAuthCallbackUrl() },
       });
       if (err) throw err;
       if (data.session) return;
@@ -244,7 +289,7 @@ export default function AuthPage() {
               village<span>stock</span>
             </Link>
             <p className="vs-auth-panel-sub" style={{ marginBottom: 0 }}>
-              Sign in to your shop dashboard
+              {joiningInvite ? 'Join the shop you were invited to' : 'Sign in to your shop dashboard'}
             </p>
           </div>
 
@@ -295,10 +340,41 @@ export default function AuthPage() {
             </>
           )}
 
+          {!recoveryMode && inviteJoinPending && user ? (
+            <>
+              <div className="vs-auth-success" style={{ marginBottom: 16 }}>
+                <p className="font-semibold">You were invited to join a shop</p>
+                <p className="mt-1">
+                  Signed in as <strong>{user.email ?? 'this account'}</strong>. This invite only
+                  works if you use the exact email it was sent to. Sign out and try that address —
+                  do not register a new business.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void signOutApp()}
+                disabled={busy}
+                className="vs-auth-btn-primary"
+              >
+                Sign out and try again
+              </button>
+            </>
+          ) : null}
+
           {!recoveryMode && !user && panel !== 'forgot' && (
             <>
+              {joiningInvite ? (
+                <div className="vs-auth-success" style={{ marginBottom: 16 }}>
+                  <p className="font-semibold">You were invited to a shop</p>
+                  <p className="mt-1">
+                    Sign in with <strong>Google</strong> or email using the address you were invited
+                    with. You will join that shop — you do not create a new one.
+                  </p>
+                </div>
+              ) : null}
               <AuthTabs
                 panel={panel}
+                joinMode={joiningInvite}
                 onSignIn={() => {
                   setPanel('signin');
                   setError('');
@@ -312,9 +388,11 @@ export default function AuthPage() {
 
               <GoogleButton busy={busy} onClick={() => void signInWithGoogle()} />
               <p className="vs-auth-hint">
-                {panel === 'signup'
-                  ? 'New shops are created on first Google sign-in.'
-                  : 'Fastest way in — uses your Google account.'}
+                {joiningInvite
+                  ? 'Use the same Google or email account you were invited with. You are joining that shop — not registering a new business.'
+                  : panel === 'signup'
+                    ? 'New shops are created on first Google sign-in.'
+                    : 'Fastest way in — uses your Google account.'}
               </p>
 
               <AuthDivider label={panel === 'signup' ? 'Or sign up with email' : 'Or use email'} />
@@ -432,7 +510,7 @@ export default function AuthPage() {
                     className="vs-auth-btn-primary mt-4"
                   >
                     {busy ? <Loader2 size={16} className="animate-spin" /> : null}
-                    Create account
+                    {joiningInvite ? 'Set up login & join shop' : 'Create account'}
                   </button>
                 </>
               )}
@@ -535,10 +613,12 @@ function AuthSpinner() {
 
 function AuthTabs({
   panel,
+  joinMode,
   onSignIn,
   onSignUp,
 }: {
   panel: Panel;
+  joinMode?: boolean;
   onSignIn: () => void;
   onSignUp: () => void;
 }) {
@@ -560,7 +640,7 @@ function AuthTabs({
         className={`vs-auth-tab${panel === 'signup' ? ' is-active' : ''}`}
         onClick={onSignUp}
       >
-        Create account
+        {joinMode ? 'First-time login' : 'Create account'}
       </button>
     </div>
   );
@@ -615,6 +695,14 @@ function GoogleLogo({ className }: { className?: string }) {
       />
     </svg>
   );
+}
+
+function inviteAwareAuthCallbackUrl(): string {
+  const base = authCallbackUrl();
+  const token = readStaffInviteToken();
+  if (!token) return base;
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}invite=${encodeURIComponent(token)}`;
 }
 
 function isValidEmailLoose(s: string): boolean {

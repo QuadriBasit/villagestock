@@ -161,6 +161,7 @@ export default function SettingsPage() {
   const { mode, setMode } = useTheme();
   const { profile, isLoading, saveProfile } = useShopProfile();
   const { profile: businessProfile, isLoading: isBizLoading } = useBusinessProfile();
+  const signedInName = useSignedInDisplayName();
 
   useEffect(() => {
     if (!memberRoleId && defaultAssignableRoleId) setMemberRoleId(defaultAssignableRoleId);
@@ -318,7 +319,6 @@ export default function SettingsPage() {
   ];
 
   const ownerName = businessProfile?.owner_name?.trim();
-  const signedInName = useSignedInDisplayName();
   const accountPrimary = signedInName || ownerName || user?.phone || user?.email || '—';
   const accountShowEmail = Boolean(user?.email && accountPrimary !== user.email);
   const accountShowPhone = Boolean(user?.phone && accountPrimary !== user.phone);
@@ -903,9 +903,10 @@ export default function SettingsPage() {
               <div>
                 <p className="text-xs font-medium text-shell-ink">Invite a teammate</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-shell-muted">
-                  Creates a secure link they can open to <strong className="text-shell-muted">set a password</strong>
-                  . Share it on WhatsApp. After they sign in, they join{' '}
-                  <strong className="text-shell-muted">this shop</strong> — no owner onboarding.
+                  Creates a VillageStock link. They open it and sign in with{' '}
+                  <strong className="text-shell-muted">Google or email</strong> using the invited
+                  address. Then they join <strong className="text-shell-muted">this shop</strong> — no
+                  owner onboarding.
                 </p>
               </div>
               <div>
@@ -1016,7 +1017,7 @@ export default function SettingsPage() {
                   setTeamSubmitting(true);
                   try {
                     const sentTo = inviteEmail.trim();
-                    const { inviteUrl } = await team.inviteStaff({
+                    const { inviteUrl, emailSent, emailError } = await team.inviteStaff({
                       email: sentTo,
                       roleId: memberRoleId || defaultAssignableRoleId,
                       displayName: inviteDisplayName,
@@ -1027,9 +1028,27 @@ export default function SettingsPage() {
                     setInviteDisplayName('');
                     setInviteAllBranches(true);
                     setInviteBranchIds([]);
-                    toast.success('Invite link ready — copy it and send it to them.');
+                    if (emailSent) {
+                      toast.success(`Invitation emailed to ${sentTo}.`);
+                    } else {
+                      toast.error(emailError || 'Email could not send. Share the link instead.');
+                    }
                   } catch (e) {
-                    const msg = e instanceof Error ? e.message : 'Could not send invite';
+                    const raw = e instanceof Error ? e.message : 'Could not send invite';
+                    let msg = raw.trim();
+                    if (msg.startsWith('{')) {
+                      try {
+                        const parsed = JSON.parse(msg) as { error?: unknown };
+                        if (typeof parsed.error === 'string' && parsed.error.trim()) {
+                          msg = parsed.error.trim();
+                        }
+                      } catch {
+                        /* keep raw */
+                      }
+                    }
+                    if (/open invite already exists|already exists for this email/i.test(msg)) {
+                      msg = 'This email already has a pending invite. Try Send invitation again to resend the link.';
+                    }
                     if (/already have a VillageStock account/i.test(msg)) {
                       setExistingAccountOpen(true);
                     }
@@ -1040,13 +1059,13 @@ export default function SettingsPage() {
                 }}
                 className={cn(settingsBtnPrimary, 'w-full py-2.5')}
               >
-                {teamSubmitting ? 'Creating link…' : 'Create invite link'}
+                {teamSubmitting ? 'Sending…' : 'Send invitation'}
               </button>
               {lastInviteLink ? (
                 <div className="space-y-2 rounded-lg border border-teal/30 bg-teal/5 px-3 py-2">
                   <p className="text-[11px] leading-relaxed text-shell-ink">
-                    Send this link to <strong>{lastInviteLink.email}</strong>. It is not emailed
-                    automatically yet.
+                    Link for <strong>{lastInviteLink.email}</strong>. If the email did not arrive, copy
+                    or WhatsApp this. They sign in with Google or email.
                   </p>
                   <Input readOnly value={lastInviteLink.url} className={fieldClass} />
                   <div className="grid grid-cols-2 gap-2">
