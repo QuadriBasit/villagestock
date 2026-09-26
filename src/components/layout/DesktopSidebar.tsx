@@ -77,7 +77,7 @@ export default function DesktopSidebar() {
           mobileOpen ? 'pointer-events-auto z-[46] translate-x-0' : 'pointer-events-none -translate-x-full lg:pointer-events-auto'
         )}
       >
-        <div className="relative px-5 pb-[18px] pt-[22px]">
+        <div className="relative shrink-0 px-5 pb-[18px] pt-[22px]">
           <AppBrand />
           <button
             type="button"
@@ -89,7 +89,7 @@ export default function DesktopSidebar() {
           </button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-0.5 px-3 pb-3">
+        <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-y-contain px-3 pb-3 [-webkit-overflow-scrolling:touch]">
           {mainNav.map(n => {
             const Icon = n.icon;
             return (
@@ -126,7 +126,7 @@ export default function DesktopSidebar() {
           })}
         </nav>
 
-        <div className="m-3 rounded-[14px] border border-shell-line bg-shell-bg p-3.5 dark:bg-shell-surface-2">
+        <div className="m-3 shrink-0 rounded-[14px] border border-shell-line bg-shell-bg p-3.5 dark:bg-shell-surface-2">
           <div className="flex items-center gap-[11px]">
             <div className="grid size-9 shrink-0 place-items-center rounded-full shell-accent-bg font-display text-sm font-bold">
               {avatar}
