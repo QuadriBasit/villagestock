@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
-import { useBusinessProfile } from '@/hooks/useBusinessProfile';
+import { useSignedInDisplayName } from '@/hooks/useSignedInDisplayName';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { useStockSummary } from '@/hooks/useInventory';
 import { useTodaySalesSummary } from '@/hooks/useSales';
@@ -43,7 +43,7 @@ type DashboardLayout = 'overview' | 'operations' | 'analytics';
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const { canViewProfit, canAccessFinancialNav } = useShopAccess();
-  const { profile: businessProfile } = useBusinessProfile();
+  const signedInName = useSignedInDisplayName();
   const { locations, activeLocationId } = useShopLocation();
   const { summary, isLoading } = useStockSummary();
   const { summary: todaySales } = useTodaySalesSummary();
@@ -70,7 +70,7 @@ export default function DashboardPage() {
   return (
     <div className="app-page space-y-4 py-4 md:py-5">
       <DashboardTodayHeader
-        ownerName={businessProfile?.owner_name}
+        ownerName={signedInName}
         email={user?.email}
         branchName={branchName}
         todayRevenue={todaySales.revenue}

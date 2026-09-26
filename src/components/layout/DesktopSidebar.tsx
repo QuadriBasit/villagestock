@@ -5,6 +5,7 @@ import { useShopAccess } from '@/context/ShopAccessContext';
 import { useBusinessProfile } from '@/hooks/useBusinessProfile';
 import { useAuthStore } from '@/store/auth';
 import { getAccountInitial } from '@/lib/userDisplay';
+import { useSignedInDisplayName } from '@/hooks/useSignedInDisplayName';
 import { useSidebarLayout } from './SidebarLayoutContext';
 import { MAIN_NAV, SECONDARY_NAV } from '@/config/navigation';
 import { AppBrand } from './AppBrand';
@@ -16,6 +17,7 @@ export default function DesktopSidebar() {
   const { hasPermission } = useShopAccess();
   const { profile } = useBusinessProfile();
   const { user } = useAuthStore();
+  const signedInName = useSignedInDisplayName();
   const { mobileOpen, closeMobile } = useSidebarLayout();
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function DesktopSidebar() {
   const mainNav = MAIN_NAV.filter(item => !item.permission || hasPermission(item.permission));
   const secondaryNav = SECONDARY_NAV.filter(item => !item.permission || hasPermission(item.permission));
   const avatar = getAccountInitial({
-    ownerName: profile?.owner_name,
+    ownerName: signedInName,
     email: user?.email,
     phone: user?.phone,
   });
@@ -131,7 +133,7 @@ export default function DesktopSidebar() {
             </div>
             <div className="min-w-0">
               <div className="truncate text-[13.5px] font-semibold text-shell-ink">
-                {profile?.owner_name?.trim() || 'Shop owner'}
+                {signedInName}
               </div>
               <div className="truncate text-[11.5px] text-shell-muted">{profile?.shop_name || 'Your shop'}</div>
             </div>

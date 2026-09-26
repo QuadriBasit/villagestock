@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { getAuthSiteOrigin } from '@/lib/authSiteUrl';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
@@ -10,11 +11,15 @@ export type TeamMemberRow = Database['public']['Tables']['business_members']['Ro
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function functionsInvokeErrorMessage(error: unknown, data: unknown): string {
-  if (error && typeof error === 'object' && 'message' in error && typeof (error as { message: unknown }).message === 'string') {
-    return (error as { message: string }).message;
-  }
-  if (data && typeof data === 'object' && 'error' in data) {
+  if (data && typeof data === 'object' && 'error' in data && (data as { error?: unknown }).error) {
     return String((data as { error: unknown }).error);
+  }
+  if (error && typeof error === 'object' && 'message' in error && typeof (error as { message: unknown }).message === 'string') {
+    const message = (error as { message: string }).message;
+    if (/non-2xx/i.test(message)) {
+      return 'Could not send the invite. Check the email and try again.';
+    }
+    return message;
   }
   return 'Invite request failed';
 }
@@ -68,7 +73,7 @@ export function useTeamMembers() {
       roleId: string;
       displayName: string;
       allowedLocationIds?: string[] | null;
-    }) => {
+    }): Promise<{ inviteUrl: string }> => {
       if (!shopOwnerId || !actorUserId) throw new Error('Not authenticated');
       if (!canInviteTeamMembers) throw new Error('You do not have permission to invite team members.');
       const displayName = params.displayName.trim();
@@ -98,6 +103,7 @@ export function useTeamMembers() {
           role_id: params.roleId,
           display_name: displayName,
           allowed_location_ids,
+          site_url: getAuthSiteOrigin() || undefined,
         },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
@@ -105,6 +111,11 @@ export function useTeamMembers() {
       if (data && typeof data === 'object' && 'error' in data && (data as { error?: string }).error) {
         throw new Error(String((data as { error: string }).error));
       }
+      const inviteUrl =
+        data && typeof data === 'object' && 'invite_url' in data
+          ? String((data as { invite_url: unknown }).invite_url ?? '')
+          : '';
+      if (!inviteUrl) throw new Error('Invite was created but no link came back. Try again.');
       const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
       void logShopAudit({
         businessId: shopOwnerId,
@@ -115,6 +126,7 @@ export function useTeamMembers() {
         metadata: { role_id: params.roleId, name: displayName },
         actorLabel,
       });
+      return { inviteUrl };
     },
     [shopOwnerId, actorUserId, canInviteTeamMembers]
   );

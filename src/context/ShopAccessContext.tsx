@@ -47,6 +47,8 @@ export interface ShopAccessValue {
   role: ShopRole;
   /** Display name for the assigned shop role (Owner, Staff, custom role, …). */
   roleName: string;
+  /** Signed-in member’s name on receipts — not the shop owner’s name. */
+  actorDisplayName: string | null;
   roleId: string | null;
   permissions: ShopPermissions;
   /**
@@ -74,6 +76,7 @@ const defaultValue: ShopAccessValue = {
   actorUserId: null,
   role: 'owner',
   roleName: 'Owner',
+  actorDisplayName: null,
   roleId: null,
   permissions: defaultPermissions,
   actorAllowedLocationIds: null,
@@ -94,6 +97,7 @@ const ShopAccessContext = createContext<ShopAccessValue>(defaultValue);
 type MemberLookupRow = {
   business_id: string;
   role: string;
+  display_name: string | null;
   allowed_location_ids: string[] | null;
   role_id: string | null;
   shop_roles: {
@@ -160,6 +164,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
     actorUserId: null,
     role: 'owner',
     roleName: 'Owner',
+    actorDisplayName: null,
     roleId: null,
     actorAllowedLocationIds: null,
     isOwner: true,
@@ -177,6 +182,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
         actorUserId: null,
         role: 'owner',
         roleName: 'Owner',
+        actorDisplayName: null,
         roleId: null,
         actorAllowedLocationIds: null,
         isOwner: true,
@@ -232,6 +238,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
           actorUserId: capturedUserId,
           role: 'owner',
           roleName: 'Owner',
+          actorDisplayName: null,
           roleId: null,
           actorAllowedLocationIds: null,
           isOwner: true,
@@ -250,6 +257,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
         actorUserId: string;
         role: ShopRole;
         roleName: string;
+        actorDisplayName: string | null;
         roleId: string | null;
         actorAllowedLocationIds: string[] | null;
         isOwner: boolean;
@@ -267,6 +275,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
         actorUserId: string;
         role: ShopRole;
         roleName: string;
+        actorDisplayName: string | null;
         roleId: string | null;
         actorAllowedLocationIds: string[] | null;
         isOwner: boolean;
@@ -284,7 +293,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
       try {
         const { data, error } = await supabase
           .from('business_members')
-          .select('business_id, role, allowed_location_ids, role_id, shop_roles(name, slug, permissions)')
+          .select('business_id, role, display_name, allowed_location_ids, role_id, shop_roles(name, slug, permissions)')
           .eq('member_user_id', capturedUserId)
           .order('created_at', { ascending: true })
           .limit(1)
@@ -297,6 +306,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
             actorUserId: capturedUserId,
             role: 'owner',
             roleName: 'Owner',
+            actorDisplayName: null,
             roleId: null,
             actorAllowedLocationIds: null,
             isOwner: true,
@@ -311,6 +321,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
             actorUserId: capturedUserId,
             role: 'owner',
             roleName: 'Owner',
+            actorDisplayName: null,
             roleId: null,
             actorAllowedLocationIds: null,
             isOwner: true,
@@ -335,6 +346,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
           actorUserId: capturedUserId,
           role: isOwner ? 'owner' : deriveLegacyRole(row.role, row.shop_roles?.slug ?? null),
           roleName,
+          actorDisplayName: row.display_name?.trim() || null,
           roleId: isOwner ? null : row.role_id,
           actorAllowedLocationIds,
           isOwner,
@@ -347,6 +359,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
           actorUserId: capturedUserId,
           role: 'owner',
           roleName: 'Owner',
+          actorDisplayName: null,
           roleId: null,
           actorAllowedLocationIds: null,
           isOwner: true,

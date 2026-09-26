@@ -371,19 +371,88 @@ async function syncBusinessProfile(item: SyncQueueItem) {
   }
 }
 
+function isDuplicateMainBranchError(err: unknown): boolean {
+  const code = syncErrorCode(err);
+  const msg = syncErrorMessage(err);
+  return code === '23505' || /one_main_branch_per_shop|duplicate key/i.test(msg);
+}
+
+function isMissingBusinessProfileError(err: unknown): boolean {
+  const code = syncErrorCode(err);
+  const msg = syncErrorMessage(err);
+  return code === '23503' || /shop_locations_business_id_fkey/i.test(msg);
+}
+
+function shopLocationWriteError(err: unknown): Error {
+  if (isDuplicateMainBranchError(err)) {
+    return new Error('A branch named “Main branch” already exists. Use a different name.');
+  }
+  if (isMissingBusinessProfileError(err)) {
+    return new Error(
+      'Shop profile is not on the server yet. Save Shop details in Settings, then add the branch again.'
+    );
+  }
+  if (isRlsViolation(err)) {
+    return new Error(
+      'You do not have permission to add branches. Ask the owner, or use a manager with access to all branches.'
+    );
+  }
+  return new Error(syncErrorMessage(err) || 'Could not add branch');
+}
+
+async function ensureRemoteBusinessProfile(businessId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('business_profiles')
+    .select('id')
+    .eq('id', businessId)
+    .maybeSingle();
+  if (error) throw error;
+  if (data) return;
+  const local = await db.business_profiles.get(businessId);
+  if (!local) {
+    throw new Error(
+      'Shop profile is not saved yet. Open Settings → Shop, save your shop details, then add the branch.'
+    );
+  }
+  await syncBusinessProfile({
+    id: 'ensure-profile',
+    table: 'business_profiles',
+    operation: 'insert',
+    payload: local as unknown as Record<string, unknown>,
+    created_at: new Date().toISOString(),
+    retries: 0,
+  });
+}
+
+async function upsertRemoteShopLocation(payload: ShopLocation): Promise<void> {
+  const row: Database['public']['Tables']['shop_locations']['Insert'] = {
+    id: payload.id,
+    business_id: payload.business_id,
+    name: payload.name,
+    sort_order: payload.sort_order,
+    created_at: payload.created_at,
+    updated_at: payload.updated_at,
+  };
+  const { error } = await supabase.from('shop_locations').upsert(row as never);
+  if (error) throw error;
+}
+
 async function syncShopLocation(item: SyncQueueItem) {
   const payload = item.payload as unknown as ShopLocation;
   if (item.operation === 'insert' || item.operation === 'update') {
-    const row: Database['public']['Tables']['shop_locations']['Insert'] = {
-      id: payload.id,
-      business_id: payload.business_id,
-      name: payload.name,
-      sort_order: payload.sort_order,
-      created_at: payload.created_at,
-      updated_at: payload.updated_at,
-    };
-    const { error } = await supabase.from('shop_locations').upsert(row as never);
-    if (error) throw error;
+    try {
+      await upsertRemoteShopLocation(payload);
+    } catch (err) {
+      if (payload.name === 'Main branch' && isDuplicateMainBranchError(err)) {
+        await pullRemoteShopLocations(payload.business_id);
+        const remotes = await db.shop_locations.where('business_id').equals(payload.business_id).toArray();
+        if (remotes.some(r => r.name === 'Main branch' && r.id !== payload.id)) {
+          await db.shop_locations.delete(payload.id);
+        }
+        return;
+      }
+      throw err;
+    }
   }
 }
 
@@ -441,14 +510,18 @@ export async function backfillMissingLocationIds(businessId: string): Promise<vo
 export async function createShopLocation(businessId: string, name: string): Promise<ShopLocation> {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('Branch name required');
-  if (trimmed.toLowerCase() === 'main branch') {
-    const rows = await db.shop_locations.where('business_id').equals(businessId).toArray();
-    if (rows.some(r => r.name.toLowerCase() === 'main branch')) {
-      throw new Error('A branch named "Main branch" already exists. Pick another name.');
+  if (isOnline()) {
+    try {
+      await pullRemoteShopLocations(businessId);
+    } catch (e) {
+      console.error('[sync] createShopLocation: pull shop_locations failed', e);
     }
   }
-  const rows = await db.shop_locations.where('business_id').equals(businessId).sortBy('sort_order');
-  const sort_order = rows.length ? Math.max(...rows.map(r => r.sort_order)) + 1 : 0;
+  const existing = await db.shop_locations.where('business_id').equals(businessId).toArray();
+  if (trimmed.toLowerCase() === 'main branch' && existing.some(r => r.name.toLowerCase() === 'main branch')) {
+    throw new Error('A branch named “Main branch” already exists. Pick another name.');
+  }
+  const sort_order = existing.length ? Math.max(...existing.map(r => r.sort_order)) + 1 : 0;
   const id = uuidv4();
   const now = new Date().toISOString();
   const row: ShopLocation = {
@@ -461,9 +534,19 @@ export async function createShopLocation(businessId: string, name: string): Prom
     sync_status: 'pending',
   };
   await db.shop_locations.add(row);
-  await queueSync('shop_locations', 'insert', row as unknown as Record<string, unknown>);
-  await flushSyncQueue();
-  return row;
+  if (!isOnline()) {
+    await queueSync('shop_locations', 'insert', row as unknown as Record<string, unknown>);
+    return row;
+  }
+  try {
+    await ensureRemoteBusinessProfile(businessId);
+    await upsertRemoteShopLocation(row);
+    await db.shop_locations.update(id, { sync_status: 'synced' });
+    return { ...row, sync_status: 'synced' };
+  } catch (err) {
+    await db.shop_locations.delete(id);
+    throw shopLocationWriteError(err);
+  }
 }
 
 export async function ensureDefaultShopLocation(businessId: string): Promise<string> {

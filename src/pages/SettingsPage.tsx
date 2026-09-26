@@ -28,10 +28,12 @@ import {
   Receipt,
   Plus,
   Trash2,
+  Copy,
 } from 'lucide-react';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useSignedInDisplayName } from '@/hooks/useSignedInDisplayName';
 import { useShopRoles } from '@/hooks/useShopRoles';
 import { ShopRolesPanel } from '@/components/settings/ShopRolesPanel';
 import { createShopLocation } from '@/lib/sync';
@@ -155,6 +157,7 @@ export default function SettingsPage() {
   const [editMemberRoleId, setEditMemberRoleId] = useState('');
   const [teamSection, setTeamSection] = useState<TeamSection>('people');
   const [existingAccountOpen, setExistingAccountOpen] = useState(false);
+  const [lastInviteLink, setLastInviteLink] = useState<{ email: string; url: string } | null>(null);
   const { mode, setMode } = useTheme();
   const { profile, isLoading, saveProfile } = useShopProfile();
   const { profile: businessProfile, isLoading: isBizLoading } = useBusinessProfile();
@@ -315,7 +318,8 @@ export default function SettingsPage() {
   ];
 
   const ownerName = businessProfile?.owner_name?.trim();
-  const accountPrimary = ownerName || user?.phone || user?.email || '—';
+  const signedInName = useSignedInDisplayName();
+  const accountPrimary = signedInName || ownerName || user?.phone || user?.email || '—';
   const accountShowEmail = Boolean(user?.email && accountPrimary !== user.email);
   const accountShowPhone = Boolean(user?.phone && accountPrimary !== user.phone);
 
@@ -897,10 +901,11 @@ export default function SettingsPage() {
 
             <div className="space-y-3 rounded-xl border border-shell-line bg-shell-surface-2/40 px-3 py-3">
               <div>
-                <p className="text-xs font-medium text-shell-ink">Email invite (recommended)</p>
+                <p className="text-xs font-medium text-shell-ink">Invite a teammate</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-shell-muted">
-                  We email them a secure link to <strong className="text-shell-muted">choose a password</strong>
-                  . After they sign in with that email, they are attached to <strong className="text-shell-muted">this shop</strong> automatically — they do not go through owner onboarding.
+                  Creates a secure link they can open to <strong className="text-shell-muted">set a password</strong>
+                  . Share it on WhatsApp. After they sign in, they join{' '}
+                  <strong className="text-shell-muted">this shop</strong> — no owner onboarding.
                 </p>
               </div>
               <div>
@@ -1010,27 +1015,71 @@ export default function SettingsPage() {
                 onClick={async () => {
                   setTeamSubmitting(true);
                   try {
-                    await team.inviteStaff({
-                      email: inviteEmail.trim(),
+                    const sentTo = inviteEmail.trim();
+                    const { inviteUrl } = await team.inviteStaff({
+                      email: sentTo,
                       roleId: memberRoleId || defaultAssignableRoleId,
                       displayName: inviteDisplayName,
                       allowedLocationIds: inviteAllowedLocationPayload(),
                     });
+                    setLastInviteLink({ email: sentTo, url: inviteUrl });
                     setInviteEmail('');
                     setInviteDisplayName('');
                     setInviteAllBranches(true);
                     setInviteBranchIds([]);
-                    toast.success('Invitation sent — they should open the email and set a password.');
+                    toast.success('Invite link ready — copy it and send it to them.');
                   } catch (e) {
-                    toast.error(e instanceof Error ? e.message : 'Could not send invite');
+                    const msg = e instanceof Error ? e.message : 'Could not send invite';
+                    if (/already have a VillageStock account/i.test(msg)) {
+                      setExistingAccountOpen(true);
+                    }
+                    toast.error(msg);
                   } finally {
                     setTeamSubmitting(false);
                   }
                 }}
                 className={cn(settingsBtnPrimary, 'w-full py-2.5')}
               >
-                {teamSubmitting ? 'Sending…' : 'Send invitation email'}
+                {teamSubmitting ? 'Creating link…' : 'Create invite link'}
               </button>
+              {lastInviteLink ? (
+                <div className="space-y-2 rounded-lg border border-teal/30 bg-teal/5 px-3 py-2">
+                  <p className="text-[11px] leading-relaxed text-shell-ink">
+                    Send this link to <strong>{lastInviteLink.email}</strong>. It is not emailed
+                    automatically yet.
+                  </p>
+                  <Input readOnly value={lastInviteLink.url} className={fieldClass} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(settingsBtnOutline, 'w-full')}
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(lastInviteLink.url);
+                          toast.success('Invite link copied');
+                        } catch {
+                          toast.error('Could not copy. Select the link and copy it manually.');
+                        }
+                      }}
+                    >
+                      <Copy size={14} />
+                      Copy link
+                    </Button>
+                    <Button type="button" className={cn(settingsBtnPrimary, 'w-full')} asChild>
+                      <a
+                        href={`https://wa.me/?text=${encodeURIComponent(
+                          `VillageStock invite: ${lastInviteLink.url}`
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        WhatsApp
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
 
               <AnimatedAccordion
                 nested

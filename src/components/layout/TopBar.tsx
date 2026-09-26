@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Search, ShoppingCart, Truck } from 'lucide-react';
-import { useBusinessProfile } from '@/hooks/useBusinessProfile';
+import { useSignedInDisplayName } from '@/hooks/useSignedInDisplayName';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { useAuthStore } from '@/store/auth';
@@ -36,7 +36,7 @@ export default function TopBar() {
   const { user } = useAuthStore();
   const { canManageBusinessSettings, status: shopAccessStatus } = useShopAccess();
   const { locations, activeLocationId, setActiveLocationId, ready: locationReady } = useShopLocation();
-  const { profile } = useBusinessProfile();
+  const signedInName = useSignedInDisplayName();
   const { mobileOpen, setMobileOpen } = useSidebarLayout();
   const [commandOpen, setCommandOpen] = useState(false);
 
@@ -60,7 +60,7 @@ export default function TopBar() {
     return () => window.removeEventListener('keydown', h);
   }, []);
 
-  const accountInitial = (profile?.owner_name?.[0] ?? user?.email?.[0] ?? 'A').toUpperCase();
+  const accountInitial = (signedInName[0] ?? user?.email?.[0] ?? 'A').toUpperCase();
 
   return (
     <>

@@ -12,7 +12,50 @@ type Body = {
   role_id?: string;
   display_name?: string;
   allowed_location_ids?: string[] | null;
+  site_url?: string;
 };
+
+const CANONICAL_APP_ORIGIN = 'https://villagestock.online';
+
+function parseHttpOrigin(raw?: string | null): string | null {
+  if (!raw || !/^https?:\/\//i.test(raw.trim())) return null;
+  try {
+    return new URL(raw.trim()).origin;
+  } catch {
+    return null;
+  }
+}
+
+function isLocalhostOrigin(origin: string): boolean {
+  try {
+    const host = new URL(origin).hostname;
+    return host === 'localhost' || host === '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
+
+function isEmailExistsError(err: { message?: string; code?: string } | null): boolean {
+  const code = (err?.code ?? '').toLowerCase();
+  const msg = (err?.message ?? '').toLowerCase();
+  return (
+    code === 'email_exists' ||
+    msg.includes('already been registered') ||
+    msg.includes('already registered') ||
+    msg.includes('already exists')
+  );
+}
+
+/** Prefer the page they invited from. Never send localhost to production Auth. */
+function resolveInviteSiteUrl(bodySiteUrl?: string): string {
+  const fromClient = parseHttpOrigin(bodySiteUrl);
+  if (fromClient && !isLocalhostOrigin(fromClient)) return fromClient;
+  const fromEnv = parseHttpOrigin(
+    Deno.env.get('INVITE_PUBLIC_SITE_URL') ?? Deno.env.get('PUBLIC_SITE_URL') ?? ''
+  );
+  if (fromEnv && !isLocalhostOrigin(fromEnv)) return fromEnv;
+  return CANONICAL_APP_ORIGIN;
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -214,10 +257,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const siteUrl =
-    Deno.env.get('INVITE_PUBLIC_SITE_URL') ??
-    Deno.env.get('PUBLIC_SITE_URL') ??
-    'http://localhost:5174';
+  const siteUrl = resolveInviteSiteUrl(body.site_url);
   const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth`;
 
   const token = crypto.randomUUID();
@@ -246,26 +286,64 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  const { error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo,
-    data: { staff_invite_token: token },
+  // generateLink does not send SMTP. Auth invite emails fail because
+  // Resend has not verified villagestock.online.
+  const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+    type: 'invite',
+    email,
+    options: {
+      redirectTo,
+      data: { staff_invite_token: token },
+    },
   });
 
-  if (inviteErr) {
+  let inviteUrl = linkData?.properties?.action_link ?? '';
+
+  if (linkErr && isEmailExistsError(linkErr)) {
+    const lookup = await fetch(
+      `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
+      { headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey } }
+    );
+    const lookupJson = (await lookup.json()) as { users?: Array<{ id: string; user_metadata?: Record<string, unknown> }> };
+    const existing = lookupJson.users?.find(Boolean);
+    if (!existing) {
+      await admin.from('staff_invites').delete().eq('token', token);
+      return new Response(
+        JSON.stringify({
+          error:
+            'This email already has a VillageStock account. Use “They already have a VillageStock account?” below and add them by email.',
+        }),
+        { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } }
+      );
+    }
+    await admin.auth.admin.updateUserById(existing.id, {
+      user_metadata: { ...(existing.user_metadata ?? {}), staff_invite_token: token },
+    });
+    const { data: magic, error: magicErr } = await admin.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+      options: { redirectTo },
+    });
+    if (magicErr || !magic?.properties?.action_link) {
+      await admin.from('staff_invites').delete().eq('token', token);
+      return new Response(
+        JSON.stringify({
+          error:
+            'This email already has a VillageStock account. Use “They already have a VillageStock account?” below and add them by email.',
+        }),
+        { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } }
+      );
+    }
+    inviteUrl = magic.properties.action_link;
+  } else if (linkErr || !inviteUrl) {
     await admin.from('staff_invites').delete().eq('token', token);
-    const msg = inviteErr.message ?? 'Invite failed';
-    const lower = msg.toLowerCase();
-    const hint =
-      lower.includes('already') || lower.includes('registered')
-        ? ' This email may already have an account — use “Add existing teammate” in Settings instead.'
-        : '';
-    return new Response(JSON.stringify({ error: msg + hint }), {
+    return new Response(JSON.stringify({ error: linkErr?.message ?? 'Could not create an invite link.' }), {
       status: 400,
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }
 
-  return new Response(JSON.stringify({ ok: true }), {
+  return new Response(JSON.stringify({ ok: true, invite_url: inviteUrl }), {
     status: 200,
     headers: { ...cors, 'Content-Type': 'application/json' },
   });
