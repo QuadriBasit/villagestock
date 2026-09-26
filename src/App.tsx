@@ -9,6 +9,7 @@ import { RequirePermission } from '@/components/auth/RequirePermission';
 import { ShopAccessProvider, ShopSyncEffects } from '@/context/ShopAccessContext';
 import { ShopLocationProvider } from '@/context/ShopLocationContext';
 import { AppLoadingScreen } from '@/components/ui/AppLoadingScreen';
+import { captureStaffInviteFromLocation, readStaffInviteToken } from '@/lib/staffInviteToken';
 
 const AppLayout = lazy(() => import('@/components/layout/AppLayout'));
 const AuthPage = lazy(() => import('@/pages/AuthPage'));
@@ -68,6 +69,9 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
     return <Navigate to="/admin" replace />;
   }
   const joinedExistingShop = Boolean(user && shopOwnerId && (shopOwnerId !== user.id || !isOwner));
+  if (readStaffInviteToken() && !joinedExistingShop && !q.profile?.onboarding_complete) {
+    return <Navigate to="/auth" replace />;
+  }
   if (!q.profile?.onboarding_complete && !joinedExistingShop) {
     return <Navigate to="/onboarding" replace />;
   }
@@ -119,6 +123,7 @@ function LandingRoute() {
   if (q.status === 'pending') return <AppLoadingScreen label="Loading…" />;
   const joinedExistingShop = Boolean(shopOwnerId && (shopOwnerId !== user.id || !isOwner));
   if (q.profile?.onboarding_complete || joinedExistingShop) return <Navigate to="/dashboard" replace />;
+  if (readStaffInviteToken()) return <Navigate to="/auth" replace />;
   return <Navigate to="/onboarding" replace />;
 }
 
@@ -134,6 +139,7 @@ function RetailAppProviders({ children }: { children: ReactNode }) {
 }
 
 function AuthBootstrap() {
+  captureStaffInviteFromLocation();
   const { setSession, setLoading, user } = useAuthStore();
   const previousUserIdRef = useRef<string | undefined>(undefined);
 

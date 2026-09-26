@@ -6,6 +6,14 @@ export function isStaffInviteToken(value: string): boolean {
   return UUID_RE.test(value.trim());
 }
 
+/** Persist `?invite=` from the current URL (or `search`) and return the stored token. */
+export function captureStaffInviteFromLocation(search?: string): string | null {
+  if (typeof window === 'undefined') return readStaffInviteToken();
+  const invite = new URLSearchParams(search ?? window.location.search).get('invite')?.trim() ?? '';
+  if (isStaffInviteToken(invite)) persistStaffInviteToken(invite);
+  return readStaffInviteToken();
+}
+
 export function persistStaffInviteToken(token: string): void {
   const trimmed = token.trim();
   if (!isStaffInviteToken(trimmed) || typeof localStorage === 'undefined') return;

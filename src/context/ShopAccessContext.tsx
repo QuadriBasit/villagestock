@@ -35,7 +35,7 @@ import {
   type ShopPermissions,
 } from '@/lib/shopPermissions';
 import type { ShopRole } from '@/types';
-import { clearStaffInviteToken, readStaffInviteToken } from '@/lib/staffInviteToken';
+import { captureStaffInviteFromLocation, clearStaffInviteToken, readStaffInviteToken } from '@/lib/staffInviteToken';
 
 export type ShopAccessStatus = 'idle' | 'loading' | 'ready';
 
@@ -208,6 +208,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
         const { data: sessionData } = await supabase.auth.getUser();
         const u = sessionData?.user;
         if (u?.id === capturedUserId) {
+          captureStaffInviteFromLocation();
           const rawToken = u.user_metadata?.staff_invite_token;
           const tokenStr =
             (typeof rawToken === 'string' ? rawToken.trim() : '') || readStaffInviteToken() || '';

@@ -9,7 +9,12 @@ import { useBusinessProfileQuery } from '@/hooks/useBusinessProfileQuery';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { authCallbackUrl } from '@/lib/authSiteUrl';
 import { signOutApp } from '@/lib/signOutApp';
-import { isStaffInviteToken, persistStaffInviteToken, readStaffInviteToken } from '@/lib/staffInviteToken';
+import {
+  captureStaffInviteFromLocation,
+  isStaffInviteToken,
+  persistStaffInviteToken,
+  readStaffInviteToken,
+} from '@/lib/staffInviteToken';
 import { AuroraBackground } from '@/components/landing/AuroraBackground';
 import '@/components/landing/landing.css';
 import '@/components/auth/auth-page.css';
@@ -38,7 +43,7 @@ export default function AuthPage() {
   const [passwordSetupKind, setPasswordSetupKind] = useState<'invite' | 'reset' | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [newPassword2, setNewPassword2] = useState('');
-  const [joiningInvite, setJoiningInvite] = useState(false);
+  const [joiningInvite, setJoiningInvite] = useState(() => Boolean(captureStaffInviteFromLocation()));
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
@@ -137,9 +142,14 @@ export default function AuthPage() {
   if (user && !recoveryMode && !inviteJoinPending) {
     if (shopStatus === 'loading' || shopStatus === 'idle') return <AuthSpinner />;
     if (joinedExistingShop) return <Navigate to="/dashboard" replace />;
-    if (q.status === 'pending') return <AuthSpinner />;
-    if (q.profile?.onboarding_complete) return <Navigate to="/dashboard" replace />;
-    return <Navigate to="/onboarding" replace />;
+    if (joiningInvite) {
+      if (q.status === 'pending') return <AuthSpinner />;
+      if (q.profile?.onboarding_complete) return <Navigate to="/dashboard" replace />;
+    } else {
+      if (q.status === 'pending') return <AuthSpinner />;
+      if (q.profile?.onboarding_complete) return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/onboarding" replace />;
+    }
   }
 
   const signInWithGoogle = async () => {
