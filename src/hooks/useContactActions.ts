@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/db';
+import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
@@ -22,13 +23,19 @@ export function useContactActions() {
       deal_count: 0,
       created_at: now,
       updated_at: now,
+      sync_status: 'pending',
     };
     await db.contacts.add(record);
+    await queueSync('contacts', 'insert', record as unknown as Record<string, unknown>);
+    void flushSyncQueue();
     return record;
   }
 
   async function updateContact(id: string, patch: Partial<ContactRecordInput>): Promise<void> {
-    await db.contacts.update(id, { ...patch, updated_at: new Date().toISOString() });
+    await db.contacts.update(id, { ...patch, updated_at: new Date().toISOString(), sync_status: 'pending' });
+    const latest = await db.contacts.get(id);
+    if (latest) await queueSync('contacts', 'update', latest as unknown as Record<string, unknown>);
+    void flushSyncQueue();
   }
 
   async function adjustSupplierBalance(id: string, delta: number): Promise<void> {
@@ -37,11 +44,18 @@ export function useContactActions() {
     await db.contacts.update(id, {
       balance_owed: Math.max(0, row.balance_owed + delta),
       updated_at: new Date().toISOString(),
+      sync_status: 'pending',
     });
+    const latest = await db.contacts.get(id);
+    if (latest) await queueSync('contacts', 'update', latest as unknown as Record<string, unknown>);
+    void flushSyncQueue();
   }
 
   async function deleteContact(id: string): Promise<void> {
+    const row = await db.contacts.get(id);
     await db.contacts.delete(id);
+    if (row) await queueSync('contacts', 'delete', { id } as unknown as Record<string, unknown>);
+    void flushSyncQueue();
   }
 
   return { addContact, updateContact, adjustSupplierBalance, deleteContact };

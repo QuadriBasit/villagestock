@@ -479,6 +479,7 @@ export interface ContactRecord {
   deal_count: number;
   created_at: string;
   updated_at: string;
+  sync_status?: SyncStatus;
 }
 
 export type ExpenseCategory =
@@ -508,6 +509,7 @@ export interface ExpenseRecord {
   payment_method: PaymentMethod;
   recorded_at: string;
   created_at: string;
+  sync_status?: SyncStatus;
 }
 
 /** Fixed shop costs — rent, levies, etc. Used for period P&L estimates. */
@@ -522,6 +524,7 @@ export interface RecurringExpenseRecord {
   recurrence: ExpenseRecurrence;
   active: boolean;
   created_at: string;
+  sync_status?: SyncStatus;
 }
 
 /** End-of-day cash drawer count for a branch. */
@@ -538,6 +541,7 @@ export interface CashSessionRecord {
   variance: number;
   closed_at: string;
   closed_by_label?: string;
+  sync_status?: SyncStatus;
 }
 
 export interface PurchaseLine {
@@ -561,6 +565,9 @@ export interface PurchaseRecord {
   terms: PurchaseTerms;
   purchased_at: string;
   created_at: string;
+  /** Set when goods are in the shop. Empty means still on the way. */
+  received_at?: string;
+  sync_status?: SyncStatus;
 }
 
 export type ContactRecordInput = Omit<ContactRecord, 'id' | 'user_id' | 'deal_count' | 'created_at' | 'updated_at'>;
@@ -699,7 +706,13 @@ export interface SyncQueueItem {
     | 'credit_records'
     | 'repair_records'
     | 'business_profiles'
-    | 'shop_locations';
+    | 'shop_locations'
+    | 'contacts'
+    | 'expense_records'
+    | 'recurring_expenses'
+    | 'purchase_records'
+    | 'cash_sessions'
+    | 'stock_sessions';
   operation: 'insert' | 'update' | 'delete';
   payload: Record<string, unknown>;
   created_at: string;

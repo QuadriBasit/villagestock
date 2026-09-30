@@ -17,6 +17,11 @@ import {
   snapshotForSessionDevice,
 } from '@/lib/stockSessionUtils';
 
+async function queueStockSession(sessionId: string, operation: 'insert' | 'update') {
+  const row = await db.stock_sessions.get(sessionId);
+  if (row) await queueSync('stock_sessions', operation, row as unknown as Record<string, unknown>);
+}
+
 export class PriorDayStockOpenError extends Error {
   constructor() {
     super('PRIOR_DAY_OPEN');
@@ -97,6 +102,8 @@ export function useStockSessionActions() {
     };
 
     await db.stock_sessions.add(session);
+    await queueStockSession(session.id, 'insert');
+    void flushSyncQueue();
     return session;
   }, [user, shopOwnerId, actorUserId, activeLocationId, locationReady]);
 
@@ -132,6 +139,8 @@ export function useStockSessionActions() {
         audit_log: audit,
         sync_status: 'pending',
       });
+      await queueStockSession(sessionId, 'update');
+      void flushSyncQueue();
     },
     [user, shopOwnerId, actorUserId]
   );
@@ -162,6 +171,8 @@ export function useStockSessionActions() {
         audit_log: audit,
         sync_status: 'pending',
       });
+      await queueStockSession(sessionId, 'update');
+      void flushSyncQueue();
     },
     [user, shopOwnerId, actorUserId]
   );
@@ -187,6 +198,7 @@ export function useStockSessionActions() {
         summary,
         sync_status: 'pending',
       });
+      await queueStockSession(sessionId, 'update');
 
       const fresh = await db.stock_sessions.get(sessionId);
 
@@ -283,7 +295,7 @@ export function useStockSessionActions() {
         audit_log: audit,
         sync_status: 'pending',
       });
-
+      await queueStockSession(sessionId, 'update');
       await flushSyncQueue();
     },
     [user, shopOwnerId, actorUserId]
@@ -340,6 +352,7 @@ export function useStockSessionActions() {
           },
         ];
         await db.stock_sessions.update(s.id, { audit_log: log, sync_status: 'pending' });
+        await queueStockSession(s.id, 'update');
       }
 
       await flushSyncQueue();

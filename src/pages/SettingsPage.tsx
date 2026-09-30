@@ -261,6 +261,7 @@ export default function SettingsPage() {
       logo_path: profile.logo_path,
       receipt_theme: receiptTheme,
       warranty_policy: warrantyPolicy,
+      warranty_terms: mergeWarrantyTerms(warrantyTerms),
     };
     await saveProfile(updated, { logoFile });
     setLogoFile(null);
@@ -1097,6 +1098,72 @@ export default function SettingsPage() {
                       </a>
                     </Button>
                   </div>
+                </div>
+              ) : null}
+
+              {team.pendingInvites.length > 0 ? (
+                <div className="space-y-2 rounded-lg border border-shell-line bg-shell-surface-2/30 px-3 py-2">
+                  <p className="text-xs font-medium text-shell-ink">Pending invites</p>
+                  <p className="text-[11px] text-shell-muted">
+                    Only the latest mail works after you resend. They must use that exact email, in
+                    another browser or phone — not yours.
+                  </p>
+                  {team.pendingInvites.map(inv => {
+                    const url = team.joinUrlForToken(inv.token);
+                    return (
+                      <div
+                        key={inv.id}
+                        className="space-y-2 rounded-md border border-shell-line/80 px-2 py-2"
+                      >
+                        <p className="text-[11px] text-shell-ink">
+                          <strong>{inv.email}</strong>
+                          {inv.display_name ? ` · ${inv.display_name}` : ''}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className={cn(settingsBtnOutline, 'w-full')}
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(url);
+                                toast.success('Invite link copied');
+                              } catch {
+                                toast.error('Could not copy the link.');
+                              }
+                            }}
+                          >
+                            <Copy size={14} />
+                            Copy link
+                          </Button>
+                          <Button
+                            type="button"
+                            className={cn(settingsBtnPrimary, 'w-full')}
+                            disabled={teamSubmitting}
+                            onClick={async () => {
+                              setTeamSubmitting(true);
+                              try {
+                                const { inviteUrl, emailSent, emailError } = await team.inviteStaff({
+                                  email: inv.email,
+                                  roleId: inv.role_id || memberRoleId || defaultAssignableRoleId,
+                                  displayName: inv.display_name?.trim() || inv.email,
+                                });
+                                setLastInviteLink({ email: inv.email, url: inviteUrl });
+                                if (emailSent) toast.success(`Invitation resent to ${inv.email}.`);
+                                else toast.error(emailError || 'Could not resend. Copy the link instead.');
+                              } catch (e) {
+                                toast.error(e instanceof Error ? e.message : 'Could not resend');
+                              } finally {
+                                setTeamSubmitting(false);
+                              }
+                            }}
+                          >
+                            Resend
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : null}
 

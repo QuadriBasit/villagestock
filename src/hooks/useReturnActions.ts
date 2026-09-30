@@ -35,6 +35,20 @@ export function useReturnActions() {
       return_id: record.id,
     });
 
+    const linkedCredits = await db.credit_records.where('sale_id').equals(input.sale_id).toArray();
+    for (const credit of linkedCredits) {
+      if (credit.balance_owed <= 0 && credit.status === 'paid') continue;
+      const closed: typeof credit = {
+        ...credit,
+        balance_owed: 0,
+        status: 'paid',
+        notes: [credit.notes, 'Closed after return'].filter(Boolean).join(' · '),
+        sync_status: 'pending',
+      };
+      await db.credit_records.put(closed);
+      await queueSync('credit_records', 'update', closed as unknown as Record<string, unknown>);
+    }
+
     const item = await db.inventory_items.get(input.item_id);
     if (item) {
       if (item.mode === 'serialized') {

@@ -26,13 +26,15 @@ supabase secrets set \
   WHATSAPP_VERIFY_TOKEN="the-token-you-picked" \
   WHATSAPP_TOKEN="your-meta-access-token" \
   WHATSAPP_PHONE_NUMBER_ID="from-meta-dashboard" \
+  WHATSAPP_APP_SECRET="from-meta-app-settings-basic" \
   ANTHROPIC_API_KEY="sk-ant-..."
 
 supabase functions deploy whatsapp-webhook --no-verify-jwt
 ```
 
-`--no-verify-jwt` is required: Meta calls the webhook without a Supabase JWT. The
-GET handshake check + scoping by `whatsapp_links` is the security boundary.
+`--no-verify-jwt` is required: Meta calls the webhook without a Supabase JWT.
+POSTs fail closed unless `WHATSAPP_APP_SECRET` matches the Meta app secret
+(used to verify `X-Hub-Signature-256`). Then `whatsapp_links` scopes the shop.
 
 ## 4. Apply the database migration
 

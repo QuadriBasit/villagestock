@@ -70,6 +70,18 @@ export function useRepairActions() {
     if (latest) {
       await queueSync('repair_records', 'update', latest as unknown as Record<string, unknown>);
     }
+    if (repairStatus === 'completed' && latest) {
+      const now = new Date().toISOString();
+      await db.inventory_items.update(latest.item_id, {
+        status: 'in_stock',
+        updated_at: now,
+        sync_status: 'pending',
+      });
+      const restocked = await db.inventory_items.get(latest.item_id);
+      if (restocked) {
+        await queueSync('inventory_items', 'update', restocked as unknown as Record<string, unknown>);
+      }
+    }
     await flushSyncQueue();
     if (actorUserId) {
       const rep = await db.repair_records.get(id);

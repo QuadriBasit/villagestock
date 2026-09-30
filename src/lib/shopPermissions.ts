@@ -299,6 +299,7 @@ export const DEFAULT_STAFF_PERMISSIONS = fromEntries({
   access_price_list: true,
   access_alerts: true,
   access_settings: true,
+  manage_credits: true,
 });
 
 export const DEFAULT_MANAGER_PERMISSIONS = fromEntries({

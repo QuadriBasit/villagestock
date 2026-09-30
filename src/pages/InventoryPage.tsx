@@ -543,7 +543,12 @@ function InventoryGroupRow({
             key={variant.key}
             variant={variant}
             isSerialized={isSerialized}
+            tradeLocked={tradeLocked}
+            tradeLockedMessage={tradeLockedMessage}
             onView={() => onView(variant.primaryItem.id)}
+            onSell={item => onSell(item)}
+            onSwap={item => onSwap(item)}
+            onEngineer={item => onEngineer(item)}
           />
         ))}
     </>
@@ -553,14 +558,27 @@ function InventoryGroupRow({
 function InventoryVariantRow({
   variant,
   isSerialized,
+  tradeLocked,
+  tradeLockedMessage,
   onView,
+  onSell,
+  onSwap,
+  onEngineer,
 }: {
   variant: InventoryVariantSlice;
   isSerialized: boolean;
+  tradeLocked: boolean;
+  tradeLockedMessage: string;
   onView: () => void;
+  onSell: (item: InventoryItem) => void;
+  onSwap: (item: InventoryItem) => void;
+  onEngineer: (item: InventoryItem) => void;
 }) {
   const { mix, label, primaryItem } = variant;
   const priceSpread = mix.priceMin !== mix.priceMax;
+  const sellTarget = variant.items.find(item =>
+    item.mode === 'serialized' ? item.status === 'in_stock' : item.quantity > 0,
+  );
 
   return (
     <div
@@ -596,7 +614,27 @@ function InventoryVariantRow({
       </div>
       <div className="tabular-nums text-xs font-semibold text-shell-ink">{mix.qty}</div>
       <div className="hidden tabular-nums text-xs text-emerald-400 sm:block">{mix.marginMin}%</div>
-      <span />
+      <div onClick={e => e.stopPropagation()}>
+        {sellTarget ? (
+          <GroupActions
+            tradeLocked={tradeLocked}
+            tradeLockedMessage={tradeLockedMessage}
+            canSell={!tradeLocked}
+            canSwap={!tradeLocked && isSerialized}
+            canEngineer={!tradeLocked && isSerialized}
+            canDelete={false}
+            isSerialized={isSerialized}
+            onView={onView}
+            onEdit={onView}
+            onSell={() => onSell(sellTarget)}
+            onSwap={() => onSwap(sellTarget)}
+            onEngineer={() => onEngineer(sellTarget)}
+            onDelete={() => {}}
+          />
+        ) : (
+          <span />
+        )}
+      </div>
     </div>
   );
 }

@@ -6,11 +6,20 @@ export function isStaffInviteToken(value: string): boolean {
   return UUID_RE.test(value.trim());
 }
 
+/** Invite token from the current URL only — never leftover localStorage. */
+export function staffInviteTokenFromSearch(search?: string): string | null {
+  if (typeof window === 'undefined' && search == null) return null;
+  const invite = new URLSearchParams(search ?? (typeof window === 'undefined' ? '' : window.location.search))
+    .get('invite')
+    ?.trim() ?? '';
+  return isStaffInviteToken(invite) ? invite : null;
+}
+
 /** Persist `?invite=` from the current URL (or `search`) and return the stored token. */
 export function captureStaffInviteFromLocation(search?: string): string | null {
   if (typeof window === 'undefined') return readStaffInviteToken();
-  const invite = new URLSearchParams(search ?? window.location.search).get('invite')?.trim() ?? '';
-  if (isStaffInviteToken(invite)) persistStaffInviteToken(invite);
+  const invite = staffInviteTokenFromSearch(search);
+  if (invite) persistStaffInviteToken(invite);
   return readStaffInviteToken();
 }
 
@@ -46,5 +55,5 @@ export function clearStaffInviteToken(): void {
 
 export function staffInviteJoinUrl(origin: string, token: string): string {
   const base = origin.replace(/\/$/, '');
-  return `${base}/auth?invite=${encodeURIComponent(token)}`;
+  return `${base}/join?invite=${encodeURIComponent(token)}`;
 }

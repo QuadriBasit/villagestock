@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, getSetting } from '@/lib/db';
+import { db, getOpeningFloat } from '@/lib/db';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import type { PaymentMethod } from '@/types';
@@ -19,6 +19,7 @@ export type TodayTill = {
   posSales: number;
   cashCollected: number;
   transferCollected: number;
+  cashRefunds: number;
   cashExpenses: number;
   nonCashExpenses: number;
   expected: number;
@@ -32,6 +33,13 @@ export function useTodayTill(expenses: { amount: number; payment_method: Payment
     if (!shopOwnerId || !locationReady || !activeLocationId) return null;
 
     const { start, end } = todayRange();
+    const credits = await db.credit_records
+      .where('user_id')
+      .equals(shopOwnerId)
+      .filter(c => c.location_id === activeLocationId)
+      .toArray();
+    const creditSaleIds = new Set(credits.map(c => c.sale_id));
+
     const sales = await db.sales_records
       .where('user_id')
       .equals(shopOwnerId)
@@ -40,7 +48,9 @@ export function useTodayTill(expenses: { amount: number; payment_method: Payment
           s.location_id === activeLocationId &&
           s.sold_at >= start &&
           s.sold_at <= end &&
-          s.payment_status === 'paid'
+          s.payment_status === 'paid' &&
+          !s.returned &&
+          !creditSaleIds.has(s.id)
       )
       .toArray();
 
@@ -55,11 +65,6 @@ export function useTodayTill(expenses: { amount: number; payment_method: Payment
 
     let cashCollected = 0;
     let transferCollected = 0;
-    const credits = await db.credit_records
-      .where('user_id')
-      .equals(shopOwnerId)
-      .filter(c => c.location_id === activeLocationId)
-      .toArray();
     for (const credit of credits) {
       for (const p of credit.payments) {
         if (p.date >= start && p.date <= end) {
@@ -69,6 +74,18 @@ export function useTodayTill(expenses: { amount: number; payment_method: Payment
       }
     }
 
+    const returns = await db.return_records
+      .where('user_id')
+      .equals(shopOwnerId)
+      .filter(
+        r =>
+          r.location_id === activeLocationId &&
+          r.returned_at >= start &&
+          r.returned_at <= end
+      )
+      .toArray();
+    const cashRefunds = returns.reduce((a, r) => a + (r.refund_amount ?? 0), 0);
+
     const cashExpenses = expenses
       .filter(e => e.payment_method === 'cash')
       .reduce((a, e) => a + e.amount, 0);
@@ -76,7 +93,7 @@ export function useTodayTill(expenses: { amount: number; payment_method: Payment
       .filter(e => e.payment_method !== 'cash')
       .reduce((a, e) => a + e.amount, 0);
 
-    const openingFloat = await getSetting<number>('opening_float', 0);
+    const openingFloat = await getOpeningFloat(activeLocationId);
 
     return {
       openingFloat,
@@ -85,9 +102,10 @@ export function useTodayTill(expenses: { amount: number; payment_method: Payment
       posSales,
       cashCollected,
       transferCollected,
+      cashRefunds,
       cashExpenses,
       nonCashExpenses,
-      expected: openingFloat + cashSales + cashCollected - cashExpenses,
+      expected: openingFloat + cashSales + cashCollected - cashRefunds - cashExpenses,
     };
   }, [shopOwnerId, activeLocationId, locationReady, expenses]);
 

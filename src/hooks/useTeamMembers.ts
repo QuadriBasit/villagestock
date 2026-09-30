@@ -1,12 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getAuthSiteOrigin } from '@/lib/authSiteUrl';
+import { staffInviteJoinUrl } from '@/lib/staffInviteToken';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
 import type { Database } from '@/types/supabase';
 
 export type TeamMemberRow = Database['public']['Tables']['business_members']['Row'];
+
+export type PendingStaffInvite = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  token: string;
+  role_id: string | null;
+  expires_at: string;
+};
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -76,12 +86,14 @@ async function resolveLegacyRoleText(roleId: string): Promise<string> {
 export function useTeamMembers() {
   const { shopOwnerId, actorUserId, canInviteTeamMembers, canManageBusinessSettings, isOwner } = useShopAccess();
   const [members, setMembers] = useState<TeamMemberRow[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingStaffInvite[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refetch = useCallback(async () => {
     if (!shopOwnerId) {
       setMembers([]);
+      setPendingInvites([]);
       return;
     }
     setLoading(true);
@@ -92,12 +104,21 @@ export function useTeamMembers() {
       .eq('business_id', shopOwnerId)
       .order('created_at', { ascending: true });
 
+    const { data: inviteRows } = await supabase
+      .from('staff_invites')
+      .select('id, email, display_name, token, role_id, expires_at')
+      .eq('business_id', shopOwnerId)
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false });
+
     setLoading(false);
     if (e) {
       setError(e.message);
       return;
     }
     setMembers((data ?? []) as TeamMemberRow[]);
+    setPendingInvites((inviteRows ?? []) as PendingStaffInvite[]);
   }, [shopOwnerId]);
 
   useEffect(() => {
@@ -170,9 +191,10 @@ export function useTeamMembers() {
         metadata: { role_id: params.roleId, name: displayName },
         actorLabel,
       });
+      await refetch();
       return { inviteUrl, emailSent, emailError };
     },
-    [shopOwnerId, actorUserId, canInviteTeamMembers]
+    [shopOwnerId, actorUserId, canInviteTeamMembers, refetch]
   );
 
   const addMember = useCallback(
@@ -318,6 +340,7 @@ export function useTeamMembers() {
 
   return {
     members,
+    pendingInvites,
     loading,
     error,
     refetch,
@@ -326,5 +349,16 @@ export function useTeamMembers() {
     removeMember,
     updateMemberBranchAccess,
     updateMemberRole,
+    joinUrlForToken: (token: string) => {
+      const raw = getAuthSiteOrigin() || (typeof window !== 'undefined' ? window.location.origin : '');
+      let origin = raw;
+      try {
+        const host = new URL(raw).hostname;
+        if (host === 'localhost' || host === '127.0.0.1') origin = 'https://villagestock.online';
+      } catch {
+        origin = 'https://villagestock.online';
+      }
+      return staffInviteJoinUrl(origin, token);
+    },
   };
 }

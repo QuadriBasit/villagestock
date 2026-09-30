@@ -37,7 +37,10 @@ export function useTodaySalesSummary(): { summary: SalesSummary; isLoading: bool
       .where('user_id')
       .equals(shopOwnerId)
       .filter(
-        s => new Date(s.sold_at) >= startOfDay && s.location_id === activeLocationId
+        s =>
+          new Date(s.sold_at) >= startOfDay &&
+          s.location_id === activeLocationId &&
+          !s.returned
       )
       .toArray();
 

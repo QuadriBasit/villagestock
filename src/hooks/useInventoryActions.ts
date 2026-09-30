@@ -26,7 +26,12 @@ export function useInventoryActions() {
 
     const mode = getCategoryMode(input.category);
     if (!options?.deferIdentifiers) {
-      const idErr = inventoryMissingRequiredIdentifiers(input.category, input.imei, input.serial_number);
+      const idErr = inventoryMissingRequiredIdentifiers(
+        input.category,
+        input.imei,
+        input.serial_number,
+        input.imei2,
+      );
       if (idErr) throw new Error(idErr);
     }
 
@@ -110,7 +115,12 @@ export function useInventoryActions() {
     }
     const merged = { ...existing, ...rest, ...(created_at !== undefined ? { created_at } : null) };
     if (!options?.deferIdentifiers) {
-      const idErr = inventoryMissingRequiredIdentifiers(merged.category, merged.imei, merged.serial_number);
+      const idErr = inventoryMissingRequiredIdentifiers(
+        merged.category,
+        merged.imei,
+        merged.serial_number,
+        merged.imei2,
+      );
       if (idErr) throw new Error(idErr);
     }
     const updates = {
@@ -230,7 +240,11 @@ export function useInventoryActions() {
     });
   }
 
-  async function transferItemToBranch(itemId: string, targetLocationId: string): Promise<void> {
+  async function transferItemToBranch(
+    itemId: string,
+    targetLocationId: string,
+    quantity?: number,
+  ): Promise<void> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     if (!locationReady) throw new Error('Select a branch first');
     // await assertTrialAllowsMutations(shopOwnerId);
@@ -248,14 +262,98 @@ export function useInventoryActions() {
     }
 
     const now = new Date().toISOString();
-    await db.inventory_items.update(itemId, {
-      location_id: targetLocationId,
-      updated_at: now,
-      sync_status: 'pending',
-    });
-    const updated = await db.inventory_items.get(itemId);
-    if (updated) {
-      await queueSync('inventory_items', 'update', updated as unknown as Record<string, unknown>);
+    const moveQty =
+      item.mode === 'serialized'
+        ? 1
+        : Math.min(item.quantity, Math.max(1, Math.floor(quantity ?? item.quantity)));
+
+    if (item.mode === 'non_serialized' && moveQty < item.quantity) {
+      const dest = await db.inventory_items
+        .where('user_id')
+        .equals(shopOwnerId)
+        .filter(
+          i =>
+            !i.deleted &&
+            i.location_id === targetLocationId &&
+            i.brand === item.brand &&
+            i.name === item.name &&
+            i.category === item.category &&
+            (i.description ?? '') === (item.description ?? ''),
+        )
+        .first();
+      await db.inventory_items.update(itemId, {
+        quantity: item.quantity - moveQty,
+        updated_at: now,
+        sync_status: 'pending',
+      });
+      const source = await db.inventory_items.get(itemId);
+      if (source) await queueSync('inventory_items', 'update', source as unknown as Record<string, unknown>);
+      if (dest) {
+        await db.inventory_items.update(dest.id, {
+          quantity: dest.quantity + moveQty,
+          updated_at: now,
+          sync_status: 'pending',
+        });
+        const merged = await db.inventory_items.get(dest.id);
+        if (merged) await queueSync('inventory_items', 'update', merged as unknown as Record<string, unknown>);
+      } else {
+        const copy: InventoryItem = {
+          ...item,
+          id: uuidv4(),
+          location_id: targetLocationId,
+          quantity: moveQty,
+          created_at: now,
+          updated_at: now,
+          sync_status: 'pending',
+        };
+        await db.inventory_items.add(copy);
+        await queueSync('inventory_items', 'insert', copy as unknown as Record<string, unknown>);
+      }
+    } else {
+      const dest =
+        item.mode === 'non_serialized'
+          ? await db.inventory_items
+              .where('user_id')
+              .equals(shopOwnerId)
+              .filter(
+                i =>
+                  !i.deleted &&
+                  i.id !== itemId &&
+                  i.location_id === targetLocationId &&
+                  i.brand === item.brand &&
+                  i.name === item.name &&
+                  i.category === item.category &&
+                  (i.description ?? '') === (item.description ?? ''),
+              )
+              .first()
+          : undefined;
+      if (dest && item.mode === 'non_serialized') {
+        await db.inventory_items.update(dest.id, {
+          quantity: dest.quantity + item.quantity,
+          updated_at: now,
+          sync_status: 'pending',
+        });
+        const merged = await db.inventory_items.get(dest.id);
+        if (merged) await queueSync('inventory_items', 'update', merged as unknown as Record<string, unknown>);
+        await db.inventory_items.update(itemId, {
+          deleted: true,
+          quantity: 0,
+          updated_at: now,
+          sync_status: 'pending',
+        });
+        const removed = await db.inventory_items.get(itemId);
+        if (removed) await queueSync('inventory_items', 'update', removed as unknown as Record<string, unknown>);
+      } else {
+        await db.inventory_items.update(itemId, {
+          location_id: targetLocationId,
+          updated_at: now,
+          sync_status: 'pending',
+        });
+        const updated = await db.inventory_items.get(itemId);
+        if (updated) {
+          await queueSync('inventory_items', 'update', updated as unknown as Record<string, unknown>);
+        }
+      }
     }
     await flushSyncQueue();
     const [fromLoc, toLoc] = await Promise.all([

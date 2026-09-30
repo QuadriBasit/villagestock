@@ -60,11 +60,19 @@ function weekStart(): Date {
   return d;
 }
 
+function localYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function saleDateLabel(iso: string): string {
-  const dateKey = iso.slice(0, 10);
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const time = new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
+  const sold = new Date(iso);
+  const dateKey = localYmd(sold);
+  const today = localYmd(new Date());
+  const yesterday = localYmd(new Date(Date.now() - 86400000));
+  const time = sold.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
   if (dateKey === today) return `Today · ${time}`;
   if (dateKey === yesterday) return `Yesterday · ${time}`;
   return `${formatDate(iso)} · ${time}`;

@@ -52,13 +52,17 @@ export default function AnalyticsPage() {
         ) : (
           <StatCard label="Orders" value={String(metrics.salesCount)} icon={ShoppingCart} />
         )}
-        <StatCard label="Avg. margin" value={`${marginPct}%`} icon={BarChart3} />
+        {canViewProfit ? (
+          <StatCard label="Avg. margin" value={`${marginPct}%`} icon={BarChart3} />
+        ) : (
+          <StatCard label="Items sold" value={String(metrics.salesCount)} icon={BarChart3} />
+        )}
         <StatCard label="Avg. order" value={formatCurrency(avgOrder)} icon={Tag} />
       </StatGrid>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsTrendCard days={days} onDaysChange={setDays} />
-        <AnalyticsProfitMixCard days={days} />
+        {canViewProfit ? <AnalyticsProfitMixCard days={days} /> : null}
       </div>
 
       <AnalyticsTopEarners days={days} canViewProfit={canViewProfit} />

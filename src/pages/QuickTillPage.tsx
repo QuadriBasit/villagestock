@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowRightLeft, Check, Minus, Plus, Search, ShoppingCart } from 'lucide-react';
 import { db } from '@/lib/db';
@@ -47,7 +47,11 @@ const PAY_TERMS: { label: string; value: PayTerms }[] = [
 function defaultDueDate(): string {
   const d = new Date();
   d.setDate(d.getDate() + 7);
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 }
 
 function lineTotal(line: CartLine): number {
@@ -95,6 +99,7 @@ export default function QuickTillPage() {
   const { shopOwnerId, canViewProfit } = useShopAccess();
   const { activeLocationId, ready: locationReady } = useShopLocation();
   const { checkoutQuickTill } = useSalesActions();
+  const checkoutLock = useRef(false);
   const { contacts } = useContacts('customer');
   const tradingGate = useTradingGateState();
 
@@ -120,6 +125,7 @@ export default function QuickTillPage() {
   const [amountPaidTotal, setAmountPaidTotal] = useState(0);
   const [dueDate, setDueDate] = useState(defaultDueDate);
   const [soldAt, setSoldAt] = useState(() => toLocalDatetimeValue(new Date()));
+  const [soldAtTouched, setSoldAtTouched] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [done, setDone] = useState<{
@@ -152,7 +158,9 @@ export default function QuickTillPage() {
         i.name.toLowerCase().includes(query) ||
         i.brand.toLowerCase().includes(query) ||
         i.imei?.toLowerCase().includes(query) ||
-        i.serial_number?.toLowerCase().includes(query)
+        i.imei2?.toLowerCase().includes(query) ||
+        i.serial_number?.toLowerCase().includes(query) ||
+        i.barcode?.toLowerCase().includes(query)
       );
     });
   }, [items, q, cat]);
@@ -167,6 +175,11 @@ export default function QuickTillPage() {
   const paidNow =
     payTerms === 'paid' ? total : payTerms === 'part' ? Math.min(Math.max(0, amountPaidTotal), total) : 0;
   const balanceOwed = Math.max(0, total - paidNow);
+
+  useEffect(() => {
+    setCart({});
+    setSwapTarget(null);
+  }, [activeLocationId]);
 
   const tradeLocked = tradingGate.gateApplies && tradingGate.isReady && tradingGate.tradingBlocked;
 
@@ -202,32 +215,37 @@ export default function QuickTillPage() {
   };
 
   const checkout = async () => {
-    if (!count || checkingOut || tradeLocked) return;
+    if (!count || checkingOut || checkoutLock.current || tradeLocked) return;
+    checkoutLock.current = true;
     setCheckoutError(null);
 
     const name = customerName.trim();
     const phone = customerPhone.trim();
     if (balanceOwed > 0) {
       if (!name || !phone) {
+        checkoutLock.current = false;
         setCheckoutError('Credit sales need customer name and phone.');
         return;
       }
       if (!dueDate) {
+        checkoutLock.current = false;
         setCheckoutError('Pick a due date for the balance.');
         return;
       }
     }
     if (payTerms === 'part' && paidNow <= 0) {
+      checkoutLock.current = false;
       setCheckoutError('Enter how much they paid now.');
       return;
     }
     if (payTerms === 'part' && paidNow >= total) {
+      checkoutLock.current = false;
       setCheckoutError('Part pay must be less than the total.');
       return;
     }
 
     setCheckingOut(true);
-    const soldAtIso = new Date(soldAt).toISOString();
+    const soldAtIso = soldAtTouched ? new Date(soldAt).toISOString() : new Date().toISOString();
     const dueIso = dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : undefined;
     const lineTotals = lines.map(lineTotal);
     const paidShares = payTerms === 'paid' ? lineTotals : allocatePaid(paidNow, lineTotals);
@@ -255,6 +273,7 @@ export default function QuickTillPage() {
     } catch (e) {
       setCheckoutError(e instanceof Error ? e.message : 'Could not complete sale.');
     } finally {
+      checkoutLock.current = false;
       setCheckingOut(false);
     }
   };
@@ -268,6 +287,7 @@ export default function QuickTillPage() {
     setAmountPaidTotal(0);
     setDueDate(defaultDueDate());
     setSoldAt(toLocalDatetimeValue(new Date()));
+    setSoldAtTouched(false);
     setCheckoutError(null);
     setQ('');
   };
@@ -399,7 +419,10 @@ export default function QuickTillPage() {
             dueDate={dueDate}
             onDueDateChange={setDueDate}
             soldAt={soldAt}
-            onSoldAtChange={setSoldAt}
+            onSoldAtChange={value => {
+              setSoldAtTouched(true);
+              setSoldAt(value);
+            }}
             paidNow={paidNow}
             balanceOwed={balanceOwed}
             checkoutError={checkoutError}

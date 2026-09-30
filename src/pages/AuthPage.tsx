@@ -10,10 +10,9 @@ import { useShopAccess } from '@/context/ShopAccessContext';
 import { authCallbackUrl } from '@/lib/authSiteUrl';
 import { signOutApp } from '@/lib/signOutApp';
 import {
-  captureStaffInviteFromLocation,
-  isStaffInviteToken,
   persistStaffInviteToken,
   readStaffInviteToken,
+  staffInviteTokenFromSearch,
 } from '@/lib/staffInviteToken';
 import { AuroraBackground } from '@/components/landing/AuroraBackground';
 import '@/components/landing/landing.css';
@@ -43,16 +42,14 @@ export default function AuthPage() {
   const [passwordSetupKind, setPasswordSetupKind] = useState<'invite' | 'reset' | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [newPassword2, setNewPassword2] = useState('');
-  const [joiningInvite, setJoiningInvite] = useState(() => Boolean(captureStaffInviteFromLocation()));
+  const [joiningInvite, setJoiningInvite] = useState(() => Boolean(staffInviteTokenFromSearch()));
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
     const query = new URLSearchParams(window.location.search);
-    const invite = query.get('invite')?.trim() ?? '';
-    if (isStaffInviteToken(invite)) {
+    const invite = staffInviteTokenFromSearch();
+    if (invite) {
       persistStaffInviteToken(invite);
-      setJoiningInvite(true);
-    } else if (readStaffInviteToken()) {
       setJoiningInvite(true);
     }
 
@@ -125,6 +122,11 @@ export default function AuthPage() {
   };
 
   if (authLoading) return <AuthSpinner />;
+
+  if (!recoveryMode && joiningInvite) {
+    const stored = staffInviteTokenFromSearch() || readStaffInviteToken();
+    return <Navigate to={stored ? `/join?invite=${encodeURIComponent(stored)}` : '/join'} replace />;
+  }
 
   const joinedExistingShop = Boolean(
     user && shopOwnerId && (shopOwnerId !== user.id || !isOwner)
@@ -709,7 +711,7 @@ function GoogleLogo({ className }: { className?: string }) {
 
 function inviteAwareAuthCallbackUrl(): string {
   const base = authCallbackUrl();
-  const token = readStaffInviteToken();
+  const token = staffInviteTokenFromSearch();
   if (!token) return base;
   const sep = base.includes('?') ? '&' : '?';
   return `${base}${sep}invite=${encodeURIComponent(token)}`;

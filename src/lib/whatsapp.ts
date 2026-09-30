@@ -18,6 +18,7 @@ export function normalizePhone(raw?: string | null): string | null {
 
   if (NG_LOCAL.test(digits)) return `234${digits.slice(1)}`;
   if (NG_MSISDN.test(digits)) return digits;
+  if (/^[789]\d{9}$/.test(digits)) return `234${digits}`;
   if (hadPlus && digits.length >= 8 && digits.length <= 15) return digits;
   return null;
 }

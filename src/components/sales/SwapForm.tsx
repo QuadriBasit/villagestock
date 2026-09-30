@@ -173,7 +173,7 @@ export default function SwapForm({
             : Math.max(0, balance),
         due_date:
           data.payment_status === "credit" && data.due_date
-            ? new Date(data.due_date).toISOString()
+            ? new Date(`${data.due_date}T12:00:00`).toISOString()
             : undefined,
         customer_name: data.customer_name || undefined,
         customer_phone: data.customer_phone || undefined,

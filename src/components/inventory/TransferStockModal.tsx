@@ -21,6 +21,7 @@ import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
 import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { CategoryThumb } from '@/components/inventory/CategoryThumb';
 import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { settingsBtnPrimary, settingsField, settingsLabel } from '@/components/settings/settingsUi';
 
@@ -48,6 +49,7 @@ export default function TransferStockModal({
   const [toId, setToId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [moveQty, setMoveQty] = useState(1);
 
   const otherLocations = useMemo(
     () => locations.filter(l => l.id !== fromId),
@@ -61,6 +63,7 @@ export default function TransferStockModal({
     setQuery('');
     setError(null);
     setBusy(false);
+    setMoveQty(presetItem ? getItemQty(presetItem) : 1);
     const from = presetItem?.location_id ?? activeLocationId ?? locations[0]?.id ?? '';
     setFromId(from);
     const to = locations.find(l => l.id !== from)?.id ?? '';
@@ -107,14 +110,25 @@ export default function TransferStockModal({
   const multiBranch = locations.length > 1;
   const selected = pick;
   const qty = selected ? getItemQty(selected) : 0;
-  const canMove = !!selected && !!fromId && !!toId && fromId !== toId && qty > 0 && !busy;
+  const canMove =
+    !!selected &&
+    !!fromId &&
+    !!toId &&
+    fromId !== toId &&
+    qty > 0 &&
+    !busy &&
+    (selected.mode === 'serialized' || (moveQty >= 1 && moveQty <= qty));
 
   const confirm = async () => {
     if (!selected || !toId || !canMove) return;
     setBusy(true);
     setError(null);
     try {
-      await transferItemToBranch(selected.id, toId);
+      await transferItemToBranch(
+        selected.id,
+        toId,
+        selected.mode === 'serialized' ? 1 : moveQty,
+      );
       setDone(true);
       onSuccess?.();
     } catch (e) {
@@ -202,6 +216,7 @@ export default function TransferStockModal({
                       type="button"
                       onClick={() => {
                         setPick(item);
+                        setMoveQty(getItemQty(item));
                         if (item.location_id) setFromId(item.location_id);
                       }}
                       className="flex w-full items-center gap-3 rounded-xl border border-shell-line bg-shell-surface px-3 py-2.5 text-left transition-colors hover:bg-shell-surface-2/50"
@@ -271,11 +286,27 @@ export default function TransferStockModal({
                 </div>
 
                 <div className="rounded-xl border border-shell-line bg-shell-surface-2/30 px-3 py-2.5 text-sm">
-                  <span className="text-shell-muted">Moving </span>
-                  <span className="font-semibold text-shell-ink">
-                    {qty > 1 ? `all ${qty} units` : '1 unit'}
-                  </span>
-                  <span className="text-shell-muted"> from {branchName(fromId)}</span>
+                  {selected.mode === 'serialized' ? (
+                    <p>
+                      <span className="text-shell-muted">Moving this unit only </span>
+                      <span className="font-semibold text-shell-ink">
+                        {selected.imei ? `IMEI ${selected.imei}` : selected.serial_number || selected.name}
+                      </span>
+                      <span className="text-shell-muted">. Other phones stay at {branchName(fromId)}.</span>
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className={settingsLabel}>How many to move (of {qty})</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={qty}
+                        value={String(moveQty)}
+                        onChange={e => setMoveQty(Math.max(1, Math.min(qty, Number(e.target.value) || 1)))}
+                        className={settingsField}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {error ? (
@@ -284,7 +315,7 @@ export default function TransferStockModal({
                   </p>
                 ) : null}
 
-                <button
+                <Button
                   type="button"
                   disabled={!canMove}
                   onClick={() => void confirm()}
@@ -300,7 +331,7 @@ export default function TransferStockModal({
                       Transfer to {branchName(toId)}
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             )}
           </div>

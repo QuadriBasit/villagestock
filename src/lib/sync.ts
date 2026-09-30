@@ -5,12 +5,20 @@ import { getCategoryMode } from '@/types';
 import type {
   AuditEvent,
   BusinessProfile,
+  CashSessionRecord,
+  ContactRecord,
   CreditRecord,
+  ExpenseCategory,
+  ExpenseRecord,
   InventoryItem,
+  PurchaseLine,
+  PurchaseRecord,
+  RecurringExpenseRecord,
   RepairRecord,
   ReturnRecord,
   SalesRecord,
   ShopLocation,
+  StockSession,
   SwapRecord,
   SyncQueueItem,
 } from '@/types';
@@ -25,10 +33,30 @@ type RemoteCreditRow = Database['public']['Tables']['credit_records']['Row'];
 type RemoteRepairRow = Database['public']['Tables']['repair_records']['Row'];
 type RemoteAuditRow = Database['public']['Tables']['audit_events']['Row'];
 type RemoteShopLocationRow = Database['public']['Tables']['shop_locations']['Row'];
+type RemoteContactRow = Database['public']['Tables']['contacts']['Row'];
+type RemoteExpenseRow = Database['public']['Tables']['expense_records']['Row'];
+type RemoteRecurringExpenseRow = Database['public']['Tables']['recurring_expenses']['Row'];
+type RemotePurchaseRow = Database['public']['Tables']['purchase_records']['Row'];
+type RemoteCashSessionRow = Database['public']['Tables']['cash_sessions']['Row'];
+type RemoteStockSessionRow = Database['public']['Tables']['stock_sessions']['Row'];
 
 function parseCreditPayments(json: unknown): CreditRecord['payments'] {
   if (!Array.isArray(json)) return [];
   return json as CreditRecord['payments'];
+}
+
+function parseWarrantyCover(json: unknown): SalesRecord['warranty_cover'] {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return undefined;
+  const value = (json as { value?: unknown }).value;
+  const unit = (json as { unit?: unknown }).unit;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  if (unit !== 'days' && unit !== 'months') return undefined;
+  return { value, unit };
+}
+
+function parseStockCondition(raw: unknown): SalesRecord['item_stock_condition'] {
+  if (raw === 'new' || raw === 'used' || raw === 'uk_used' || raw === 'refurb') return raw;
+  return undefined;
 }
 
 /** Strip Dexie-only fields and map keys so PostgREST accepts the body (unknown columns → 400). */
@@ -102,6 +130,9 @@ function salesRecordToRemoteRow(record: SalesRecord): Database['public']['Tables
     balance_paid: record.balance_paid ?? null,
     returned: record.returned ?? false,
     return_id: record.return_id ?? null,
+    warranty_cover: record.warranty_cover ? (record.warranty_cover as unknown as Json) : null,
+    item_stock_condition: record.item_stock_condition ?? null,
+    warranty_months: record.warranty_months ?? null,
   };
 }
 
@@ -199,7 +230,20 @@ async function runFlushSyncQueueOnce(): Promise<void> {
         await syncBusinessProfile(item);
       } else if (item.table === 'shop_locations') {
         await syncShopLocation(item);
+      } else if (item.table === 'contacts') {
+        await syncContactRecord(item);
+      } else if (item.table === 'expense_records') {
+        await syncExpenseRecord(item);
+      } else if (item.table === 'recurring_expenses') {
+        await syncRecurringExpense(item);
+      } else if (item.table === 'purchase_records') {
+        await syncPurchaseRecord(item);
+      } else if (item.table === 'cash_sessions') {
+        await syncCashSession(item);
+      } else if (item.table === 'stock_sessions') {
+        await syncStockSession(item);
       }
+      await markLocalShopOpsSynced(item);
       await db.sync_queue.delete(item.id);
     } catch (err) {
       if (isRlsViolation(err)) {
@@ -269,7 +313,7 @@ async function syncSaleRecord(item: SyncQueueItem) {
   const record = item.payload as unknown as SalesRecord;
   if (item.operation === 'insert') {
     const row = salesRecordToRemoteRow(record);
-    const { error } = await supabase.from('sales_records').insert(row as never);
+    const { error } = await supabase.from('sales_records').upsert(row as never);
     if (error) throw error;
   } else if (item.operation === 'update') {
     const row = salesRecordToRemoteRow(record);
@@ -446,7 +490,9 @@ async function syncShopLocation(item: SyncQueueItem) {
       if (payload.name === 'Main branch' && isDuplicateMainBranchError(err)) {
         await pullRemoteShopLocations(payload.business_id);
         const remotes = await db.shop_locations.where('business_id').equals(payload.business_id).toArray();
-        if (remotes.some(r => r.name === 'Main branch' && r.id !== payload.id)) {
+        const remoteMain = remotes.find(r => r.name === 'Main branch' && r.id !== payload.id);
+        if (remoteMain) {
+          await remapLocationId(payload.business_id, payload.id, remoteMain.id);
           await db.shop_locations.delete(payload.id);
         }
         return;
@@ -454,6 +500,244 @@ async function syncShopLocation(item: SyncQueueItem) {
       throw err;
     }
   }
+}
+
+function requireLocationId(locationId: string | undefined, table: string): string {
+  if (!locationId) throw new Error(`${table}.location_id required before sync`);
+  return locationId;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === 'string');
+}
+
+async function upsertShopOpsRow(
+  table:
+    | 'contacts'
+    | 'expense_records'
+    | 'recurring_expenses'
+    | 'purchase_records'
+    | 'cash_sessions'
+    | 'stock_sessions',
+  row: Record<string, unknown>,
+) {
+  const { error } = await supabase.from(table).upsert(row as never);
+  if (error) throw error;
+}
+
+function contactToRemoteRow(record: ContactRecord): Database['public']['Tables']['contacts']['Insert'] {
+  return {
+    id: record.id,
+    user_id: record.user_id,
+    location_id: requireLocationId(record.location_id, 'contacts'),
+    type: record.type,
+    name: record.name,
+    phone: record.phone ?? null,
+    note: record.note ?? null,
+    location_text: record.location_text ?? null,
+    balance_owed: record.balance_owed,
+    deal_count: record.deal_count,
+    created_at: record.created_at,
+    updated_at: record.updated_at,
+  };
+}
+
+function expenseToRemoteRow(record: ExpenseRecord): Database['public']['Tables']['expense_records']['Insert'] {
+  return {
+    id: record.id,
+    user_id: record.user_id,
+    location_id: record.location_id,
+    category: record.category,
+    label: record.label,
+    amount: record.amount,
+    payment_method: record.payment_method ?? null,
+    recorded_at: record.recorded_at,
+    created_at: record.created_at,
+  };
+}
+
+function recurringExpenseToRemoteRow(
+  record: RecurringExpenseRecord,
+): Database['public']['Tables']['recurring_expenses']['Insert'] {
+  return {
+    id: record.id,
+    user_id: record.user_id,
+    location_id: record.location_id,
+    category: record.category,
+    label: record.label,
+    amount: record.amount,
+    payment_method: record.payment_method ?? null,
+    recurrence: record.recurrence,
+    active: record.active,
+    created_at: record.created_at,
+  };
+}
+
+function purchaseToRemoteRow(record: PurchaseRecord): Database['public']['Tables']['purchase_records']['Insert'] {
+  return {
+    id: record.id,
+    user_id: record.user_id,
+    location_id: record.location_id,
+    supplier_contact_id: record.supplier_contact_id ?? null,
+    supplier_name: record.supplier_name,
+    items: record.items as unknown as Json,
+    total: record.total,
+    paid: record.paid,
+    payment_method: record.payment_method ?? null,
+    terms: record.terms,
+    purchased_at: record.purchased_at,
+    received_at: record.received_at ?? null,
+    created_at: record.created_at,
+  };
+}
+
+function cashSessionToRemoteRow(record: CashSessionRecord): Database['public']['Tables']['cash_sessions']['Insert'] {
+  return {
+    id: record.id,
+    user_id: record.user_id,
+    location_id: record.location_id,
+    opening_float: record.opening_float,
+    cash_sales: record.cash_sales,
+    cash_collected: record.cash_collected,
+    cash_expenses: record.cash_expenses,
+    expected: record.expected,
+    counted: record.counted,
+    variance: record.variance,
+    closed_at: record.closed_at,
+    closed_by_label: record.closed_by_label ?? null,
+  };
+}
+
+function stockSessionToRemoteRow(record: StockSession): Database['public']['Tables']['stock_sessions']['Insert'] {
+  return {
+    id: record.id,
+    user_id: record.user_id,
+    location_id: requireLocationId(record.location_id, 'stock_sessions'),
+    date: record.date,
+    opened_at: record.opened_at,
+    closed_at: record.closed_at ?? null,
+    opened_by_user_id: record.opened_by_user_id,
+    closed_by_user_id: record.closed_by_user_id ?? null,
+    opening_snapshot_ids: record.opening_snapshot_ids as unknown as Json,
+    opening_device_snapshots: (record.opening_device_snapshots ?? null) as unknown as Json,
+    opening_confirmed_ids: (record.opening_confirmed_ids ?? null) as unknown as Json,
+    expected_closing_ids: record.expected_closing_ids as unknown as Json,
+    expected_closing_snapshots: (record.expected_closing_snapshots ?? null) as unknown as Json,
+    actual_closing_ids: record.actual_closing_ids as unknown as Json,
+    closing_device_snapshots: (record.closing_device_snapshots ?? null) as unknown as Json,
+    missing_item_ids: record.missing_item_ids as unknown as Json,
+    missing_notes_by_item_id: record.missing_notes_by_item_id as unknown as Json,
+    status: record.status,
+    notes: record.notes ?? null,
+    summary: (record.summary ?? null) as unknown as Json,
+    audit_log: record.audit_log as unknown as Json,
+  };
+}
+
+async function syncContactRecord(item: SyncQueueItem) {
+  const record = item.payload as unknown as ContactRecord;
+  if (item.operation === 'delete') {
+    const { error } = await supabase.from('contacts').delete().eq('id', record.id);
+    if (error) throw error;
+    return;
+  }
+  await upsertShopOpsRow('contacts', contactToRemoteRow(record) as unknown as Record<string, unknown>);
+}
+
+async function syncExpenseRecord(item: SyncQueueItem) {
+  await upsertShopOpsRow(
+    'expense_records',
+    expenseToRemoteRow(item.payload as unknown as ExpenseRecord) as unknown as Record<string, unknown>,
+  );
+}
+
+async function syncRecurringExpense(item: SyncQueueItem) {
+  await upsertShopOpsRow(
+    'recurring_expenses',
+    recurringExpenseToRemoteRow(item.payload as unknown as RecurringExpenseRecord) as unknown as Record<string, unknown>,
+  );
+}
+
+async function syncPurchaseRecord(item: SyncQueueItem) {
+  await upsertShopOpsRow(
+    'purchase_records',
+    purchaseToRemoteRow(item.payload as unknown as PurchaseRecord) as unknown as Record<string, unknown>,
+  );
+}
+
+async function syncCashSession(item: SyncQueueItem) {
+  await upsertShopOpsRow(
+    'cash_sessions',
+    cashSessionToRemoteRow(item.payload as unknown as CashSessionRecord) as unknown as Record<string, unknown>,
+  );
+}
+
+async function syncStockSession(item: SyncQueueItem) {
+  await upsertShopOpsRow(
+    'stock_sessions',
+    stockSessionToRemoteRow(item.payload as unknown as StockSession) as unknown as Record<string, unknown>,
+  );
+}
+
+async function markLocalShopOpsSynced(item: SyncQueueItem) {
+  const id = item.payload.id;
+  if (typeof id !== 'string') return;
+  if (item.table === 'contacts') await db.contacts.update(id, { sync_status: 'synced' });
+  else if (item.table === 'expense_records') await db.expense_records.update(id, { sync_status: 'synced' });
+  else if (item.table === 'recurring_expenses') await db.recurring_expenses.update(id, { sync_status: 'synced' });
+  else if (item.table === 'purchase_records') await db.purchase_records.update(id, { sync_status: 'synced' });
+  else if (item.table === 'cash_sessions') await db.cash_sessions.update(id, { sync_status: 'synced' });
+  else if (item.table === 'stock_sessions') await db.stock_sessions.update(id, { sync_status: 'synced' });
+}
+
+async function enqueueUnsyncedShopOps(userId: string) {
+  const enqueue = async (
+    table: SyncQueueItem['table'],
+    rows: Array<{ id: string; sync_status?: string; location_id?: string }>,
+  ) => {
+    for (const row of rows) {
+      if (row.sync_status === 'synced' || !row.location_id) continue;
+      await queueSync(table, 'update', row as unknown as Record<string, unknown>);
+    }
+  };
+  await enqueue('contacts', await db.contacts.where('user_id').equals(userId).toArray());
+  await enqueue('expense_records', await db.expense_records.where('user_id').equals(userId).toArray());
+  await enqueue('recurring_expenses', await db.recurring_expenses.where('user_id').equals(userId).toArray());
+  await enqueue('purchase_records', await db.purchase_records.where('user_id').equals(userId).toArray());
+  await enqueue('cash_sessions', await db.cash_sessions.where('user_id').equals(userId).toArray());
+  await enqueue('stock_sessions', await db.stock_sessions.where('user_id').equals(userId).toArray());
+}
+
+async function mergePulledRows<T extends { id: string; sync_status?: string }>(
+  table: { bulkGet: (ids: string[]) => Promise<(T | undefined)[]>; bulkPut: (rows: T[]) => Promise<unknown> },
+  mapped: T[],
+) {
+  if (!mapped.length) return;
+  const locals = (await table.bulkGet(mapped.map(row => row.id))).filter((row): row is T => Boolean(row));
+  const localById = new Map(locals.map(row => [row.id, row]));
+  await table.bulkPut(
+    mapped.map(row => (localById.get(row.id)?.sync_status === 'pending' ? localById.get(row.id)! : row)),
+  );
+}
+
+async function remapLocationId(businessId: string, fromId: string, toId: string): Promise<void> {
+  if (!fromId || !toId || fromId === toId) return;
+  const rewrite = (row: { location_id?: string }) => {
+    if (row.location_id === fromId) row.location_id = toId;
+  };
+  await db.inventory_items.where('user_id').equals(businessId).modify(rewrite);
+  await db.sales_records.where('user_id').equals(businessId).modify(rewrite);
+  await db.return_records.where('user_id').equals(businessId).modify(rewrite);
+  await db.swap_records.where('user_id').equals(businessId).modify(rewrite);
+  await db.credit_records.where('user_id').equals(businessId).modify(rewrite);
+  await db.repair_records.where('user_id').equals(businessId).modify(rewrite);
+  await db.stock_sessions.where('user_id').equals(businessId).modify(rewrite);
+  await db.expense_records.where('user_id').equals(businessId).modify(rewrite);
+  await db.purchase_records.where('user_id').equals(businessId).modify(rewrite);
+  await db.cash_sessions.where('user_id').equals(businessId).modify(rewrite);
+  await db.contacts.where('user_id').equals(businessId).modify(rewrite);
+  await db.recurring_expenses.where('user_id').equals(businessId).modify(rewrite);
 }
 
 /** Assign first branch id to legacy rows missing `location_id`. */
@@ -654,7 +938,13 @@ export async function pullRemoteInventory(userId: string): Promise<void> {
     };
   });
 
-  await db.inventory_items.bulkPut(mapped);
+  const locals = await db.inventory_items.bulkGet(mapped.map(row => row.id));
+  const merged = mapped.map((row, index) => {
+    const local = locals[index];
+    if (local?.sync_status === 'pending') return local;
+    return row;
+  });
+  await db.inventory_items.bulkPut(merged);
 }
 
 export async function pullRemoteBusinessProfile(userId: string): Promise<void> {
@@ -730,10 +1020,28 @@ export async function pullRemoteSalesRecords(userId: string): Promise<void> {
     balance_paid: row.balance_paid ?? undefined,
     returned: row.returned,
     return_id: row.return_id ?? undefined,
+    warranty_cover: parseWarrantyCover(row.warranty_cover),
+    item_stock_condition: parseStockCondition(row.item_stock_condition),
+    warranty_months: row.warranty_months ?? undefined,
     sync_status: 'synced',
   }));
 
-  await db.sales_records.bulkPut(mapped);
+  const locals = (await db.sales_records.bulkGet(mapped.map(row => row.id))).filter(
+    (row): row is SalesRecord => Boolean(row),
+  );
+  const localById = new Map(locals.map(row => [row.id, row]));
+  const merged = mapped.map(row => {
+    const local = localById.get(row.id);
+    if (local?.sync_status === 'pending') return local;
+    return {
+      ...row,
+      warranty_cover: row.warranty_cover ?? local?.warranty_cover,
+      item_stock_condition: row.item_stock_condition ?? local?.item_stock_condition,
+      warranty_months: row.warranty_months ?? local?.warranty_months,
+    };
+  });
+
+  await db.sales_records.bulkPut(merged);
 }
 
 export async function pullRemoteReturnRecords(userId: string): Promise<void> {
@@ -869,6 +1177,177 @@ export async function pullRemoteRepairRecords(userId: string): Promise<void> {
   await db.repair_records.bulkPut(mapped);
 }
 
+function parsePurchaseItems(json: unknown): PurchaseLine[] {
+  if (!Array.isArray(json)) return [];
+  return json.filter((row): row is PurchaseLine => {
+    if (!row || typeof row !== 'object') return false;
+    const item = row as PurchaseLine;
+    return typeof item.name === 'string' && typeof item.qty === 'number' && typeof item.unit_cost === 'number';
+  });
+}
+
+export async function pullRemoteContacts(userId: string): Promise<void> {
+  if (!isOnline()) return;
+  const { data, error } = await supabase.from('contacts').select('*').eq('user_id', userId);
+  if (error) throw error;
+  if (!data?.length) return;
+  const mapped: ContactRecord[] = (data as RemoteContactRow[]).map(row => ({
+    id: row.id,
+    user_id: row.user_id,
+    location_id: row.location_id,
+    type: row.type,
+    name: row.name,
+    phone: row.phone ?? undefined,
+    note: row.note ?? undefined,
+    location_text: row.location_text ?? undefined,
+    balance_owed: row.balance_owed,
+    deal_count: row.deal_count,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    sync_status: 'synced',
+  }));
+  await mergePulledRows(db.contacts, mapped);
+}
+
+export async function pullRemoteExpenseRecords(userId: string): Promise<void> {
+  if (!isOnline()) return;
+  const { data, error } = await supabase
+    .from('expense_records')
+    .select('*')
+    .eq('user_id', userId)
+    .order('recorded_at', { ascending: false });
+  if (error) throw error;
+  if (!data?.length) return;
+  const mapped: ExpenseRecord[] = (data as RemoteExpenseRow[]).map(row => ({
+    id: row.id,
+    user_id: row.user_id,
+    location_id: row.location_id,
+    category: row.category as ExpenseCategory,
+    label: row.label,
+    amount: row.amount,
+    payment_method: row.payment_method ?? 'cash',
+    recorded_at: row.recorded_at,
+    created_at: row.created_at,
+    sync_status: 'synced',
+  }));
+  await mergePulledRows(db.expense_records, mapped);
+}
+
+export async function pullRemoteRecurringExpenses(userId: string): Promise<void> {
+  if (!isOnline()) return;
+  const { data, error } = await supabase.from('recurring_expenses').select('*').eq('user_id', userId);
+  if (error) throw error;
+  if (!data?.length) return;
+  const mapped: RecurringExpenseRecord[] = (data as RemoteRecurringExpenseRow[]).map(row => ({
+    id: row.id,
+    user_id: row.user_id,
+    location_id: row.location_id,
+    category: row.category as ExpenseCategory,
+    label: row.label,
+    amount: row.amount,
+    payment_method: row.payment_method ?? 'cash',
+    recurrence: row.recurrence,
+    active: row.active,
+    created_at: row.created_at,
+    sync_status: 'synced',
+  }));
+  await mergePulledRows(db.recurring_expenses, mapped);
+}
+
+export async function pullRemotePurchaseRecords(userId: string): Promise<void> {
+  if (!isOnline()) return;
+  const { data, error } = await supabase
+    .from('purchase_records')
+    .select('*')
+    .eq('user_id', userId)
+    .order('purchased_at', { ascending: false });
+  if (error) throw error;
+  if (!data?.length) return;
+  const mapped: PurchaseRecord[] = (data as RemotePurchaseRow[]).map(row => ({
+    id: row.id,
+    user_id: row.user_id,
+    location_id: row.location_id,
+    supplier_contact_id: row.supplier_contact_id ?? undefined,
+    supplier_name: row.supplier_name,
+    items: parsePurchaseItems(row.items),
+    total: row.total,
+    paid: row.paid,
+    payment_method: row.payment_method ?? undefined,
+    terms: row.terms,
+    purchased_at: row.purchased_at,
+    received_at: row.received_at ?? undefined,
+    created_at: row.created_at,
+    sync_status: 'synced',
+  }));
+  await mergePulledRows(db.purchase_records, mapped);
+}
+
+export async function pullRemoteCashSessions(userId: string): Promise<void> {
+  if (!isOnline()) return;
+  const { data, error } = await supabase
+    .from('cash_sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('closed_at', { ascending: false });
+  if (error) throw error;
+  if (!data?.length) return;
+  const mapped: CashSessionRecord[] = (data as RemoteCashSessionRow[]).map(row => ({
+    id: row.id,
+    user_id: row.user_id,
+    location_id: row.location_id,
+    opening_float: row.opening_float,
+    cash_sales: row.cash_sales,
+    cash_collected: row.cash_collected,
+    cash_expenses: row.cash_expenses,
+    expected: row.expected,
+    counted: row.counted,
+    variance: row.variance,
+    closed_at: row.closed_at,
+    closed_by_label: row.closed_by_label ?? undefined,
+    sync_status: 'synced',
+  }));
+  await mergePulledRows(db.cash_sessions, mapped);
+}
+
+export async function pullRemoteStockSessions(userId: string): Promise<void> {
+  if (!isOnline()) return;
+  const { data, error } = await supabase
+    .from('stock_sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('opened_at', { ascending: false });
+  if (error) throw error;
+  if (!data?.length) return;
+  const mapped: StockSession[] = (data as RemoteStockSessionRow[]).map(row => ({
+    id: row.id,
+    user_id: row.user_id,
+    location_id: row.location_id,
+    date: row.date,
+    opened_at: row.opened_at,
+    closed_at: row.closed_at ?? undefined,
+    opened_by_user_id: row.opened_by_user_id,
+    closed_by_user_id: row.closed_by_user_id ?? undefined,
+    opening_snapshot_ids: asStringArray(row.opening_snapshot_ids),
+    opening_device_snapshots: (row.opening_device_snapshots ?? undefined) as StockSession['opening_device_snapshots'],
+    opening_confirmed_ids: row.opening_confirmed_ids ? asStringArray(row.opening_confirmed_ids) : undefined,
+    expected_closing_ids: asStringArray(row.expected_closing_ids),
+    expected_closing_snapshots: (row.expected_closing_snapshots ?? undefined) as StockSession['expected_closing_snapshots'],
+    actual_closing_ids: asStringArray(row.actual_closing_ids),
+    closing_device_snapshots: (row.closing_device_snapshots ?? undefined) as StockSession['closing_device_snapshots'],
+    missing_item_ids: asStringArray(row.missing_item_ids),
+    missing_notes_by_item_id:
+      row.missing_notes_by_item_id && typeof row.missing_notes_by_item_id === 'object' && !Array.isArray(row.missing_notes_by_item_id)
+        ? (row.missing_notes_by_item_id as Record<string, string>)
+        : {},
+    status: row.status,
+    notes: row.notes ?? undefined,
+    summary: (row.summary ?? undefined) as StockSession['summary'],
+    audit_log: Array.isArray(row.audit_log) ? (row.audit_log as StockSession['audit_log']) : [],
+    sync_status: 'synced',
+  }));
+  await mergePulledRows(db.stock_sessions, mapped);
+}
+
 /** Shop owner id === business_profiles.id === audit_events.business_id */
 export async function pullRemoteAuditEvents(businessId: string): Promise<void> {
   if (!isOnline()) return;
@@ -935,6 +1414,13 @@ async function runFullPullWork(userId: string): Promise<void> {
     try {
       await pullRemoteBusinessProfile(userId);
       await pullRemoteShopLocations(userId);
+      try {
+        await backfillMissingLocationIds(userId);
+      } catch (e) {
+        console.error('[sync] location backfill before shop-ops upload failed', e);
+      }
+      await enqueueUnsyncedShopOps(userId);
+      await flushSyncQueue();
 
       const pulls: [string, () => Promise<void>][] = [
         ['inventory_items', () => pullRemoteInventory(userId)],
@@ -943,6 +1429,12 @@ async function runFullPullWork(userId: string): Promise<void> {
         ['swap_records', () => pullRemoteSwapRecords(userId)],
         ['credit_records', () => pullRemoteCreditRecords(userId)],
         ['repair_records', () => pullRemoteRepairRecords(userId)],
+        ['contacts', () => pullRemoteContacts(userId)],
+        ['expense_records', () => pullRemoteExpenseRecords(userId)],
+        ['recurring_expenses', () => pullRemoteRecurringExpenses(userId)],
+        ['purchase_records', () => pullRemotePurchaseRecords(userId)],
+        ['cash_sessions', () => pullRemoteCashSessions(userId)],
+        ['stock_sessions', () => pullRemoteStockSessions(userId)],
         ['audit_events', () => pullRemoteAuditEvents(userId)],
       ];
 
@@ -984,6 +1476,7 @@ async function runFullPullWork(userId: string): Promise<void> {
  * Mount / `online` use this directly so users get data immediately after load or reconnect.
  */
 export async function pullAllRemoteShopData(userId: string): Promise<void> {
+  await flushSyncQueue();
   return runFullPullWork(userId);
 }
 
@@ -1004,6 +1497,12 @@ const REALTIME_TABLES_WITH_USER_ID = [
   'swap_records',
   'credit_records',
   'repair_records',
+  'contacts',
+  'expense_records',
+  'recurring_expenses',
+  'purchase_records',
+  'cash_sessions',
+  'stock_sessions',
 ] as const;
 
 /** After Postgres noise goes quiet, wait this long before starting a full pull. */

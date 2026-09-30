@@ -275,16 +275,19 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
       }
 
       let engineerSent: string | null = null;
-      if (needsInspect && state.toEngineer && ids[0]) {
-        await sendToEngineer({
-          item_id: ids[0],
-          engineer_name: state.engineer || engineerDefault || 'Engineer',
-          issue_description:
-            [...state.faults, state.fault.trim()].filter(Boolean).join(' · ') || 'Intake inspection',
-          repair_cost: state.partsEst || undefined,
-          date_sent: new Date().toISOString(),
-        });
-        engineerSent = state.engineer || engineerDefault || 'Engineer';
+      if (needsInspect && state.toEngineer && ids.length > 0) {
+        const engineerName = state.engineer || engineerDefault || 'Engineer';
+        for (const itemId of ids) {
+          await sendToEngineer({
+            item_id: itemId,
+            engineer_name: engineerName,
+            issue_description:
+              [...state.faults, state.fault.trim()].filter(Boolean).join(' · ') || 'Intake inspection',
+            repair_cost: state.partsEst || undefined,
+            date_sent: new Date().toISOString(),
+          });
+        }
+        engineerSent = engineerName;
       }
 
       setSaved({

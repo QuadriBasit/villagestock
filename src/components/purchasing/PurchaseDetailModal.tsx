@@ -19,6 +19,7 @@ type PurchaseDetailModalProps = {
   supplier?: ContactRecord;
   onClose: () => void;
   onPaySupplier?: (supplier: ContactRecord) => void;
+  onMarkReceived?: (purchase: PurchaseRecord) => void;
 };
 
 export default function PurchaseDetailModal({
@@ -26,6 +27,7 @@ export default function PurchaseDetailModal({
   supplier,
   onClose,
   onPaySupplier,
+  onMarkReceived,
 }: PurchaseDetailModalProps) {
   if (!purchase) return null;
 
@@ -78,7 +80,7 @@ export default function PurchaseDetailModal({
               {owed > 0 ? <SummaryRow label="Outstanding" value={formatCurrency(owed)} tone="amber" strong /> : null}
             </div>
 
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <Badge
                 className={
                   status === 'Paid'
@@ -88,7 +90,23 @@ export default function PurchaseDetailModal({
               >
                 {status}
               </Badge>
+              <Badge
+                className={
+                  purchase.received_at
+                    ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+                    : 'border-shell-line bg-shell-surface-2 text-shell-muted'
+                }
+              >
+                {purchase.received_at ? 'In shop' : 'Not arrived yet'}
+              </Badge>
             </div>
+
+            {!purchase.received_at ? (
+              <p className="mt-3 text-xs text-shell-muted">
+                Goods that are still on the way do not go into inventory. Mark arrived when they
+                are on the shelf, then add the units in Inventory.
+              </p>
+            ) : null}
 
             <div className="mt-4 flex gap-2">
               <a
@@ -114,6 +132,14 @@ export default function PurchaseDetailModal({
                 </Button>
               ) : null}
             </div>
+            {!purchase.received_at && onMarkReceived ? (
+              <Button
+                className="mt-2 w-full bg-brand-400 text-[#04231d] hover:bg-brand-300"
+                onClick={() => onMarkReceived(purchase)}
+              >
+                <Box size={16} /> Mark arrived
+              </Button>
+            ) : null}
           </div>
         
       </ModalSheetFrame>

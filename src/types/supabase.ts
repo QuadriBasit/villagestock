@@ -122,6 +122,9 @@ export interface Database {
           balance_paid: number | null;
           returned: boolean;
           return_id: string | null;
+          warranty_cover: Json | null;
+          item_stock_condition: string | null;
+          warranty_months: number | null;
         };
         Insert: {
           id?: string;
@@ -156,6 +159,9 @@ export interface Database {
           balance_paid?: number | null;
           returned?: boolean;
           return_id?: string | null;
+          warranty_cover?: Json | null;
+          item_stock_condition?: string | null;
+          warranty_months?: number | null;
         };
         Update: Partial<Database['public']['Tables']['sales_records']['Insert']>;
         Relationships: [];
@@ -518,6 +524,208 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['subscription_payments']['Row']>;
         Relationships: [];
       };
+      contacts: {
+        Row: {
+          id: string;
+          user_id: string;
+          location_id: string;
+          type: 'supplier' | 'customer';
+          name: string;
+          phone: string | null;
+          note: string | null;
+          location_text: string | null;
+          balance_owed: number;
+          deal_count: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          location_id: string;
+          type: 'supplier' | 'customer';
+          name: string;
+          phone?: string | null;
+          note?: string | null;
+          location_text?: string | null;
+          balance_owed?: number;
+          deal_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['contacts']['Insert']>;
+        Relationships: [];
+      };
+      expense_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          location_id: string;
+          category: string;
+          label: string;
+          amount: number;
+          payment_method: 'cash' | 'bank_transfer' | 'pos' | null;
+          recorded_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          location_id: string;
+          category: string;
+          label: string;
+          amount: number;
+          payment_method?: 'cash' | 'bank_transfer' | 'pos' | null;
+          recorded_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['expense_records']['Insert']>;
+        Relationships: [];
+      };
+      recurring_expenses: {
+        Row: {
+          id: string;
+          user_id: string;
+          location_id: string;
+          category: string;
+          label: string;
+          amount: number;
+          payment_method: 'cash' | 'bank_transfer' | 'pos' | null;
+          recurrence: 'daily' | 'weekly' | 'monthly' | 'yearly';
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          location_id: string;
+          category: string;
+          label: string;
+          amount: number;
+          payment_method?: 'cash' | 'bank_transfer' | 'pos' | null;
+          recurrence: 'daily' | 'weekly' | 'monthly' | 'yearly';
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['recurring_expenses']['Insert']>;
+        Relationships: [];
+      };
+      purchase_records: {
+        Row: {
+          id: string;
+          user_id: string;
+          location_id: string;
+          supplier_contact_id: string | null;
+          supplier_name: string;
+          items: Json;
+          total: number;
+          paid: number;
+          payment_method: 'cash' | 'bank_transfer' | 'pos' | null;
+          terms: 'paid' | 'credit' | 'partial';
+          purchased_at: string;
+          received_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          location_id: string;
+          supplier_contact_id?: string | null;
+          supplier_name: string;
+          items?: Json;
+          total: number;
+          paid?: number;
+          payment_method?: 'cash' | 'bank_transfer' | 'pos' | null;
+          terms: 'paid' | 'credit' | 'partial';
+          purchased_at?: string;
+          received_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['purchase_records']['Insert']>;
+        Relationships: [];
+      };
+      cash_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          location_id: string;
+          opening_float: number;
+          cash_sales: number;
+          cash_collected: number;
+          cash_expenses: number;
+          expected: number;
+          counted: number;
+          variance: number;
+          closed_at: string;
+          closed_by_label: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          location_id: string;
+          opening_float?: number;
+          cash_sales?: number;
+          cash_collected?: number;
+          cash_expenses?: number;
+          expected?: number;
+          counted?: number;
+          variance?: number;
+          closed_at?: string;
+          closed_by_label?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['cash_sessions']['Insert']>;
+        Relationships: [];
+      };
+      stock_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          location_id: string;
+          date: string;
+          opened_at: string;
+          closed_at: string | null;
+          opened_by_user_id: string;
+          closed_by_user_id: string | null;
+          opening_snapshot_ids: Json;
+          opening_device_snapshots: Json | null;
+          opening_confirmed_ids: Json | null;
+          expected_closing_ids: Json;
+          expected_closing_snapshots: Json | null;
+          actual_closing_ids: Json;
+          closing_device_snapshots: Json | null;
+          missing_item_ids: Json;
+          missing_notes_by_item_id: Json;
+          status: 'open' | 'closed' | 'closed_with_discrepancy';
+          notes: string | null;
+          summary: Json | null;
+          audit_log: Json;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          location_id: string;
+          date: string;
+          opened_at?: string;
+          closed_at?: string | null;
+          opened_by_user_id: string;
+          closed_by_user_id?: string | null;
+          opening_snapshot_ids?: Json;
+          opening_device_snapshots?: Json | null;
+          opening_confirmed_ids?: Json | null;
+          expected_closing_ids?: Json;
+          expected_closing_snapshots?: Json | null;
+          actual_closing_ids?: Json;
+          closing_device_snapshots?: Json | null;
+          missing_item_ids?: Json;
+          missing_notes_by_item_id?: Json;
+          status: 'open' | 'closed' | 'closed_with_discrepancy';
+          notes?: string | null;
+          summary?: Json | null;
+          audit_log?: Json;
+        };
+        Update: Partial<Database['public']['Tables']['stock_sessions']['Insert']>;
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -557,11 +765,20 @@ export interface Database {
       };
       accept_open_staff_invite_for_me: {
         Args: Record<PropertyKey, never>;
-        Returns: boolean;
+        Returns: string | null;
       };
       accept_staff_invite: {
         Args: { p_token: string };
-        Returns: undefined;
+        Returns: string;
+      };
+      peek_staff_invite: {
+        Args: { p_token: string };
+        Returns: {
+          shop_name: string;
+          invited_email: string;
+          display_name: string;
+          is_open: boolean;
+        }[];
       };
       ensure_default_shop_roles: {
         Args: { p_business_id: string };

@@ -73,10 +73,21 @@ function naira(n: number): string {
 
 type ToolResult = string;
 
+function startOfLagosDayIso(daysBack = 0): string {
+  const shifted = new Date(Date.now() - daysBack * 86400000);
+  const ymd = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Lagos',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(shifted);
+  return `${ymd}T00:00:00+01:00`;
+}
+
 async function dailyRevenue(businessId: string, args: { days?: number }): Promise<ToolResult> {
   const db = adminClient();
   const days = Math.min(Math.max(args.days ?? 1, 1), 31);
-  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const since = startOfLagosDayIso(days - 1);
   const { data, error } = await db
     .from('sales_records')
     .select('sale_price, quantity_sold, payment_status, returned')
@@ -97,13 +108,12 @@ async function stockCheck(businessId: string, args: { query?: string }): Promise
     .select('name, brand, category, price, mode, status, quantity')
     .eq('user_id', businessId)
     .eq('deleted', false)
+    .or('and(mode.eq.serialized,status.eq.in_stock),and(mode.eq.non_serialized,quantity.gt.0)')
     .limit(15);
   if (args.query) qb = qb.ilike('name', `%${args.query}%`);
   const { data, error } = await qb;
   if (error) return `Query failed: ${error.message}`;
-  const inStock = (data ?? []).filter(i =>
-    i.mode === 'serialized' ? i.status === 'in_stock' : i.quantity > 0
-  );
+  const inStock = data ?? [];
   if (!inStock.length) return args.query ? `No in-stock items matching "${args.query}".` : 'No items in stock.';
   return inStock
     .map(i => `${i.brand} ${i.name} — ${naira(Number(i.price))} (${i.mode === 'serialized' ? '1 unit' : `${i.quantity} units`})`)

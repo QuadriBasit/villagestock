@@ -38,7 +38,7 @@ export default function PurchasingPage() {
   const { contacts: suppliers } = useContacts('supplier');
   const { purchases, supplierDebt, isLoading } = usePurchases();
   const { activeLocationId } = useShopLocation();
-  const { recordPurchase, paySupplier } = usePurchaseActions();
+  const { recordPurchase, paySupplier, markPurchaseReceived } = usePurchaseActions();
 
   const [tab, setTab] = useState<PurchaseTab>('all');
   const [recordOpen, setRecordOpen] = useState(false);
@@ -246,6 +246,10 @@ export default function PurchasingPage() {
             }
             onClose={() => setDetailPurchase(null)}
             onPaySupplier={setPaySupplierContact}
+            onMarkReceived={async purchase => {
+              await markPurchaseReceived(purchase.id);
+              setDetailPurchase({ ...purchase, received_at: new Date().toISOString() });
+            }}
           />
         </Suspense>
       ) : null}
@@ -292,6 +296,9 @@ function PurchaseRow({ record, onOpen }: { record: PurchaseRecord; onOpen: () =>
         >
           {status}
         </Badge>
+        {!record.received_at ? (
+          <p className="mt-1 text-[11px] text-shell-muted">On the way</p>
+        ) : null}
       </div>
     </button>
   );

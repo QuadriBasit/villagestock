@@ -9,10 +9,11 @@ import { RequirePermission } from '@/components/auth/RequirePermission';
 import { ShopAccessProvider, ShopSyncEffects } from '@/context/ShopAccessContext';
 import { ShopLocationProvider } from '@/context/ShopLocationContext';
 import { AppLoadingScreen } from '@/components/ui/AppLoadingScreen';
-import { captureStaffInviteFromLocation, readStaffInviteToken } from '@/lib/staffInviteToken';
+import { captureStaffInviteFromLocation, persistStaffInviteToken, staffInviteTokenFromSearch } from '@/lib/staffInviteToken';
 
 const AppLayout = lazy(() => import('@/components/layout/AppLayout'));
 const AuthPage = lazy(() => import('@/pages/AuthPage'));
+const JoinPage = lazy(() => import('@/pages/JoinPage'));
 const OnboardingPage = lazy(() => import('@/pages/OnboardingPage'));
 const AdminLayout = lazy(() => import('@/components/admin/AdminLayout'));
 const AdminLoginPage = lazy(() => import('@/pages/admin/AdminLoginPage'));
@@ -69,8 +70,10 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
     return <Navigate to="/admin" replace />;
   }
   const joinedExistingShop = Boolean(user && shopOwnerId && (shopOwnerId !== user.id || !isOwner));
-  if (readStaffInviteToken() && !joinedExistingShop && !q.profile?.onboarding_complete) {
-    return <Navigate to="/auth" replace />;
+  const urlInvite = staffInviteTokenFromSearch();
+  if (urlInvite && !joinedExistingShop && !q.profile?.onboarding_complete) {
+    persistStaffInviteToken(urlInvite);
+    return <Navigate to={`/join?invite=${encodeURIComponent(urlInvite)}`} replace />;
   }
   if (!q.profile?.onboarding_complete && !joinedExistingShop) {
     return <Navigate to="/onboarding" replace />;
@@ -123,7 +126,11 @@ function LandingRoute() {
   if (q.status === 'pending') return <AppLoadingScreen label="Loading…" />;
   const joinedExistingShop = Boolean(shopOwnerId && (shopOwnerId !== user.id || !isOwner));
   if (q.profile?.onboarding_complete || joinedExistingShop) return <Navigate to="/dashboard" replace />;
-  if (readStaffInviteToken()) return <Navigate to="/auth" replace />;
+  const urlInvite = staffInviteTokenFromSearch();
+  if (urlInvite) {
+    persistStaffInviteToken(urlInvite);
+    return <Navigate to={`/join?invite=${encodeURIComponent(urlInvite)}`} replace />;
+  }
   return <Navigate to="/onboarding" replace />;
 }
 
@@ -210,6 +217,22 @@ export default function App() {
           element={
             <ShopAccessProvider>
               <AuthPage />
+            </ShopAccessProvider>
+          }
+        />
+        <Route
+          path="/join"
+          element={
+            <ShopAccessProvider>
+              <JoinPage />
+            </ShopAccessProvider>
+          }
+        />
+        <Route
+          path="/join/"
+          element={
+            <ShopAccessProvider>
+              <JoinPage />
             </ShopAccessProvider>
           }
         />

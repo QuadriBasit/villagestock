@@ -19,6 +19,7 @@ import {
   subscribeShopRemoteChanges,
   tryConsumeShopBootstrap,
 } from '@/lib/sync';
+import { clearAllLocalShopData } from '@/lib/db';
 import {
   editSalesAllowed,
   editSwapsAllowed,
@@ -145,6 +146,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
   const loadInFlight = useRef(false);
   const loadCoalesceRef = useRef<{ userId: string; promise: Promise<void>; token: symbol } | null>(null);
   const completedForUserIdRef = useRef<string | null>(null);
+  const membershipRetryRef = useRef(0);
   const [state, setState] = useState<
     Omit<
       ShopAccessValue,
@@ -203,6 +205,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
 
     const loadPromise = (async () => {
       loadInFlight.current = true;
+      let preferredBusinessId: string | null = null;
 
       try {
         const { data: sessionData } = await supabase.auth.getUser();
@@ -214,9 +217,12 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
             (typeof rawToken === 'string' ? rawToken.trim() : '') || readStaffInviteToken() || '';
           let accepted = false;
           if (tokenStr) {
-            const { error: accErr } = await supabase.rpc('accept_staff_invite', { p_token: tokenStr });
+            const { data: acceptedBiz, error: accErr } = await supabase.rpc('accept_staff_invite', {
+              p_token: tokenStr,
+            });
             if (!accErr) {
               accepted = true;
+              preferredBusinessId = typeof acceptedBiz === 'string' ? acceptedBiz : null;
               clearStaffInviteToken();
               await supabase.auth.updateUser({ data: { staff_invite_token: null } });
             } else {
@@ -237,6 +243,7 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
               console.warn('[shop access] accept_open_staff_invite_for_me', openErr.message);
             } else if (acceptedByEmail) {
               accepted = true;
+              preferredBusinessId = typeof acceptedByEmail === 'string' ? acceptedByEmail : null;
               clearStaffInviteToken();
             }
           }
@@ -310,12 +317,22 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
           .from('business_members')
           .select('business_id, role, display_name, allowed_location_ids, role_id, shop_roles(name, slug, permissions)')
           .eq('member_user_id', capturedUserId)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
+          .order('created_at', { ascending: true });
 
         if (error) {
-          console.warn('[shop access] business_members lookup failed; using solo-owner fallback', error);
+          console.warn('[shop access] business_members lookup failed; not inventing a solo shop', error);
+          if (completedForUserIdRef.current === capturedUserId) return;
+          if (membershipRetryRef.current < 1) {
+            membershipRetryRef.current += 1;
+            window.setTimeout(() => { void load(); }, 800);
+          }
+          return;
+        }
+
+        membershipRetryRef.current = 0;
+
+        const rows = (data ?? []) as MemberLookupRow[];
+        if (rows.length === 0) {
           await finishWithPatch({
             shopOwnerId: capturedUserId,
             actorUserId: capturedUserId,
@@ -330,22 +347,10 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        if (!data) {
-          await finishWithPatch({
-            shopOwnerId: capturedUserId,
-            actorUserId: capturedUserId,
-            role: 'owner',
-            roleName: 'Owner',
-            actorDisplayName: null,
-            roleId: null,
-            actorAllowedLocationIds: null,
-            isOwner: true,
-            rolePermissions: permissionsFromLegacyRole('owner'),
-          });
-          return;
-        }
-
-        const row = data as MemberLookupRow;
+        const row =
+          (preferredBusinessId && rows.find(r => r.business_id === preferredBusinessId)) ||
+          (preferredBusinessId && rows.find(r => r.business_id !== capturedUserId)) ||
+          rows[0];
         const isOwner = row.role === 'owner' || row.business_id === capturedUserId;
         const raw = row.allowed_location_ids;
         const actorAllowedLocationIds =
@@ -368,18 +373,11 @@ export function ShopAccessProvider({ children }: { children: ReactNode }) {
           rolePermissions,
         });
       } catch (e) {
-        console.warn('[shop access] business_members network error; using solo-owner fallback', e);
-        await finishWithPatch({
-          shopOwnerId: capturedUserId,
-          actorUserId: capturedUserId,
-          role: 'owner',
-          roleName: 'Owner',
-          actorDisplayName: null,
-          roleId: null,
-          actorAllowedLocationIds: null,
-          isOwner: true,
-          rolePermissions: permissionsFromLegacyRole('owner'),
-        });
+        console.warn('[shop access] business_members network error; not inventing a solo shop', e);
+        if (completedForUserIdRef.current !== capturedUserId && membershipRetryRef.current < 1) {
+          membershipRetryRef.current += 1;
+          window.setTimeout(() => { void load(); }, 800);
+        }
       } finally {
         loadInFlight.current = false;
         const cur = loadCoalesceRef.current;
@@ -420,11 +418,19 @@ export function useShopAccess() {
 
 export function ShopSyncEffects() {
   const { shopOwnerId, status, actorUserId } = useShopAccess();
+  const previousShopOwnerIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!actorUserId || status !== 'ready' || !shopOwnerId) return;
 
+    const previousShopOwnerId = previousShopOwnerIdRef.current;
+    previousShopOwnerIdRef.current = shopOwnerId;
+
     const runInitialPull = async () => {
+      if (previousShopOwnerId && previousShopOwnerId !== shopOwnerId) {
+        resetShopBootstrapDedupe();
+        await clearAllLocalShopData();
+      }
       const allowed = tryConsumeShopBootstrap(actorUserId, shopOwnerId);
       if (!allowed) return;
       try {

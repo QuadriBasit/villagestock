@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useCredits, useCreditRecord, useOutstandingCreditsSummary } from '@/hooks/useCredits';
 import { useCreditActions } from '@/hooks/useCreditActions';
 import { useShopProfile } from '@/hooks/useShopProfile';
-import { buildCreditReminderText, openWhatsApp } from '@/lib/whatsapp';
+import { buildCreditReminderText, normalizePhone, openWhatsApp } from '@/lib/whatsapp';
 import { cn, formatCurrency, formatDate } from '@/lib/utils';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard, StatGrid } from '@/components/ui/StatCard';
@@ -434,7 +434,7 @@ function CreditDetailsModal({ creditId, onClose }: { creditId: string; onClose: 
                 title={record.customer_phone ? 'Send a payment reminder via WhatsApp' : 'No phone number on this credit'}
                 className="border-[#25d366]/40 bg-[#25d366]/10 text-[#25d366] hover:bg-[#25d366]/20"
                 onClick={remindViaWhatsApp}
-                disabled={!record.customer_phone}
+                disabled={!normalizePhone(record.customer_phone)}
               >
                 <MessageCircle size={16} />
                 <span className="hidden sm:inline">Remind via WhatsApp</span>

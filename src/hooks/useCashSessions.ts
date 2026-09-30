@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/db';
+import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
@@ -42,9 +43,12 @@ export function useCashSessionActions() {
       location_id: activeLocationId,
       closed_at: new Date().toISOString(),
       closed_by_label: input.closed_by_label ?? actorLabel,
+      sync_status: 'pending',
     };
 
     await db.cash_sessions.add(record);
+    await queueSync('cash_sessions', 'insert', record as unknown as Record<string, unknown>);
+    void flushSyncQueue();
 
     void logShopAudit({
       businessId: shopOwnerId,

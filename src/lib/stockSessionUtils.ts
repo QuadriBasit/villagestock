@@ -54,7 +54,10 @@ export function computeExpectedClosingIds(
       expected.push(item.id);
       continue;
     }
-    if (new Date(item.created_at).getTime() >= openedAt) {
+    if (
+      new Date(item.created_at).getTime() >= openedAt ||
+      new Date(item.updated_at).getTime() >= openedAt
+    ) {
       expected.push(item.id);
     }
   }

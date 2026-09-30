@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Fuel, Plus, Wallet } from 'lucide-react';
-import { setSetting, getSetting } from '@/lib/db';
+import { getOpeningFloat, setOpeningFloat } from '@/lib/db';
 import { EXPENSE_CATEGORY_ICONS, expenseCategoryLabel } from '@/lib/expenseCategories';
 import { useTodayExpenses } from '@/hooks/useExpenses';
 import { useExpenseActions } from '@/hooks/useExpenseActions';
@@ -48,7 +48,10 @@ export default function CashUpPage() {
   const { closeCashDay } = useCashSessionActions();
   const { activeLocationId } = useShopLocation();
 
-  const openingFloat = useLiveQuery(() => getSetting<number>('opening_float', 0), []);
+  const openingFloat = useLiveQuery(
+    () => (activeLocationId ? getOpeningFloat(activeLocationId) : 0),
+    [activeLocationId],
+  );
 
   const [addOpen, setAddOpen] = useState(false);
   const [countOpen, setCountOpen] = useState(false);
@@ -75,6 +78,7 @@ export default function CashUpPage() {
     { label: 'Opening float', value: formatCurrency(till.openingFloat), tone: 'text-shell-ink' },
     { label: 'Cash sales', value: `+${formatCurrency(till.cashSales)}`, tone: 'text-emerald-400' },
     { label: 'Cash collected on debts', value: `+${formatCurrency(till.cashCollected)}`, tone: 'text-emerald-400' },
+    { label: 'Cash refunds', value: `−${formatCurrency(till.cashRefunds)}`, tone: 'text-red-400' },
     { label: 'Cash expenses', value: `−${formatCurrency(till.cashExpenses)}`, tone: 'text-red-400' },
   ] as const;
 
@@ -194,7 +198,10 @@ export default function CashUpPage() {
               </p>
               <CurrencyInput
                 value={openingFloat ?? till.openingFloat}
-                onValueChange={v => void setSetting('opening_float', v ?? 0)}
+                onValueChange={v => {
+                  if (!activeLocationId) return;
+                  void setOpeningFloat(activeLocationId, v ?? 0);
+                }}
               />
             </CardContent>
           </Card>

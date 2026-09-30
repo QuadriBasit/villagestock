@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/db';
+import { flushSyncQueue, queueSync } from '@/lib/sync';
 import { useAuthStore } from '@/store/auth';
 import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
@@ -22,8 +23,11 @@ export function useExpenseActions() {
       user_id: shopOwnerId,
       location_id: activeLocationId,
       created_at: now,
+      sync_status: 'pending',
     };
     await db.expense_records.add(record);
+    await queueSync('expense_records', 'insert', record as unknown as Record<string, unknown>);
+    void flushSyncQueue();
 
     const actorLabel = await resolveAuditActorLabel(actorUserId, shopOwnerId);
     void logShopAudit({

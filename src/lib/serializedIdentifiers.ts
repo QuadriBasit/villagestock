@@ -12,15 +12,19 @@ export function normalizeScanLookupKeys(raw: string): string[] {
   const keys = new Set<string>([trimmed.toLowerCase()]);
   const digits = normalizeImeiDigits(trimmed);
   if (digits.length >= 8) keys.add(digits);
+  if (digits.length > 15) keys.add(digits.slice(-15));
+  if (digits.length === 16 && digits.startsWith('01')) keys.add(digits.slice(2));
   return [...keys];
 }
 
 export function inventoryItemLookupKeys(
-  item: Pick<InventoryItem, 'imei' | 'serial_number' | 'barcode'>
+  item: Pick<InventoryItem, 'imei' | 'imei2' | 'serial_number' | 'barcode'>
 ): string[] {
   const keys = new Set<string>();
   const imei = normalizeImeiDigits(item.imei);
   if (imei) keys.add(imei);
+  const imei2 = normalizeImeiDigits(item.imei2);
+  if (imei2) keys.add(imei2);
   const sn = (item.serial_number ?? '').trim().toLowerCase();
   if (sn) keys.add(sn);
   const barcode = (item.barcode ?? '').trim().toLowerCase();
@@ -28,8 +32,8 @@ export function inventoryItemLookupKeys(
   return [...keys];
 }
 
-/** Find a checklist row whose IMEI, S/N, or barcode matches the scan. */
-export function findItemByScannedValue<T extends Pick<InventoryItem, 'imei' | 'serial_number' | 'barcode'>>(
+/** Find a checklist row whose IMEI, IMEI2, S/N, or barcode matches the scan. */
+export function findItemByScannedValue<T extends Pick<InventoryItem, 'imei' | 'imei2' | 'serial_number' | 'barcode'>>(
   items: T[],
   scanned: string
 ): T | undefined {
@@ -56,11 +60,14 @@ export function categoryRequiresSerialNumber(category: Category): boolean {
 
 /** `null` if identifiers are OK for a serialized unit; otherwise a user-facing reason. */
 export function saleBlockedMissingIdentifiers(
-  item: Pick<InventoryItem, 'mode' | 'category' | 'imei' | 'serial_number'>
+  item: Pick<InventoryItem, 'mode' | 'category' | 'imei' | 'imei2' | 'serial_number'>
 ): string | null {
   if (item.mode !== 'serialized') return null;
   if (categoryRequiresImei(item.category)) {
-    if (!isPlausibleImei(normalizeImeiDigits(item.imei))) {
+    const hasImei =
+      isPlausibleImei(normalizeImeiDigits(item.imei)) ||
+      isPlausibleImei(normalizeImeiDigits(item.imei2));
+    if (!hasImei) {
       return 'This unit needs a valid IMEI (14–17 digits) before it can be sold. Edit the item and add IMEI.';
     }
   }
@@ -76,10 +83,13 @@ export function saleBlockedMissingIdentifiers(
 export function inventoryMissingRequiredIdentifiers(
   category: Category,
   imei?: string | null,
-  serial_number?: string | null
+  serial_number?: string | null,
+  imei2?: string | null,
 ): string | null {
   if (getCategoryMode(category) !== 'serialized') return null;
-  if (categoryRequiresImei(category) && !isPlausibleImei(normalizeImeiDigits(imei))) {
+  const hasImei =
+    isPlausibleImei(normalizeImeiDigits(imei)) || isPlausibleImei(normalizeImeiDigits(imei2));
+  if (categoryRequiresImei(category) && !hasImei) {
     return 'Phones and tablets need a valid IMEI (14–17 digits).';
   }
   if (categoryRequiresSerialNumber(category) && !(serial_number ?? '').trim()) {

@@ -335,24 +335,44 @@ export async function setSetting<T>(key: string, value: T): Promise<void> {
   await db.settings.put({ key, value } as AppSetting);
 }
 
+export async function getOpeningFloat(locationId: string): Promise<number> {
+  const keyed = await db.settings.get(`opening_float:${locationId}`);
+  if (keyed && typeof keyed.value === 'number') return keyed.value;
+  return getSetting('opening_float', 0);
+}
+
+export async function setOpeningFloat(locationId: string, value: number): Promise<void> {
+  await setSetting(`opening_float:${locationId}`, value);
+}
+
 // ─── Receipt number generation ────────────────────────────────────────────────
 // Format: VS-YYYYMMDD-NNN (NNN = daily sequence number, zero-padded)
 
 export async function generateReceiptNumber(userId: string): Promise<string> {
   const today = new Date();
-  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+  const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
 
   const startOfDay = new Date(today);
   startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(today);
+  endOfDay.setHours(23, 59, 59, 999);
 
   const todayCount = await db.sales_records
     .where('user_id')
     .equals(userId)
-    .filter(s => new Date(s.sold_at) >= startOfDay)
+    .filter(s => {
+      const sold = new Date(s.sold_at);
+      return sold >= startOfDay && sold <= endOfDay;
+    })
     .count();
 
-  const seq = String(todayCount + 1).padStart(3, '0');
-  return `VS-${dateStr}-${seq}`;
+  let seq = todayCount + 1;
+  let receipt = `VS-${dateStr}-${String(seq).padStart(3, '0')}`;
+  while (await db.sales_records.where('receipt_number').equals(receipt).first()) {
+    seq += 1;
+    receipt = `VS-${dateStr}-${String(seq).padStart(3, '0')}`;
+  }
+  return receipt;
 }
 
 // ─── Inventory helpers ────────────────────────────────────────────────────────

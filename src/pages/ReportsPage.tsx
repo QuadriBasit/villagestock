@@ -27,6 +27,7 @@ import {
   type ReportPreset,
 } from '@/hooks/useReports';
 import { useShopProfile } from '@/hooks/useShopProfile';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import { cn, formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard, StatGrid } from '@/components/ui/StatCard';
@@ -44,8 +45,6 @@ const PERIOD_TABS: { value: ActiveView; label: string }[] = [
   { value: 'custom', label: 'Custom' },
 ];
 
-const todayRange = getPresetRange('today');
-const weekRange = getPresetRange('week');
 const defaultCustomRange = getDefaultCustomRange();
 
 function ymdParse(s: string): Date {
@@ -55,6 +54,7 @@ function ymdParse(s: string): Date {
 
 export default function ReportsPage() {
   const navigate = useNavigate();
+  const { canViewProfit } = useShopAccess();
   const { profile, isLoading: isProfileLoading } = useShopProfile();
   const [activeView, setActiveView] = useState<ActiveView>('today');
   const [customStart, setCustomStart] = useState(format(defaultCustomRange.start, 'yyyy-MM-dd'));
@@ -66,10 +66,11 @@ export default function ReportsPage() {
   }));
   const exportRef = useRef(false);
 
+  const dayKey = format(new Date(), 'yyyy-MM-dd');
   const selectedRange = useMemo(() => {
     if (activeView === 'custom') return buildCustomRange(customStart, customEnd);
-    return activeView === 'today' ? todayRange : weekRange;
-  }, [activeView, customStart, customEnd]);
+    return getPresetRange(activeView === 'today' ? 'today' : 'week');
+  }, [activeView, customStart, customEnd, dayKey]);
 
   const { metrics, isLoading } = useReportMetrics(selectedRange);
 
@@ -109,10 +110,14 @@ export default function ReportsPage() {
       writeLine('Summary', { size: 13, bold: true });
       writeMetric('Total items sold', String(metrics.salesCount));
       writeMetric('Total revenue', formatCurrency(metrics.revenue));
-      writeMetric('Total profit', formatCurrency(metrics.profit));
+      if (canViewProfit) {
+        writeMetric('Total profit', formatCurrency(metrics.profit));
+      }
       writeMetric('Total returns', String(metrics.returnsCount));
       writeMetric('Refund value', formatCurrency(metrics.refundValue));
-      writeMetric('Net profit', formatCurrency(metrics.netProfit));
+      if (canViewProfit) {
+        writeMetric('Net profit', formatCurrency(metrics.netProfit));
+      }
       y += 3;
 
       writeLine('Cash & costs', { size: 13, bold: true });
@@ -121,7 +126,9 @@ export default function ReportsPage() {
       writeMetric('Non-cash expenses', formatCurrency(metrics.nonCashExpenses));
       writeMetric('Recurring (est.)', formatCurrency(metrics.recurringEstimate));
       writeMetric('Total costs', formatCurrency(metrics.totalCosts));
-      writeMetric('Net after costs', formatCurrency(metrics.netAfterCosts));
+      if (canViewProfit) {
+        writeMetric('Net after costs', formatCurrency(metrics.netAfterCosts));
+      }
       y += 3;
 
       writeLine('Serialized Counts', { size: 13, bold: true });
@@ -336,12 +343,14 @@ export default function ReportsPage() {
         <StatGrid className="sm:grid-cols-2 xl:grid-cols-3">
           <StatCard label="Items sold" value={String(metrics.salesCount)} icon={TrendingUp} />
           <StatCard label="Revenue" value={formatCurrency(metrics.revenue)} icon={BarChart3} />
-          <StatCard
-            label="Profit"
-            value={formatCurrency(metrics.profit)}
-            icon={PiggyBank}
-            iconClassName="text-emerald-400"
-          />
+          {canViewProfit ? (
+            <StatCard
+              label="Profit"
+              value={formatCurrency(metrics.profit)}
+              icon={PiggyBank}
+              iconClassName="text-emerald-400"
+            />
+          ) : null}
           <StatCard label="Returns" value={String(metrics.returnsCount)} icon={RotateCcw} />
           <StatCard
             label="Refund value"
@@ -349,13 +358,15 @@ export default function ReportsPage() {
             icon={RotateCcw}
             iconClassName="text-red-400"
           />
-          <StatCard
-            label="Net profit"
-            value={formatCurrency(metrics.netProfit)}
-            icon={TrendingUp}
-            iconClassName="text-brand-300"
-            hint="After returns, before expenses"
-          />
+          {canViewProfit ? (
+            <StatCard
+              label="Net profit"
+              value={formatCurrency(metrics.netProfit)}
+              icon={TrendingUp}
+              iconClassName="text-brand-300"
+              hint="After returns, before expenses"
+            />
+          ) : null}
         </StatGrid>
       </ReportSection>
 
@@ -396,13 +407,15 @@ export default function ReportsPage() {
             icon={Fuel}
             iconClassName="text-red-400"
           />
-          <StatCard
-            label="Net after costs"
-            value={formatCurrency(metrics.netAfterCosts)}
-            hint="Sales net profit minus all costs"
-            icon={PiggyBank}
-            iconClassName={metrics.netAfterCosts >= 0 ? 'text-brand-300' : 'text-red-400'}
-          />
+          {canViewProfit ? (
+            <StatCard
+              label="Net after costs"
+              value={formatCurrency(metrics.netAfterCosts)}
+              hint="Sales net profit minus all costs"
+              icon={PiggyBank}
+              iconClassName={metrics.netAfterCosts >= 0 ? 'text-brand-300' : 'text-red-400'}
+            />
+          ) : null}
         </StatGrid>
         <button
           type="button"
@@ -444,12 +457,14 @@ export default function ReportsPage() {
               : undefined
           }
         />
-        <HighlightCard
-          title="Highest profit item"
-          description="Top profit contributor in this period."
-          value={metrics.highestProfitItem?.label ?? 'No sales yet'}
-          subvalue={metrics.highestProfitItem ? formatCurrency(metrics.highestProfitItem.profit) : undefined}
-        />
+        {canViewProfit ? (
+          <HighlightCard
+            title="Highest profit item"
+            description="Top profit contributor in this period."
+            value={metrics.highestProfitItem?.label ?? 'No sales yet'}
+            subvalue={metrics.highestProfitItem ? formatCurrency(metrics.highestProfitItem.profit) : undefined}
+          />
+        ) : null}
       </section>
 
       <section className="grid gap-3 lg:grid-cols-2">

@@ -370,7 +370,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  const inviteUrl = `${siteUrl.replace(/\/$/, '')}/auth?invite=${token}`;
+  const inviteUrl = `${siteUrl.replace(/\/$/, '')}/join?invite=${token}`;
 
   const { data: shopRow } = await admin
     .from('business_profiles')

@@ -277,7 +277,10 @@ function buildMetrics(
     tablets: 0,
   };
 
+  const returnedSaleIds = new Set(sales.filter(sale => sale.returned).map(sale => sale.id));
+
   for (const sale of sales) {
+    if (sale.returned) continue;
     salesCount += sale.quantity_sold;
     revenue += sale.sale_price * sale.quantity_sold;
     profit += sale.profit;
@@ -304,6 +307,9 @@ function buildMetrics(
   }
 
   const refundValue = returns.reduce((sum, record) => sum + record.refund_amount, 0);
+  const priorPeriodRefunds = returns
+    .filter(record => !returnedSaleIds.has(record.sale_id))
+    .reduce((sum, record) => sum + record.refund_amount, 0);
   const totalTradeInValue = swaps.reduce((sum, swap) => sum + swap.trade_in_value, 0);
   const totalBalanceCollected = swaps.reduce((sum, swap) => sum + swap.balance_paid, 0);
   const bestSellingModel = getHighestEntry(modelTotals, 'units');
@@ -324,7 +330,7 @@ function buildMetrics(
     0,
   );
   const totalCosts = loggedExpenses + recurringEstimate;
-  const netProfit = profit - refundValue;
+  const netProfit = profit - priorPeriodRefunds;
   const netAfterCosts = netProfit - totalCosts;
 
   const expenseBreakdown = [...expenseTotals.entries()]

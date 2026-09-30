@@ -210,7 +210,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
           balance_owed: data.payment_status === "credit" ? balanceOwed : 0,
           due_date:
             data.payment_status === "credit" && data.due_date
-              ? new Date(data.due_date).toISOString()
+              ? new Date(`${data.due_date}T12:00:00`).toISOString()
               : undefined,
           customer_name: data.customer_name || undefined,
           customer_phone: data.customer_phone || undefined,
@@ -227,7 +227,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
                 item_name: item.name,
                 total_amount: totalAmount,
                 amount_paid: data.amount_paid ?? 0,
-                due_date: new Date(data.due_date!).toISOString(),
+                due_date: new Date(`${data.due_date!}T12:00:00`).toISOString(),
                 payments:
                   data.amount_paid && data.amount_paid > 0
                     ? [
