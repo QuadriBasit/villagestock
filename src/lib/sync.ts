@@ -1342,7 +1342,9 @@ export async function pullRemoteStockSessions(userId: string): Promise<void> {
     status: row.status,
     notes: row.notes ?? undefined,
     summary: (row.summary ?? undefined) as StockSession['summary'],
-    audit_log: Array.isArray(row.audit_log) ? (row.audit_log as StockSession['audit_log']) : [],
+    audit_log: Array.isArray(row.audit_log)
+      ? (row.audit_log as unknown as StockSession['audit_log'])
+      : [],
     sync_status: 'synced',
   }));
   await mergePulledRows(db.stock_sessions, mapped);

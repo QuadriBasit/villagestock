@@ -52,7 +52,6 @@ function defaultDueDate(): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
-}
 
 function lineTotal(line: CartLine): number {
   const qty = line.item.mode === 'serialized' ? 1 : line.qty;
