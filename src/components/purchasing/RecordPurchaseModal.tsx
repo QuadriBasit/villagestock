@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Check, Plus, X } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
 import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { ChoiceGrid } from '@/components/ui/ChoiceGrid';
 import { Button } from '@/components/ui/Button';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
-import { Input } from '@/components/ui/Input';
+import { inputShellClass } from '@/components/ui/Input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
-import { purchaseOrderLabel, purchaseOwed } from '@/lib/purchasing';
+import { PurchaseLineFields } from '@/components/purchasing/PurchaseLineFields';
+import { blankPurchaseLine, purchaseLineStockError, purchaseOrderLabel, purchaseOwed } from '@/lib/purchasing';
 import { cn, formatCurrency } from '@/lib/utils';
 import { modalSheetBodyScroll, modalSheetPanelMd } from '@/lib/modalSheet';
-import type { ContactRecord, PaymentMethod, PurchaseLine, PurchaseRecord, PurchaseTerms } from '@/types';
+import type { ContactRecord, PaymentMethod, PurchaseArrival, PurchaseLine, PurchaseRecord, PurchaseTerms } from '@/types';
 
 const TERMS_OPTIONS: { value: PurchaseTerms; label: string }[] = [
   { value: 'paid', label: 'Paid' },
@@ -31,6 +32,8 @@ type RecordPurchaseModalProps = {
   open: boolean;
   suppliers: ContactRecord[];
   presetSupplierId?: string;
+  /** False when the role can record a bill but cannot add products. */
+  canStock?: boolean;
   onClose: () => void;
   onSave: (input: {
     supplier_contact_id: string;
@@ -41,6 +44,7 @@ type RecordPurchaseModalProps = {
     payment_method: PaymentMethod;
     terms: PurchaseTerms;
     purchased_at: string;
+    arrival: PurchaseArrival;
   }) => Promise<PurchaseRecord>;
 };
 
@@ -48,27 +52,32 @@ export default function RecordPurchaseModal({
   open,
   suppliers,
   presetSupplierId,
+  canStock = true,
   onClose,
   onSave,
 }: RecordPurchaseModalProps) {
   const [supplierId, setSupplierId] = useState('');
-  const [lines, setLines] = useState<PurchaseLine[]>([{ name: '', qty: 1, unit_cost: 0 }]);
+  const [lines, setLines] = useState<PurchaseLine[]>([blankPurchaseLine()]);
+  const [arrival, setArrival] = useState<PurchaseArrival>('in_shop');
   const [terms, setTerms] = useState<PurchaseTerms>('paid');
   const [paidNow, setPaidNow] = useState(0);
   const [method, setMethod] = useState<PaymentMethod>('bank_transfer');
   const [done, setDone] = useState<PurchaseRecord | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setSupplierId(presetSupplierId || suppliers[0]?.id || '');
-    setLines([{ name: '', qty: 1, unit_cost: 0 }]);
+    setLines([blankPurchaseLine()]);
+    setArrival(canStock ? 'in_shop' : 'on_the_way');
     setTerms('paid');
     setPaidNow(0);
     setMethod('bank_transfer');
     setDone(null);
     setSaving(false);
-  }, [open, presetSupplierId, suppliers]);
+    setError(null);
+  }, [open, presetSupplierId, suppliers, canStock]);
 
   const total = useMemo(
     () => lines.reduce((sum, line) => sum + (line.qty || 0) * (line.unit_cost || 0), 0),
@@ -76,29 +85,30 @@ export default function RecordPurchaseModal({
   );
   const paid = terms === 'paid' ? total : terms === 'credit' ? 0 : Math.min(paidNow, total);
   const owed = total - paid;
-  const valid = !!supplierId && lines.some(l => l.name.trim() && l.qty > 0 && l.unit_cost > 0);
+  const filled = lines.filter(l => l.name.trim() && l.qty > 0 && l.unit_cost > 0);
+  const stockError = arrival === 'in_shop' ? filled.map(purchaseLineStockError).find(Boolean) ?? null : null;
+  const valid = !!supplierId && filled.length > 0 && !stockError;
   const supplier = suppliers.find(s => s.id === supplierId);
-
-  const setLine = (index: number, patch: Partial<PurchaseLine>) => {
-    setLines(current => current.map((line, i) => (i === index ? { ...line, ...patch } : line)));
-  };
 
   const save = async () => {
     if (!valid || !supplier) return;
     setSaving(true);
+    setError(null);
     try {
-      const items = lines.filter(l => l.name.trim() && l.qty > 0 && l.unit_cost > 0);
       const record = await onSave({
         supplier_contact_id: supplier.id,
         supplier_name: supplier.name,
-        items,
+        items: filled,
         total,
         paid,
         payment_method: method,
         terms,
         purchased_at: new Date().toISOString(),
+        arrival,
       });
       setDone(record);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not record this purchase');
     } finally {
       setSaving(false);
     }
@@ -131,6 +141,7 @@ export default function RecordPurchaseModal({
                   {purchaseOwed(done) > 0
                     ? ` · ${formatCurrency(purchaseOwed(done))} on credit`
                     : ' · paid in full'}
+                  {done.received_at ? ' · added to inventory' : ' · still on the way'}
                   .
                 </p>
                 <Button className="mt-5 w-full bg-brand-400 text-[#04231d] hover:bg-brand-300" onClick={onClose}>
@@ -159,57 +170,25 @@ export default function RecordPurchaseModal({
                   </Select>
                 </Field>
 
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-shell-muted">Items</p>
-                  <div className="space-y-2">
-                    {lines.map((line, index) => (
-                      <div key={index} className="grid grid-cols-[1fr_3.5rem_6.5rem_1.75rem] items-center gap-2">
-                        <Input
-                          value={line.name}
-                          onChange={e => setLine(index, { name: e.target.value })}
-                          placeholder="Product"
-                          className="shell-inset-field h-10 rounded-lg border border-shell-line bg-shell-surface-2/40 px-3 text-sm text-shell-ink outline-none placeholder:text-shell-muted"
-                        />
-                        <Input
-                          type="number"
-                          min={1}
-                          value={line.qty}
-                          onChange={e => setLine(index, { qty: Math.max(0, Number(e.target.value) || 0) })}
-                          className="shell-inset-field h-10 rounded-lg border border-shell-line bg-shell-surface-2/40 px-2 text-center font-mono text-sm text-shell-ink outline-none"
-                        />
-                        <CurrencyInput
-                          value={line.unit_cost}
-                          onValueChange={v => setLine(index, { unit_cost: v ?? 0 })}
-                          className="h-10"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            setLines(current =>
-                              current.length > 1 ? current.filter((_, i) => i !== index) : current
-                            )
-                          }
-                          disabled={lines.length <= 1}
-                          className="size-7 rounded-lg text-shell-muted hover:text-shell-ink disabled:opacity-35"
-                          aria-label="Remove line"
-                        >
-                          <X size={14} />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="mt-2 h-auto p-0 text-xs font-semibold text-brand-300 hover:text-brand-200"
-                    onClick={() => setLines(current => [...current, { name: '', qty: 1, unit_cost: 0 }])}
-                  >
-                    <Plus size={14} />
-                    Add line
-                  </Button>
-                </div>
+                <PurchaseLineFields lines={lines} onChange={setLines} stockFields={arrival === 'in_shop'} />
+
+                <Field label="Goods">
+                  {canStock ? (
+                    <ChoiceGrid
+                      columns={2}
+                      options={[
+                        { value: 'in_shop' as const, label: 'Already here' },
+                        { value: 'on_the_way' as const, label: 'Still on the way' },
+                      ]}
+                      value={arrival}
+                      onChange={setArrival}
+                    />
+                  ) : (
+                    <p className="text-sm text-shell-muted">
+                      This bill stays on the way. Putting the goods on the shelf needs the Add products permission.
+                    </p>
+                  )}
+                </Field>
 
                 <Field label="Terms">
                   <ChoiceGrid
@@ -221,7 +200,11 @@ export default function RecordPurchaseModal({
 
                 {terms === 'partial' ? (
                   <Field label="Paid now">
-                    <CurrencyInput value={paidNow} onValueChange={v => setPaidNow(Math.min(v ?? 0, total))} />
+                    <CurrencyInput
+                      value={paidNow}
+                      onValueChange={v => setPaidNow(Math.min(v ?? 0, total))}
+                      className={cn(inputShellClass, 'font-mono')}
+                    />
                   </Field>
                 ) : null}
 
@@ -233,6 +216,12 @@ export default function RecordPurchaseModal({
                       onChange={setMethod}
                     />
                   </Field>
+                ) : null}
+
+                {error || stockError ? (
+                  <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                    {error || stockError}
+                  </p>
                 ) : null}
 
                 <div className="flex items-center justify-between gap-4 rounded-lg border border-brand-400/20 bg-brand-400/10 px-4 py-3.5">

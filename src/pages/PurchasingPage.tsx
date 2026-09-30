@@ -3,6 +3,7 @@ import { AlertTriangle, Plus, ShoppingBag, Truck } from 'lucide-react';
 import { useContacts } from '@/hooks/useContacts';
 import { usePurchases } from '@/hooks/usePurchases';
 import { usePurchaseActions } from '@/hooks/usePurchaseActions';
+import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard, StatGrid } from '@/components/ui/StatCard';
@@ -24,6 +25,7 @@ import type { ContactRecord, PurchaseRecord } from '@/types';
 const RecordPurchaseModal = lazy(() => import('@/components/purchasing/RecordPurchaseModal'));
 const PaySupplierModal = lazy(() => import('@/components/purchasing/PaySupplierModal'));
 const PurchaseDetailModal = lazy(() => import('@/components/purchasing/PurchaseDetailModal'));
+const ReceivePurchaseModal = lazy(() => import('@/components/purchasing/ReceivePurchaseModal'));
 
 const PURCHASE_TABS: { value: PurchaseTab; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -37,13 +39,16 @@ const TABLE_GRID =
 export default function PurchasingPage() {
   const { contacts: suppliers } = useContacts('supplier');
   const { purchases, supplierDebt, isLoading } = usePurchases();
+  const { hasPermission } = useShopAccess();
+  const canAddItems = hasPermission('add_items');
   const { activeLocationId } = useShopLocation();
-  const { recordPurchase, paySupplier, markPurchaseReceived } = usePurchaseActions();
+  const { recordPurchase, paySupplier, receivePurchase } = usePurchaseActions();
 
   const [tab, setTab] = useState<PurchaseTab>('all');
   const [recordOpen, setRecordOpen] = useState(false);
   const [paySupplierContact, setPaySupplierContact] = useState<ContactRecord | null>(null);
   const [detailPurchase, setDetailPurchase] = useState<PurchaseRecord | null>(null);
+  const [receiveTarget, setReceiveTarget] = useState<PurchaseRecord | null>(null);
 
   const owingSuppliers = useMemo(
     () =>
@@ -216,6 +221,7 @@ export default function PurchasingPage() {
           <RecordPurchaseModal
             open={recordOpen}
             suppliers={suppliers}
+            canStock={canAddItems}
             onClose={() => setRecordOpen(false)}
             onSave={async input => {
               if (!activeLocationId) throw new Error('Select a branch first');
@@ -246,9 +252,27 @@ export default function PurchasingPage() {
             }
             onClose={() => setDetailPurchase(null)}
             onPaySupplier={setPaySupplierContact}
-            onMarkReceived={async purchase => {
-              await markPurchaseReceived(purchase.id);
-              setDetailPurchase({ ...purchase, received_at: new Date().toISOString() });
+            onMarkReceived={
+              canAddItems
+                ? purchase => {
+                    setDetailPurchase(null);
+                    setReceiveTarget(purchase);
+                  }
+                : undefined
+            }
+          />
+        </Suspense>
+      ) : null}
+
+      {receiveTarget ? (
+        <Suspense fallback={null}>
+          <ReceivePurchaseModal
+            purchase={receiveTarget}
+            onClose={() => setReceiveTarget(null)}
+            onReceive={async items => {
+              const updated = await receivePurchase(receiveTarget.id, items);
+              setReceiveTarget(null);
+              setDetailPurchase(updated);
             }}
           />
         </Suspense>

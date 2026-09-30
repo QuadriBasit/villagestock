@@ -6,23 +6,105 @@ import { useShopAccess } from '@/context/ShopAccessContext';
 import { useShopLocation } from '@/context/ShopLocationContext';
 import { logShopAudit } from '@/lib/audit';
 import { resolveAuditActorLabel } from '@/lib/auditActorLabel';
-import type { PurchaseRecord, PurchaseRecordInput } from '@/types';
+import { purchaseLineBrand, purchaseLineStockError } from '@/lib/purchasing';
+import { normalizeImeiDigits } from '@/lib/serializedIdentifiers';
+import { getCategoryMode, type PurchaseArrival, type PurchaseLine, type PurchaseRecord, type PurchaseRecordInput } from '@/types';
+import { useInventoryActions } from '@/hooks/useInventoryActions';
 
 export function usePurchaseActions() {
   const { user } = useAuthStore();
-  const { shopOwnerId, actorUserId } = useShopAccess();
+  const { shopOwnerId, actorUserId, hasPermission } = useShopAccess();
   const { activeLocationId, ready: locationReady } = useShopLocation();
+  const { addItem } = useInventoryActions();
 
-  async function recordPurchase(input: PurchaseRecordInput): Promise<PurchaseRecord> {
+  async function stockPurchaseLines(lines: PurchaseLine[]): Promise<PurchaseLine[]> {
+    for (const line of lines) {
+      const err = purchaseLineStockError(line);
+      if (err) throw new Error(err);
+    }
+    const seen = new Set<string>();
+    for (const line of lines) {
+      if (!line.category || getCategoryMode(line.category) !== 'serialized') continue;
+      for (const raw of line.unit_ids ?? []) {
+        const key = line.category === 'laptops' ? raw.trim().toLowerCase() : normalizeImeiDigits(raw);
+        if (seen.has(key)) throw new Error(`${line.name} repeats ${raw.trim()}.`);
+        seen.add(key);
+      }
+    }
+    if (shopOwnerId && seen.size > 0) {
+      const existing = await db.inventory_items.where('user_id').equals(shopOwnerId).toArray();
+      const taken = new Set<string>();
+      for (const item of existing) {
+        if (item.deleted) continue;
+        const imei = normalizeImeiDigits(item.imei);
+        const imei2 = normalizeImeiDigits(item.imei2);
+        const serial = (item.serial_number ?? '').trim().toLowerCase();
+        if (imei) taken.add(imei);
+        if (imei2) taken.add(imei2);
+        if (serial) taken.add(serial);
+      }
+      for (const key of seen) {
+        if (taken.has(key)) throw new Error(`${key} is already in stock.`);
+      }
+    }
+
+    const stocked: PurchaseLine[] = [];
+    for (const line of lines) {
+      const category = line.category!;
+      const brand = purchaseLineBrand(line);
+      const name = line.name.trim();
+      const price = line.sell_price!;
+      if (getCategoryMode(category) === 'serialized') {
+        for (const raw of line.unit_ids ?? []) {
+          await addItem({
+            name,
+            category,
+            brand,
+            price,
+            cost_price: line.unit_cost,
+            quantity: 1,
+            low_stock_threshold: 0,
+            ...(category === 'laptops'
+              ? { serial_number: raw.trim() }
+              : { imei: normalizeImeiDigits(raw) }),
+          });
+        }
+      } else {
+        await addItem({
+          name,
+          category,
+          brand,
+          price,
+          cost_price: line.unit_cost,
+          quantity: line.qty,
+          low_stock_threshold: 5,
+        });
+      }
+      stocked.push({ ...line, name, brand });
+    }
+    return stocked;
+  }
+
+  async function recordPurchase(
+    input: PurchaseRecordInput & { arrival?: PurchaseArrival },
+  ): Promise<PurchaseRecord> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
+    if (!hasPermission('access_purchasing')) throw new Error('You cannot record purchases.');
     const now = new Date().toISOString();
+    const { arrival = 'on_the_way', ...rest } = input;
+    if (arrival === 'in_shop' && !hasPermission('add_items')) {
+      throw new Error('You can record the bill. Adding these to stock needs Add products.');
+    }
+    const items = arrival === 'in_shop' ? await stockPurchaseLines(rest.items) : rest.items;
     const record: PurchaseRecord = {
-      ...input,
+      ...rest,
+      items,
       id: uuidv4(),
       user_id: shopOwnerId,
       location_id: activeLocationId,
       created_at: now,
+      received_at: arrival === 'in_shop' ? now : undefined,
       sync_status: 'pending',
     };
     await db.purchase_records.add(record);
@@ -58,20 +140,33 @@ export function usePurchaseActions() {
     return record;
   }
 
-  async function markPurchaseReceived(id: string): Promise<void> {
+  async function receivePurchase(id: string, items: PurchaseLine[]): Promise<PurchaseRecord> {
     const row = await db.purchase_records.get(id);
     if (!row) throw new Error('Purchase not found');
-    if (row.received_at) return;
+    if (row.received_at) return row;
+    if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
+    if (!hasPermission('access_purchasing') || !hasPermission('add_items')) {
+      throw new Error('Receiving a purchase into stock needs Purchasing and Add products.');
+    }
+    if (row.location_id !== activeLocationId) {
+      throw new Error('Switch to the branch this purchase belongs to.');
+    }
+    const stocked = await stockPurchaseLines(items);
+    const now = new Date().toISOString();
     await db.purchase_records.update(id, {
-      received_at: new Date().toISOString(),
+      items: stocked,
+      received_at: now,
       sync_status: 'pending',
     });
     const latest = await db.purchase_records.get(id);
-    if (latest) await queueSync('purchase_records', 'update', latest as unknown as Record<string, unknown>);
+    if (!latest) throw new Error('Purchase not found');
+    await queueSync('purchase_records', 'update', latest as unknown as Record<string, unknown>);
     void flushSyncQueue();
+    return latest;
   }
 
   async function paySupplier(contactId: string, amount: number): Promise<void> {
+    if (!hasPermission('access_purchasing')) throw new Error('You cannot pay suppliers.');
     const supplier = await db.contacts.get(contactId);
     if (!supplier) throw new Error('Supplier not found');
     const paid = Math.min(amount, supplier.balance_owed);
@@ -102,5 +197,5 @@ export function usePurchaseActions() {
     void flushSyncQueue();
   }
 
-  return { recordPurchase, paySupplier, markPurchaseReceived };
+  return { recordPurchase, paySupplier, receivePurchase };
 }

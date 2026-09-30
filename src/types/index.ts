@@ -548,7 +548,15 @@ export interface PurchaseLine {
   name: string;
   qty: number;
   unit_cost: number;
+  category?: Category;
+  brand?: string;
+  /** Selling price, required when the goods are stocked. */
+  sell_price?: number;
+  /** One IMEI or serial per serialized unit. */
+  unit_ids?: string[];
 }
+
+export type PurchaseArrival = 'in_shop' | 'on_the_way';
 
 export type PurchaseTerms = 'paid' | 'credit' | 'partial';
 

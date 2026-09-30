@@ -54,7 +54,7 @@ export const SHOP_PERMISSION_GROUPS = [
       {
         key: 'add_items',
         label: 'Add products',
-        hint: 'Add new inventory items and receive stock.',
+        hint: 'Add products, and put a received purchase on the shelf.',
       },
       {
         key: 'edit_items',
@@ -91,7 +91,7 @@ export const SHOP_PERMISSION_GROUPS = [
       {
         key: 'access_purchasing',
         label: 'Purchasing',
-        hint: 'Record supplier purchases and pay suppliers.',
+        hint: 'Record supplier bills and pay suppliers. Putting those goods in stock also needs Add products.',
       },
       {
         key: 'manage_credits',

@@ -103,8 +103,9 @@ export default function PurchaseDetailModal({
 
             {!purchase.received_at ? (
               <p className="mt-3 text-xs text-shell-muted">
-                Goods that are still on the way do not go into inventory. Mark arrived when they
-                are on the shelf, then add the units in Inventory.
+                {onMarkReceived
+                  ? 'These goods are still on the way, so they are not in inventory. Receive them when they are in the shop. Phones need an IMEI before they can be sold.'
+                  : 'These goods are still on the way. Receiving them into stock needs the Add products permission.'}
               </p>
             ) : null}
 
@@ -137,7 +138,7 @@ export default function PurchaseDetailModal({
                 className="mt-2 w-full bg-brand-400 text-[#04231d] hover:bg-brand-300"
                 onClick={() => onMarkReceived(purchase)}
               >
-                <Box size={16} /> Mark arrived
+                <Box size={16} /> Receive into stock
               </Button>
             ) : null}
           </div>
