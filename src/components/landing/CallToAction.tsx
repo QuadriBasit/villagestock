@@ -12,7 +12,9 @@ export function CallToAction() {
         </p>
         <Link to="/auth" className="landing-btn landing-btn-primary landing-btn-lg">
           Start your free trial
-          <svg className="btn-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          <svg className="btn-arrow" viewBox="0 0 24 24" aria-hidden>
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
         </Link>
       </div>
     </section>

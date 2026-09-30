@@ -16,7 +16,12 @@ import {
 } from '@/lib/existingProductIntake';
 import { ComboboxField } from '@/components/ui/ComboboxField';
 import { DateTimeField } from '@/components/ui/DateTimeField';
-import { suggestedNamesForCategoryAndBrand } from '@/lib/devicePresets';
+import { rememberModelName, useModelNameSuggestions } from '@/lib/modelNameSuggestions';
+import { ChoiceGrid } from '@/components/ui/ChoiceGrid';
+import { CurrencyInput } from '@/components/ui/CurrencyInput';
+import { inputShellClass } from '@/components/ui/Input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import type { ContactRecord, PaymentMethod, PurchaseArrival, PurchaseLine, PurchaseRecord, PurchaseTerms } from '@/types';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
 import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
@@ -27,12 +32,12 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { modalSheetPanelLg } from '@/lib/modalSheet';
 import {
   buildIntakeItems,
-  buildSingleIntakeItem,
   flowSteps,
   idTypeFor,
   isIdmFlagged,
-  resetForCategory,
+  purchaseLinesFromIntake,
   stockValue,
+  switchCategory,
   totalUnits,
 } from './buildItems';
 import { itemToAddProductState } from './parseItem';
@@ -64,6 +69,8 @@ import {
   blankAddProductState,
   CAT_META,
   INTAKE_FAULTS,
+  isHandheldCat,
+  isSimpleStockCat,
   syncVariants,
   syncVariantsForEdit,
   type AddProductState,
@@ -73,12 +80,44 @@ const BarcodeScanner = lazy(() => import('@/components/inventory/BarcodeScanner'
 
 type ScanTarget = { label: string; index: number };
 
+type PurchaseFlowSave = {
+  supplier_contact_id: string;
+  supplier_name: string;
+  items: PurchaseLine[];
+  total: number;
+  paid: number;
+  payment_method: PaymentMethod;
+  terms: PurchaseTerms;
+  purchased_at: string;
+  arrival: PurchaseArrival;
+  alreadyStocked?: boolean;
+};
+
 type AddProductFlowProps = {
   open: boolean;
   onClose: () => void;
   /** When set, wizard edits an existing inventory row instead of creating new ones. */
   itemId?: string;
+  /** Same product steps as inventory, then a supplier bill. */
+  purchase?: {
+    suppliers: ContactRecord[];
+    presetSupplierId?: string;
+    canStock?: boolean;
+    onSave: (input: PurchaseFlowSave) => Promise<PurchaseRecord>;
+  };
 };
+
+const PURCHASE_TERMS: { value: PurchaseTerms; label: string }[] = [
+  { value: 'paid', label: 'Paid' },
+  { value: 'partial', label: 'Part-pay' },
+  { value: 'credit', label: 'Credit' },
+];
+
+const PURCHASE_PAY: { value: PaymentMethod; label: string }[] = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'bank_transfer', label: 'Transfer' },
+  { value: 'pos', label: 'POS' },
+];
 
 type SavedSummary = {
   count: number;
@@ -86,7 +125,7 @@ type SavedSummary = {
   engineer: string | null;
 };
 
-export default function AddProductFlow({ open, onClose, itemId }: AddProductFlowProps) {
+export default function AddProductFlow({ open, onClose, itemId, purchase }: AddProductFlowProps) {
   const isEdit = Boolean(itemId);
   const { shopOwnerId } = useShopAccess();
   const { activeLocationId, ready: locationReady } = useShopLocation();
@@ -96,8 +135,17 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
   const { addItem, updateItem } = useInventoryActions();
   const { sendToEngineer } = useRepairActions();
   const mergedModelRef = useRef('');
+  const hydratedFor = useRef<string | null>(null);
+  const sessionOpen = useRef(false);
 
   const [state, setState] = useState<AddProductState>(() => blankAddProductState(engineerDefault));
+  const [drafts, setDrafts] = useState<AddProductState[]>([]);
+  const [supplierId, setSupplierId] = useState('');
+  const [arrival, setArrival] = useState<PurchaseArrival>('in_shop');
+  const [terms, setTerms] = useState<PurchaseTerms>('paid');
+  const [paidNow, setPaidNow] = useState(0);
+  const [method, setMethod] = useState<PaymentMethod>('bank_transfer');
+  const [purchaseDone, setPurchaseDone] = useState<PurchaseRecord | null>(null);
   const [step, setStep] = useState(0);
   const [saved, setSaved] = useState<SavedSummary | null>(null);
   const [saving, setSaving] = useState(false);
@@ -106,17 +154,28 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
   const [scanTarget, setScanTarget] = useState<ScanTarget | null>(null);
 
   useEffect(() => {
-    if (!open) return;
-    if (isEdit) return;
+    if (!open) {
+      sessionOpen.current = false;
+      return;
+    }
+    if (isEdit || sessionOpen.current) return;
+    sessionOpen.current = true;
     mergedModelRef.current = '';
     setState(blankAddProductState(engineerDefault));
+    setDrafts([]);
+    setSupplierId(purchase?.presetSupplierId || purchase?.suppliers[0]?.id || '');
+    setArrival(purchase?.canStock === false ? 'on_the_way' : 'in_shop');
+    setTerms('paid');
+    setPaidNow(0);
+    setMethod('bank_transfer');
+    setPurchaseDone(null);
     setStep(0);
     setSaved(null);
     setSaving(false);
     setSaveError(null);
     setLoadError(null);
     setScanTarget(null);
-  }, [open, engineerDefault, isEdit]);
+  }, [open, isEdit, engineerDefault, purchase]);
 
   const existingProductItems = useLiveQuery(async () => {
     if (isEdit || !open || !shopOwnerId || !locationReady || !activeLocationId) return [];
@@ -160,8 +219,13 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
   }, [existingProductItems]);
 
   useEffect(() => {
-    if (!open || !isEdit || !itemId) return;
+    if (!open) {
+      hydratedFor.current = null;
+      return;
+    }
+    if (!isEdit || !itemId) return;
     if (editItemLoading) return;
+    if (hydratedFor.current === itemId) return;
     if (!editItem || editItem.deleted) {
       setLoadError('Item not found');
       return;
@@ -171,6 +235,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
       setLoadError('This item type cannot be edited in the product wizard yet.');
       return;
     }
+    hydratedFor.current = itemId;
     setState(parsed);
     setStep(0);
     setSaved(null);
@@ -183,16 +248,16 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
 
   const set = (patch: Partial<AddProductState>) => setState(p => ({ ...p, ...patch }));
 
-  const steps = useMemo(() => flowSteps(state), [state]);
+  const steps = useMemo(
+    () => flowSteps(state, { skipSerials: Boolean(purchase) && arrival !== 'in_shop' }),
+    [state, purchase, arrival],
+  );
   const cur = steps[Math.min(step, steps.length - 1)] ?? 'Identify';
   const meta = CAT_META[state.cat];
-  const nameSuggestions = useMemo(
-    () => suggestedNamesForCategoryAndBrand(meta.category, state.brand),
-    [meta.category, state.brand],
-  );
-  const needsInspect = (state.cat === 'Phone' || state.cat === 'Laptop') && state.condition !== 'New';
+  const nameSuggestions = useModelNameSuggestions(meta.category, state.brand);
+  const needsInspect = (isHandheldCat(state.cat) || state.cat === 'Laptop') && state.condition !== 'New';
   const idType = idTypeFor(state);
-  const tracks = (state.cat === 'Phone' || state.cat === 'Laptop') && state.track;
+  const tracks = (isHandheldCat(state.cat) || state.cat === 'Laptop') && state.track;
   const idm = isIdmFlagged(state);
   const units = totalUnits(state);
   const value = stockValue(state);
@@ -228,25 +293,33 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
   };
 
   const setVar = (i: number, patch: Partial<(typeof state.variants)[0]>) => {
-    set({ variants: state.variants.map((v, j) => (j === i ? { ...v, ...patch } : v)) });
+    setState(prev => ({
+      ...prev,
+      variants: prev.variants.map((variant, index) => (index === i ? { ...variant, ...patch } : variant)),
+    }));
   };
 
   const applyBase = (key: 'baseCost' | 'basePrice', val: number) => {
     const field = key === 'baseCost' ? 'cost' : 'price';
-    set({
+    setState(prev => ({
+      ...prev,
       [key]: val,
-      variants: state.variants.map(v => ({ ...v, [field]: val })),
-    } as Partial<AddProductState>);
+      variants: prev.variants.map(variant => (variant[field] > 0 ? variant : { ...variant, [field]: val })),
+    }));
   };
 
   const canNext = () => {
     if (cur === 'Identify') return Boolean(state.brand && state.model.trim());
     if (cur === 'Variants') {
-      return state.variants.length > 0 && units > 0 && state.variants.every(v => v.price > 0);
+      return (
+        state.variants.length > 0 &&
+        units > 0 &&
+        state.variants.every(v => v.price > 0 && v.cost > 0)
+      );
     }
     if (cur === 'Stock') {
       const v = state.variants[0];
-      return Boolean(v && v.qty > 0 && v.price > 0);
+      return Boolean(v && v.qty > 0 && v.price > 0 && v.cost > 0);
     }
     if (cur === 'Network') return networkStateIsComplete(state.network);
     return true;
@@ -256,42 +329,103 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
     setSaving(true);
     setSaveError(null);
     try {
-      if (isEdit && itemId) {
-        const input = buildSingleIntakeItem(state);
-        await updateItem(
-          itemId,
-          { ...input, created_at: new Date(state.stockedAt).toISOString() },
-          { deferIdentifiers: true },
-        );
-        setSaved({ count: 1, units: 1, engineer: null });
+      const stockBatch = async (batch: AddProductState) => {
+        const inputs = buildIntakeItems(batch);
+        const stockedAtIso = new Date(batch.stockedAt).toISOString();
+        const ids: string[] = [];
+        for (const input of inputs) {
+          ids.push(await addItem(input, { deferIdentifiers: true, stockedAt: stockedAtIso }));
+        }
+        let engineerSent: string | null = null;
+        const batchInspect = (isHandheldCat(batch.cat) || batch.cat === 'Laptop') && batch.condition !== 'New';
+        if (batchInspect && batch.toEngineer && ids.length > 0) {
+          const engineerName = batch.engineer || engineerDefault || 'Engineer';
+          for (const stockedId of ids) {
+            await sendToEngineer({
+              item_id: stockedId,
+              engineer_name: engineerName,
+              issue_description:
+                [...batch.faults, batch.fault.trim()].filter(Boolean).join(' · ') || 'Intake inspection',
+              repair_cost: batch.partsEst || undefined,
+              date_sent: new Date().toISOString(),
+            });
+          }
+          engineerSent = engineerName;
+        }
+        rememberModelName(CAT_META[batch.cat].category, batch.brand, batch.model);
+        return { ids, engineerSent, count: inputs.length };
+      };
+
+      if (purchase) {
+        const supplier = purchase.suppliers.find(row => row.id === supplierId);
+        if (!supplier) throw new Error('Choose a supplier');
+        const batches = [...drafts, state];
+        for (const batch of batches) {
+          if (!batch.brand.trim() || !batch.model.trim()) throw new Error('Each product needs a brand and a name');
+          const lines = purchaseLinesFromIntake(batch);
+          if (lines.length === 0 || lines.some(line => line.qty <= 0)) {
+            throw new Error(`Enter a quantity for ${batch.model.trim() || 'each product'}`);
+          }
+          if (lines.some(line => line.unit_cost <= 0 || !(line.sell_price && line.sell_price > 0))) {
+            throw new Error(`Enter a cost and a selling price for ${batch.model.trim()}`);
+          }
+        }
+        if (arrival === 'in_shop') {
+          if (purchase.canStock === false) {
+            throw new Error('You can record the bill. Adding these to stock needs Add products.');
+          }
+          for (const batch of batches) await stockBatch(batch);
+        } else {
+          for (const batch of batches) {
+            rememberModelName(CAT_META[batch.cat].category, batch.brand, batch.model);
+          }
+        }
+        const items = batches.flatMap(purchaseLinesFromIntake);
+        const total = items.reduce((sum, line) => sum + line.qty * line.unit_cost, 0);
+        const paid = terms === 'paid' ? total : terms === 'credit' ? 0 : Math.min(paidNow, total);
+        const record = await purchase.onSave({
+          supplier_contact_id: supplier.id,
+          supplier_name: supplier.name,
+          items,
+          total,
+          paid,
+          payment_method: method,
+          terms,
+          purchased_at: new Date().toISOString(),
+          arrival,
+          alreadyStocked: arrival === 'in_shop',
+        });
+        setPurchaseDone(record);
+        setSaved({
+          count: items.length,
+          units: items.reduce((sum, line) => sum + line.qty, 0),
+          engineer: null,
+        });
         return;
       }
 
-      const inputs = buildIntakeItems(state);
-      const stockedAtIso = new Date(state.stockedAt).toISOString();
-      const ids: string[] = [];
-      for (const input of inputs) {
-        ids.push(await addItem(input, { deferIdentifiers: true, stockedAt: stockedAtIso }));
+      if (isEdit && itemId) {
+        const inputs = buildIntakeItems(state);
+        const [first, ...rest] = inputs;
+        if (!first) throw new Error('Nothing to save');
+        const stockedAtIso = new Date(state.stockedAt).toISOString();
+        await updateItem(itemId, { ...first, created_at: stockedAtIso }, { deferIdentifiers: true });
+        for (const input of rest) {
+          await addItem(input, { deferIdentifiers: true, stockedAt: stockedAtIso });
+        }
+        rememberModelName(first.category, state.brand, state.model);
+        setSaved({
+          count: isSimpleStockCat(state.cat) ? 1 : Math.max(state.variants.length, 1),
+          units,
+          engineer: null,
+        });
+        return;
       }
 
-      let engineerSent: string | null = null;
-      if (needsInspect && state.toEngineer && ids.length > 0) {
-        const engineerName = state.engineer || engineerDefault || 'Engineer';
-        for (const itemId of ids) {
-          await sendToEngineer({
-            item_id: itemId,
-            engineer_name: engineerName,
-            issue_description:
-              [...state.faults, state.fault.trim()].filter(Boolean).join(' · ') || 'Intake inspection',
-            repair_cost: state.partsEst || undefined,
-            date_sent: new Date().toISOString(),
-          });
-        }
-        engineerSent = engineerName;
-      }
+      const { engineerSent } = await stockBatch(state);
 
       setSaved({
-        count: state.cat === 'Accessory' ? 1 : state.variants.length,
+        count: isSimpleStockCat(state.cat) ? 1 : state.variants.length,
         units,
         engineer: engineerSent,
       });
@@ -320,7 +454,35 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
 
   if (!open) return null;
 
-  const title = saved ? (isEdit ? 'Product updated' : 'Product added') : isEdit ? 'Edit product' : 'Add product';
+  const addAnother = () => {
+    if (!state.brand.trim() || !state.model.trim()) return;
+    setDrafts(prev => [...prev, state]);
+    rememberModelName(CAT_META[state.cat].category, state.brand, state.model);
+    setState(blankAddProductState(state.engineer || engineerDefault));
+    setStep(0);
+    setSaveError(null);
+  };
+
+  const editDraft = (index: number) => {
+    const draft = drafts[index];
+    if (!draft) return;
+    setDrafts(prev => prev.filter((_, i) => i !== index));
+    setState(draft);
+    setStep(0);
+  };
+
+  const noSuppliers = Boolean(purchase && purchase.suppliers.length === 0);
+  const title = saved
+    ? purchase
+      ? 'Purchase recorded'
+      : isEdit
+        ? 'Product updated'
+        : 'Product added'
+    : purchase
+      ? 'Record purchase'
+      : isEdit
+        ? 'Edit product'
+        : 'Add product';
 
   return (
     <>
@@ -331,11 +493,15 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
               <h2 className="font-display text-lg font-semibold text-shell-ink">{title}</h2>
               <ModalSheetClose onClick={handleClose} className="size-8" />
             </div>
-            {!saved ? <StepProgress steps={steps} step={step} /> : null}
+            {!saved && !noSuppliers ? <StepProgress steps={steps} step={step} /> : null}
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto overscroll-contain px-5 py-5">
-            {isEdit && editItemLoading ? (
+            {noSuppliers ? (
+              <p className="py-6 text-center text-sm text-shell-muted">
+                Add a supplier in Contacts before recording a purchase.
+              </p>
+            ) : isEdit && editItemLoading ? (
               <div className="flex items-center justify-center gap-2 py-16 text-sm text-shell-muted">
                 <Loader2 size={18} className="animate-spin" />
                 Loading item…
@@ -354,9 +520,11 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                 </div>
                 <p className="font-display text-[17px] font-semibold text-shell-ink">{state.model}</p>
                 <p className="mt-1.5 text-[13.5px] text-shell-muted">
-                  {isEdit
-                    ? 'Changes saved to inventory.'
-                    : `${saved.units} unit${saved.units !== 1 ? 's' : ''} across ${saved.count} variant${saved.count !== 1 ? 's' : ''} added to inventory${idm ? ' · IDM flagged' : ''}.`}
+                  {purchaseDone
+                    ? `${purchaseDone.supplier_name} · ${formatCurrency(purchaseDone.total)}${purchaseDone.received_at ? ' · added to inventory' : ' · still on the way'}.`
+                    : isEdit
+                      ? 'Changes saved to inventory.'
+                      : `${saved.units} unit${saved.units !== 1 ? 's' : ''} across ${saved.count} variant${saved.count !== 1 ? 's' : ''} added to inventory${idm ? ' · IDM flagged' : ''}.`}
                 </p>
                 {saved.engineer ? (
                   <p className="mt-1.5 text-[13px] font-semibold text-sky-400">
@@ -369,6 +537,41 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
               </div>
             ) : cur === 'Identify' ? (
               <>
+                {purchase ? (
+                  <>
+                    <APLabel label="Supplier">
+                      <Select value={supplierId || undefined} onValueChange={setSupplierId}>
+                        <SelectTrigger className="shell-inset-field h-11 w-full rounded-[10px] border border-shell-line bg-shell-surface-2/40 px-3 text-sm text-shell-ink shadow-none">
+                          <SelectValue placeholder="Choose supplier…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {purchase.suppliers.map(supplier => (
+                            <SelectItem key={supplier.id} value={supplier.id}>
+                              {supplier.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </APLabel>
+                    <APLabel label="Goods">
+                      {purchase.canStock === false ? (
+                        <p className="text-[13px] text-shell-muted">
+                          This bill stays on the way. Putting the goods on the shelf needs Add products.
+                        </p>
+                      ) : (
+                        <ChoiceGrid
+                          columns={2}
+                          options={[
+                            { value: 'in_shop' as const, label: 'Already here' },
+                            { value: 'on_the_way' as const, label: 'Still on the way' },
+                          ]}
+                          value={arrival}
+                          onChange={setArrival}
+                        />
+                      )}
+                    </APLabel>
+                  </>
+                ) : null}
                 {!isEdit && existingUnitCount > 0 ? (
                   <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-2.5 text-[13px] text-emerald-200">
                     <strong className="font-semibold text-emerald-100">{state.model.trim()}</strong> is already in
@@ -381,8 +584,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                   <p className="mb-2 text-[12.5px] font-semibold text-shell-muted">Category</p>
                   <CategoryPicker
                     cat={state.cat}
-                    disabled={isEdit}
-                    onChange={cat => setState(resetForCategory(cat, state.engineer || engineerDefault))}
+                    onChange={cat => setState(current => switchCategory(current, cat))}
                   />
                 </div>
                 <APLabel label="Brand">
@@ -394,34 +596,21 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                     addLabel="Brand"
                   />
                 </APLabel>
-                {nameSuggestions.length > 0 ? (
-                  <ComboboxField
-                    id="add-product-model"
-                    label="Model name"
-                    options={nameSuggestions}
-                    value={state.model}
-                    onChange={e => set({ model: e.target.value })}
-                    placeholder={
-                      state.brand.trim()
-                        ? 'Pick a model or type your own'
-                        : 'Pick brand for filtered models, or type any name'
-                    }
-                    emptyHint="Suggestions update when you change brand. Custom names always allowed."
-                    className={cn(fieldClass, 'h-11 rounded-[10px] shadow-none ring-offset-0')}
-                    wrapperClassName="[&_label]:mb-2 [&_label]:text-[12.5px] [&_label]:font-semibold [&_label]:text-shell-muted"
-                  />
-                ) : (
-                  <APLabel
-                    label="Model name"
-                    hint={state.cat === 'Laptop' ? 'e.g. HP EliteBook 840 G5' : 'e.g. iPhone 13 Pro Max'}
-                  >
-                    <APTextField
-                      value={state.model}
-                      onChange={e => set({ model: e.target.value })}
-                      placeholder="Type the model…"
-                    />
-                  </APLabel>
-                )}
+                <ComboboxField
+                  id="add-product-model"
+                  label="Model name"
+                  options={nameSuggestions}
+                  value={state.model}
+                  onChange={e => set({ model: e.target.value })}
+                  placeholder={
+                    state.brand.trim()
+                      ? 'Pick a model or type your own'
+                      : 'Pick a brand, or type any name'
+                  }
+                  emptyHint="Names you have used before show up here. A new name is saved for next time."
+                  className={cn(fieldClass, 'h-11 rounded-[10px] shadow-none ring-offset-0')}
+                  wrapperClassName="[&_label]:mb-2 [&_label]:text-[12.5px] [&_label]:font-semibold [&_label]:text-shell-muted"
+                />
                 {state.cat === 'Laptop' ? (
                   <APLabel label="Processor" hint="optional">
                     <APTextField
@@ -431,7 +620,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                     />
                   </APLabel>
                 ) : null}
-                {state.cat === 'Accessory' ? (
+                {isSimpleStockCat(state.cat) ? (
                   <APLabel label="Spec">
                     <APTextField
                       value={state.spec}
@@ -447,13 +636,13 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                     onChange={v => set({ condition: v })}
                   />
                 </APLabel>
-                {state.cat === 'Phone' || state.cat === 'Laptop' ? (
+                {isHandheldCat(state.cat) || state.cat === 'Laptop' ? (
                   <TrackToggle idType={idType} track={state.track} onChange={v => set({ track: v })} />
                 ) : null}
               </>
             ) : cur === 'Variants' ? (
               <>
-                {state.cat === 'Phone' ? (
+                {isHandheldCat(state.cat) ? (
                   <>
                     <APLabel label="RAM" hint="skip for iPhone if it doesn’t matter">
                       <APMulti
@@ -501,25 +690,25 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                   </>
                 )}
                 <div className="grid grid-cols-2 gap-2.5">
-                  <APLabel label="Cost / unit">
+                  <APLabel label="Default cost" hint="fills empty rows">
                     <APMoney value={state.baseCost} onChange={v => applyBase('baseCost', v)} />
                   </APLabel>
-                  <APLabel label="Sell / unit">
+                  <APLabel label="Default sell" hint="each row can differ">
                     <APMoney value={state.basePrice} onChange={v => applyBase('basePrice', v)} />
                   </APLabel>
                 </div>
                 {state.variants.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-shell-line py-[18px] text-center text-[13px] text-shell-muted">
-                    Pick a {state.cat === 'Phone' ? 'RAM, storage, or colour' : 'RAM or storage'} above to build variants.
+                    Pick a {isHandheldCat(state.cat) ? 'RAM, storage, or colour' : 'RAM or storage'} above to build variants.
                   </div>
                 ) : (
                   <VariantTable
                     variants={state.variants}
                     totalUnits={units}
                     stockValue={value}
-                    lockQty={isEdit && state.cat !== 'Accessory'}
                     existingStock={!isEdit ? existingStock : undefined}
                     onQty={(i, qty) => setVar(i, { qty })}
+                    onCost={(i, cost) => setVar(i, { cost })}
                     onPrice={(i, price) => setVar(i, { price })}
                   />
                 )}
@@ -615,8 +804,13 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                       value={state.variants[0]?.qty ?? 1}
                       onChange={e => {
                         const qty = Math.max(0, Number(e.target.value) || 0);
-                        if (state.variants.length === 0) setState(syncVar(state, {}));
-                        setVar(0, { qty });
+                        setState(prev => {
+                          const base = prev.variants.length === 0 ? syncVar(prev, {}) : prev;
+                          const variants = base.variants.length
+                            ? base.variants.map((variant, index) => (index === 0 ? { ...variant, qty } : variant))
+                            : [{ label: 'Stock', attrs: {}, qty, cost: base.baseCost, price: base.basePrice }];
+                          return { ...base, variants };
+                        });
                       }}
                       className="font-mono"
                     />
@@ -696,10 +890,10 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
             ) : cur === 'Inspect' ? (
               <>
                 <p className="-mt-1 text-[13px] leading-relaxed text-shell-muted">
-                  Record what&apos;s been changed on this {state.cat === 'Phone' ? 'phone' : 'laptop'} so you can price
+                  Record what&apos;s been changed on this {state.cat === 'Laptop' ? 'laptop' : state.cat === 'Tablet' ? 'tablet' : 'phone'} so you can price
                   it right and disclose it at the point of sale.
                 </p>
-                {state.cat === 'Phone' ? (
+                {isHandheldCat(state.cat) ? (
                   <>
                     <APLabel label="Display" hint="Changed = carries IDM">
                       <APSeg
@@ -865,7 +1059,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                       <Badge variant="outline">{state.condition}</Badge>
                       {idm ? <Badge className="bg-amber-400/15 text-amber-300">IDM</Badge> : null}
                       {tracks ? <Badge className="bg-sky-400/15 text-sky-300">{idType} tracked</Badge> : null}
-                      {state.cat === 'Phone' && formatNetworkSummary(state.network) ? (
+                      {isHandheldCat(state.cat) && formatNetworkSummary(state.network) ? (
                         <Badge className="bg-brand-400/15 text-brand-200">{formatNetworkSummary(state.network)}</Badge>
                       ) : null}
                     </div>
@@ -880,7 +1074,10 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-shell-line">
-                  {(state.variants.length ? state.variants : [{ label: 'Stock', qty: 1, price: state.basePrice }]).map(
+                  {(state.variants.length
+                    ? state.variants
+                    : [{ label: 'Stock', qty: 1, cost: state.baseCost, price: state.basePrice }]
+                  ).map(
                     (v, i) => (
                       <div
                         key={v.label}
@@ -890,10 +1087,12 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                         )}
                       >
                         <span className="text-[13.5px] text-shell-ink">
-                          {state.cat === 'Accessory' ? state.spec || 'Stock' : v.label}
+                          {isSimpleStockCat(state.cat) ? state.spec || 'Stock' : v.label}
                         </span>
-                        <span className="text-[13px] text-shell-muted">
-                          <span className="font-mono">{v.qty}</span> ×{' '}
+                        <span className="text-right text-[13px] text-shell-muted">
+                          <span className="font-mono">{v.qty}</span> × cost{' '}
+                          <span className="font-mono text-shell-ink">{formatCurrency(v.cost)}</span>
+                          {' · sell '}
                           <span className="font-mono font-semibold text-shell-ink">{formatCurrency(v.price)}</span>
                         </span>
                       </div>
@@ -907,7 +1106,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
 
                 {needsInspect ? (
                   <div className="flex flex-wrap gap-1.5">
-                    {state.cat === 'Phone' ? (
+                    {isHandheldCat(state.cat) ? (
                       <>
                         <Badge className={state.insp.display === 'Changed' ? 'bg-amber-400/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-400'}>
                           Display {state.insp.display}
@@ -951,6 +1150,51 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                   onChange={v => set({ stockedAt: v })}
                 />
 
+                {purchase && cur === 'Review' ? (
+                  <div className="space-y-4">
+                    {drafts.length > 0 ? (
+                      <div className="overflow-hidden rounded-xl border border-shell-line">
+                        {drafts.map((draft, index) => (
+                          <div
+                            key={`${draft.model}-${index}`}
+                            className={cn(
+                              'flex items-center justify-between gap-3 px-3.5 py-2.5',
+                              index > 0 && 'border-t border-shell-line',
+                            )}
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-[13.5px] font-semibold text-shell-ink">{draft.model}</p>
+                              <p className="text-[12px] text-shell-muted">
+                                {draft.cat} · {draft.brand}
+                              </p>
+                            </div>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => editDraft(index)}>
+                              Edit
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    <APLabel label="Terms">
+                      <ChoiceGrid options={PURCHASE_TERMS} value={terms} onChange={setTerms} />
+                    </APLabel>
+                    {terms === 'partial' ? (
+                      <APLabel label="Paid now">
+                        <CurrencyInput
+                          value={paidNow}
+                          onValueChange={value => setPaidNow(value ?? 0)}
+                          className={cn(inputShellClass, 'font-mono')}
+                        />
+                      </APLabel>
+                    ) : null}
+                    {terms !== 'credit' ? (
+                      <APLabel label="Method">
+                        <ChoiceGrid options={PURCHASE_PAY} value={method} onChange={setMethod} />
+                      </APLabel>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {saveError ? (
                   <p className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm text-red-300">
                     {saveError}
@@ -960,7 +1204,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
             )}
           </div>
 
-          {!saved && !loadError && !(isEdit && editItemLoading) ? (
+          {!saved && !loadError && !noSuppliers && !(isEdit && editItemLoading) ? (
             <div className="flex shrink-0 items-center gap-2.5 border-t border-shell-line px-5 py-4">
               {step > 0 ? (
                 <Button
@@ -974,6 +1218,17 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                 </Button>
               ) : null}
               <div className="flex-1" />
+              {purchase && cur === 'Review' ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-shell-line"
+                  disabled={!canNext() || saving}
+                  onClick={addAnother}
+                >
+                  Add another
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 className="bg-brand-400 text-[#04231d] hover:bg-brand-300 disabled:opacity-45"
@@ -988,7 +1243,7 @@ export default function AddProductFlow({ open, onClose, itemId }: AddProductFlow
                 ) : cur === 'Review' ? (
                   <>
                     <Check size={16} />
-                    {isEdit ? 'Save changes' : 'Save to inventory'}
+                    {purchase ? 'Save purchase' : isEdit ? 'Save changes' : 'Save to inventory'}
                   </>
                 ) : (
                   'Continue'

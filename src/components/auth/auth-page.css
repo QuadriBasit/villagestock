@@ -1,11 +1,11 @@
 .vs-auth-page {
-  --auth-bg: #070a0f;
-  --auth-text: #f0f4f8;
-  --auth-muted: #8190a3;
-  --auth-border: rgba(255, 255, 255, 0.08);
-  --auth-card: rgba(15, 20, 29, 0.82);
+  --auth-bg: #0f0c07;
+  --auth-text: #fbf6ee;
+  --auth-muted: #cfc8bc;
+  --auth-border: rgba(251, 246, 238, 0.08);
+  --auth-card: rgba(26, 23, 17, 0.88);
   --auth-accent: #00b398;
-  --auth-accent-2: #00e5c3;
+  --auth-accent-2: #54c2aa;
 
   position: relative;
   min-height: 100svh;
@@ -13,7 +13,7 @@
   flex-direction: column;
   background: var(--auth-bg);
   color: var(--auth-text);
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
 }
 
 .vs-auth-page .vs-aurora {
@@ -58,9 +58,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
   font-size: 1.35rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.03em;
   color: var(--auth-text);
   text-decoration: none;
@@ -73,7 +73,7 @@
   height: 2.25rem;
   border-radius: 0.65rem;
   background: linear-gradient(135deg, var(--auth-accent), var(--auth-accent-2));
-  box-shadow: 0 4px 18px rgba(167, 139, 250, 0.35);
+  box-shadow: 0 4px 18px rgba(0, 179, 152, 0.28);
   color: #04231d;
 }
 
@@ -82,19 +82,18 @@
 }
 
 .vs-auth-headline {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
   font-size: clamp(1.85rem, 3vw, 2.45rem);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.12;
   letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 .vs-auth-headline em {
-  font-style: normal;
-  background: linear-gradient(90deg, var(--auth-accent), var(--auth-accent-2));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--auth-accent-2);
 }
 
 .vs-auth-lead {
@@ -384,7 +383,7 @@
 
 .vs-auth-panel-title {
   margin-bottom: 0.35rem;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
   font-size: 1.125rem;
   font-weight: 600;
   display: flex;

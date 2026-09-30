@@ -1,17 +1,24 @@
-import { Phone, ShoppingBag, ShoppingCart } from 'lucide-react';
+import { useState } from 'react';
+import { Pencil, Phone, ShoppingBag, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ModalSheetPortal } from '@/components/ui/ModalSheetPortal';
 import { ModalSheetFrame } from '@/components/ui/ModalSheetFrame';
 import { ModalSheetClose } from '@/components/ui/ModalSheetClose';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
 import { cn, formatCurrency } from '@/lib/utils';
 import { modalSheetBodyScroll, modalSheetPanelMd } from '@/lib/modalSheet';
-import type { ContactRecord } from '@/types';
+import type { ContactRecord, ContactRecordInput } from '@/types';
 
 type ContactDetailModalProps = {
   contact: ContactRecord | null;
   onClose: () => void;
+  onUpdate: (id: string, patch: Partial<ContactRecordInput>) => Promise<void>;
 };
+
+const fieldClass =
+  'shell-inset-field h-10 w-full rounded-lg border border-shell-line bg-shell-surface-2/40 px-3 text-sm text-shell-ink outline-none placeholder:text-shell-muted focus:border-shell-muted/60';
 
 function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
@@ -22,8 +29,15 @@ function DetailRow({ label, value, mono }: { label: string; value: string; mono?
   );
 }
 
-export default function ContactDetailModal({ contact, onClose }: ContactDetailModalProps) {
+export default function ContactDetailModal({ contact, onClose, onUpdate }: ContactDetailModalProps) {
   const navigate = useNavigate();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [locationText, setLocationText] = useState('');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   if (!contact) return null;
 
   const isSupplier = contact.type === 'supplier';
@@ -37,6 +51,37 @@ export default function ContactDetailModal({ contact, onClose }: ContactDetailMo
   const action = () => {
     onClose();
     navigate(isSupplier ? '/purchasing' : '/till');
+  };
+
+  const startEdit = () => {
+    setName(contact.name);
+    setPhone(contact.phone ?? '');
+    setLocationText(contact.location_text ?? '');
+    setNote(contact.note ?? '');
+    setError(null);
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!name.trim()) {
+      setError('Name is required');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await onUpdate(contact.id, {
+        name: name.trim(),
+        phone: phone.trim(),
+        location_text: locationText.trim(),
+        note: note.trim(),
+      });
+      setEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -56,6 +101,46 @@ export default function ContactDetailModal({ contact, onClose }: ContactDetailMo
           </div>
 
           <div className={cn(modalSheetBodyScroll, 'px-5 py-4')}>
+            {editing ? (
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-shell-muted">Name</span>
+                  <Input value={name} onChange={e => setName(e.target.value)} className={fieldClass} autoFocus />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-shell-muted">Phone</span>
+                  <Input value={phone} onChange={e => setPhone(e.target.value)} className={fieldClass} placeholder="0803 000 0000" />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-shell-muted">Location</span>
+                  <Input value={locationText} onChange={e => setLocationText(e.target.value)} className={fieldClass} placeholder="Computer Village" />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-shell-muted">Note</span>
+                  <Textarea
+                    value={note}
+                    onChange={e => setNote(e.target.value)}
+                    rows={2}
+                    className="shell-inset-field min-h-0 w-full rounded-lg border border-shell-line bg-shell-surface-2/40 px-3 py-2 text-sm text-shell-ink outline-none placeholder:text-shell-muted focus:border-shell-muted/60"
+                  />
+                </label>
+                {error ? <p className="text-sm text-red-300">{error}</p> : null}
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 border-shell-line" disabled={saving} onClick={() => setEditing(false)}>
+                    Cancel
+                  </Button>
+                  <Button className="flex-1 bg-brand-400 text-[#04231d] hover:bg-brand-300" disabled={saving || !name.trim()} onClick={() => void saveEdit()}>
+                    {saving ? 'Saving…' : 'Save'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+            <>
+            <div className="mb-3">
+              <Button variant="outline" className="border-shell-line" onClick={startEdit}>
+                <Pencil size={16} /> Edit details
+              </Button>
+            </div>
             <div className="divide-y divide-shell-line rounded-lg border border-shell-line">
               {contact.phone ? <DetailRow label="Phone" value={contact.phone} mono /> : null}
               {contact.note ? <DetailRow label="Note" value={contact.note} /> : null}
@@ -98,6 +183,8 @@ export default function ContactDetailModal({ contact, onClose }: ContactDetailMo
                 )}
               </Button>
             </div>
+            </>
+            )}
           </div>
         
       </ModalSheetFrame>

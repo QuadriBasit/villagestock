@@ -1,5 +1,5 @@
 import { useState, type ComponentProps, type ReactNode } from 'react';
-import { AlertTriangle, Check, Hash, Laptop, Plus, Smartphone, Tag } from 'lucide-react';
+import { AlertTriangle, Check, Hash, Laptop, Plus, Smartphone, Tablet, Tag } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Input } from '@/components/ui/Input';
@@ -257,12 +257,14 @@ export function CategoryPicker({
 }) {
   const options: { key: ProductCat; label: string; icon: typeof Smartphone }[] = [
     { key: 'Phone', label: 'Phone', icon: Smartphone },
+    { key: 'Tablet', label: 'Tablet', icon: Tablet },
     { key: 'Laptop', label: 'Laptop', icon: Laptop },
     { key: 'Accessory', label: 'Accessory', icon: Tag },
+    { key: 'Part', label: 'Part', icon: Tag },
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-2.5">
+    <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
       {options.map(({ key, label, icon: Icon }) => {
         const on = cat === key;
         return (
@@ -338,52 +340,47 @@ export function VariantTable({
   totalUnits,
   stockValue,
   onQty,
+  onCost,
   onPrice,
-  lockQty,
   existingStock,
 }: {
-  variants: { label: string; qty: number; price: number }[];
+  variants: { label: string; qty: number; cost: number; price: number }[];
   totalUnits: number;
   stockValue: number;
   onQty: (i: number, qty: number) => void;
+  onCost: (i: number, cost: number) => void;
   onPrice: (i: number, price: number) => void;
-  lockQty?: boolean;
   /** In-stock count already on hand per variant label. */
   existingStock?: Record<string, number>;
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-shell-line">
-      <div className="grid grid-cols-[1fr_96px_1fr] gap-2.5 bg-shell-surface-2/60 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-shell-muted">
-        <span>Variant</span>
-        <span className="text-center">Qty</span>
-        <span>Price</span>
-      </div>
       {variants.map((v, i) => (
-        <div
-          key={v.label}
-          className="grid grid-cols-[1fr_96px_1fr] items-center gap-2.5 border-t border-shell-line px-3.5 py-2.5"
-        >
+        <div key={v.label} className="border-t border-shell-line px-3.5 py-2.5 first:border-t-0">
           <div className="min-w-0">
             <span className="text-[13.5px] font-semibold text-shell-ink">{v.label}</span>
             {existingStock?.[v.label] ? (
               <p className="text-[11px] text-emerald-400">{existingStock[v.label]} in stock</p>
             ) : null}
           </div>
-          <div className="flex justify-center">
-            {lockQty ? (
-              <span className="font-mono text-[13.5px] font-semibold text-shell-ink">{v.qty}</span>
-            ) : (
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <APLabel label="Qty">
               <APTextField
                 type="number"
                 min={0}
                 inputMode="numeric"
                 value={v.qty}
                 onChange={e => onQty(i, Math.max(0, Number(e.target.value) || 0))}
-                className="w-full px-2 py-2 text-center font-mono"
+                className="px-2 py-2 text-center font-mono"
               />
-            )}
+            </APLabel>
+            <APLabel label="Cost">
+              <APMoney value={v.cost} onChange={n => onCost(i, n)} />
+            </APLabel>
+            <APLabel label="Sell">
+              <APMoney value={v.price} onChange={n => onPrice(i, n)} />
+            </APLabel>
           </div>
-          <APMoney value={v.price} onChange={n => onPrice(i, n)} />
         </div>
       ))}
       <div className="flex items-center justify-between border-t border-shell-line bg-shell-surface-2/60 px-3.5 py-2.5 text-[12.5px] text-shell-muted">

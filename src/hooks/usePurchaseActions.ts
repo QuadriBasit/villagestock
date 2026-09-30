@@ -86,17 +86,17 @@ export function usePurchaseActions() {
   }
 
   async function recordPurchase(
-    input: PurchaseRecordInput & { arrival?: PurchaseArrival },
+    input: PurchaseRecordInput & { arrival?: PurchaseArrival; alreadyStocked?: boolean },
   ): Promise<PurchaseRecord> {
     if (!user || !shopOwnerId || !actorUserId) throw new Error('Not authenticated');
     if (!locationReady || !activeLocationId) throw new Error('Select a branch first');
     if (!hasPermission('access_purchasing')) throw new Error('You cannot record purchases.');
     const now = new Date().toISOString();
-    const { arrival = 'on_the_way', ...rest } = input;
-    if (arrival === 'in_shop' && !hasPermission('add_items')) {
+    const { arrival = 'on_the_way', alreadyStocked = false, ...rest } = input;
+    if ((arrival === 'in_shop' || alreadyStocked) && !hasPermission('add_items')) {
       throw new Error('You can record the bill. Adding these to stock needs Add products.');
     }
-    const items = arrival === 'in_shop' ? await stockPurchaseLines(rest.items) : rest.items;
+    const items = arrival === 'in_shop' && !alreadyStocked ? await stockPurchaseLines(rest.items) : rest.items;
     const record: PurchaseRecord = {
       ...rest,
       items,
@@ -104,7 +104,7 @@ export function usePurchaseActions() {
       user_id: shopOwnerId,
       location_id: activeLocationId,
       created_at: now,
-      received_at: arrival === 'in_shop' ? now : undefined,
+      received_at: arrival === 'in_shop' || alreadyStocked ? now : undefined,
       sync_status: 'pending',
     };
     await db.purchase_records.add(record);

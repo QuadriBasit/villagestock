@@ -16,5 +16,11 @@
     "ui": "@/components/ui",
     "lib": "@/lib",
     "hooks": "@/hooks"
+  },
+  "registries": {
+    "@uiarc": "https://uiarc.dev/r/{name}.json",
+    "@componentry": "https://componentry.fun/r/{name}.json",
+    "@skecher-ui": "https://skecher-ui.com/r/{name}.json",
+    "@spaceui": "https://www.spaceui.one/r/{name}.json"
   }
 }

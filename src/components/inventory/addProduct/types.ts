@@ -3,7 +3,15 @@ import type { NetworkState } from '@/lib/networkLock';
 import { blankNetworkState } from '@/lib/networkLock';
 import { toLocalDatetimeValue } from '@/components/ui/DateTimeField';
 
-export type ProductCat = 'Phone' | 'Laptop' | 'Accessory';
+export type ProductCat = 'Phone' | 'Tablet' | 'Laptop' | 'Accessory' | 'Part';
+
+export function isHandheldCat(cat: ProductCat) {
+  return cat === 'Phone' || cat === 'Tablet';
+}
+
+export function isSimpleStockCat(cat: ProductCat) {
+  return cat === 'Accessory' || cat === 'Part';
+}
 
 export type IntakeCondition = 'New' | 'Used' | 'UK Used' | 'Refurb';
 
@@ -79,6 +87,19 @@ export const CAT_META: Record<
     roms?: string[];
   }
 > = {
+  Tablet: {
+    icon: 'phone',
+    category: 'tablets',
+    brands: ['Apple', 'Samsung', 'Tecno', 'Infinix', 'Xiaomi', 'Lenovo'],
+    colors: ['Black', 'White', 'Blue', 'Green', 'Gold', 'Silver', 'Purple', 'Grey'],
+    storages: ['32GB', '64GB', '128GB', '256GB', '512GB', '1TB'],
+    rams: ['2GB', '3GB', '4GB', '6GB', '8GB', '12GB'],
+  },
+  Part: {
+    icon: 'tag',
+    category: 'parts',
+    brands: ['Apple', 'Samsung', 'Generic', 'Oraimo'],
+  },
   Phone: {
     icon: 'phone',
     category: 'phones',
@@ -149,7 +170,7 @@ export function cartesian(axes: { key: string; vals: string[] }[]): Record<strin
 }
 
 export function variantLabel(cat: ProductCat, attrs: Record<string, string | undefined>): string {
-  if (cat === 'Phone') return [attrs.ram, attrs.storage, attrs.color].filter(Boolean).join(' · ') || 'Standard';
+  if (isHandheldCat(cat)) return [attrs.ram, attrs.storage, attrs.color].filter(Boolean).join(' · ') || 'Standard';
   if (cat === 'Laptop') return [attrs.ram, attrs.rom].filter(Boolean).join(' · ') || 'Standard';
   return 'Stock';
 }
@@ -157,7 +178,7 @@ export function variantLabel(cat: ProductCat, attrs: Record<string, string | und
 export function syncVariants(state: AddProductState, patch: Partial<AddProductState>): AddProductState {
   const st = { ...state, ...patch };
   let combos: Record<string, string>[];
-  if (st.cat === 'Phone') {
+  if (isHandheldCat(st.cat)) {
     combos = cartesian([
       { key: 'ram', vals: st.rams },
       { key: 'storage', vals: st.storages },
@@ -186,19 +207,26 @@ export function syncVariants(state: AddProductState, patch: Partial<AddProductSt
     );
   });
 
-  return { ...st, variants };
+  let serials = st.serials;
+  if (st.variants.length === 1 && variants.length === 1 && st.variants[0].label !== variants[0].label) {
+    const previous = st.variants[0];
+    variants[0] = {
+      ...variants[0],
+      qty: previous.qty,
+      cost: previous.cost,
+      price: previous.price,
+    };
+    const carried = st.serials[previous.label];
+    const already = (serials[variants[0].label] ?? []).some(code => code.trim());
+    if (carried?.some(code => code.trim()) && !already) {
+      serials = { ...serials, [variants[0].label]: carried };
+    }
+  }
+
+  return { ...st, variants, serials };
 }
 
-/** Edit mode: keep a single variant row (qty 1 for serialized). */
+/** Edit uses the same variant rows as add, including quantity and each row's prices. */
 export function syncVariantsForEdit(state: AddProductState, patch: Partial<AddProductState>): AddProductState {
-  const synced = syncVariants(state, patch);
-  if (synced.cat === 'Accessory') return synced;
-  const primary = synced.variants[0] ?? {
-    label: 'Standard',
-    attrs: {},
-    qty: 1,
-    cost: synced.baseCost,
-    price: synced.basePrice,
-  };
-  return { ...synced, variants: [{ ...primary, qty: 1 }] };
+  return syncVariants(state, patch);
 }

@@ -302,7 +302,7 @@ export default function QuickTillPage() {
       <div className="app-page flex min-h-[50vh] items-center justify-center py-8">
         <Card className="w-full max-w-md border-shell-line bg-shell-surface text-center">
           <CardContent className="px-6 py-10">
-            <div className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-emerald-500/15 text-emerald-400">
+            <div className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-[color-mix(in_oklab,var(--success-500)_16%,transparent)] text-[var(--success-500)]">
               <Check size={32} strokeWidth={2.4} />
             </div>
             <p className="font-display text-lg font-semibold text-shell-ink">
@@ -310,13 +310,13 @@ export default function QuickTillPage() {
             </p>
             <p className="mt-2 font-mono text-4xl font-bold text-shell-ink">{formatCurrency(done.total)}</p>
             {canViewProfit && (
-              <p className="mt-2 text-sm font-semibold text-emerald-400">
+              <p className="mt-2 text-sm font-semibold text-[var(--success-500)]">
                 Profit {formatCurrency(done.profit)} ·{' '}
                 {PAY_OPTIONS.find(p => p.method === payMethod)?.label ?? payMethod}
               </p>
             )}
             {done.owed ? (
-              <p className="mt-1 text-sm font-medium text-amber-300">
+              <p className="mt-1 text-sm font-medium text-[var(--warning-500)]">
                 Balance owing {formatCurrency(done.owed)} · added to Credits
               </p>
             ) : null}
@@ -352,8 +352,8 @@ export default function QuickTillPage() {
             { value: 'swap', label: 'Swap' },
           ]}
         />
-        <Badge className="gap-1.5 border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
-          <span className="size-1.5 rounded-full bg-emerald-400" />
+        <Badge className="gap-1.5 border-shell-line bg-shell-surface-2 text-shell-ink">
+          <span className="size-1.5 rounded-full bg-[var(--accent)]" />
           Till open
         </Badge>
       </PageHeader>
@@ -588,7 +588,7 @@ function TillCartPanel({
             {canViewProfit ? (
               <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-shell-line/70 pt-1.5">
                 <span className="text-[11px] text-shell-muted">Est. profit</span>
-                <span className="font-mono text-xs font-medium tabular-nums text-emerald-400/90">
+                <span className="font-mono text-xs font-medium tabular-nums text-[var(--success-500)]">
                   {formatCurrency(profit)}
                 </span>
               </div>
@@ -603,7 +603,7 @@ function TillCartPanel({
                 </div>
                 <div className="mt-1 flex items-baseline justify-between gap-3">
                   <span className="text-[11px] text-shell-muted">Balance</span>
-                  <span className="font-mono text-xs font-semibold tabular-nums text-amber-300/90">
+                  <span className="font-mono text-xs font-semibold tabular-nums text-[var(--warning-500)]">
                     {formatCurrency(balanceOwed)}
                   </span>
                 </div>
@@ -620,7 +620,7 @@ function TillCartPanel({
               className={cn(
                 'rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
                 isWalkIn
-                  ? 'border-brand-400/40 bg-brand-400/15 text-brand-200'
+                  ? 'border-[color-mix(in_oklab,var(--accent)_45%,var(--line))] bg-[color-mix(in_oklab,var(--accent)_14%,transparent)] text-shell-ink'
                   : 'border-shell-line bg-shell-surface-2/40 text-shell-muted hover:text-shell-ink',
               )}
             >
@@ -638,7 +638,7 @@ function TillCartPanel({
                   className={cn(
                     'rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
                     active
-                      ? 'border-brand-400/40 bg-brand-400/15 text-brand-200'
+                      ? 'border-[color-mix(in_oklab,var(--accent)_45%,var(--line))] bg-[color-mix(in_oklab,var(--accent)_14%,transparent)] text-shell-ink'
                       : 'border-shell-line bg-shell-surface-2/40 text-shell-muted hover:text-shell-ink',
                   )}
                 >
@@ -680,13 +680,13 @@ function TillCartPanel({
                   className={cn(
                     'relative py-2.5 text-xs font-medium transition-colors',
                     active
-                      ? 'bg-brand-400/10 text-brand-200'
+                      ? 'bg-[color-mix(in_oklab,var(--accent)_12%,transparent)] text-[var(--ink)]'
                       : 'text-shell-muted hover:bg-shell-surface-2/25 hover:text-shell-ink',
                   )}
                 >
                   {label}
                   {active ? (
-                    <span className="absolute inset-x-0 bottom-0 h-px bg-brand-400/60" aria-hidden />
+                    <span className="absolute inset-x-0 bottom-0 h-px bg-[var(--accent)]" aria-hidden />
                   ) : null}
                 </button>
               );
@@ -726,13 +726,13 @@ function TillCartPanel({
                   className={cn(
                     'relative py-2.5 text-xs font-medium transition-colors',
                     active
-                      ? 'bg-shell-surface-2/50 text-shell-ink'
+                      ? 'bg-shell-surface-2/70 text-shell-ink'
                       : 'text-shell-muted hover:bg-shell-surface-2/25 hover:text-shell-ink'
                   )}
                 >
                   {label}
                   {active ? (
-                    <span className="absolute inset-x-0 bottom-0 h-px bg-shell-ink/70" aria-hidden />
+                    <span className="absolute inset-x-0 bottom-0 h-px bg-[var(--ink)]/50" aria-hidden />
                   ) : null}
                 </button>
               );
@@ -860,7 +860,7 @@ function TillCatalogToolbar({
               className={cn(
                 'relative shrink-0 px-3.5 py-2.5 text-xs font-medium transition-colors',
                 active
-                  ? 'text-shell-ink after:absolute after:inset-x-3.5 after:bottom-0 after:h-px after:bg-shell-ink/70'
+                  ? 'text-shell-ink after:absolute after:inset-x-3.5 after:bottom-0 after:h-px after:bg-[var(--ink)]'
                   : 'text-shell-muted hover:text-shell-ink'
               )}
             >
@@ -911,7 +911,7 @@ function ProductTile({
       </div>
       <div className="mt-auto flex items-center justify-between gap-1">
         <span className="font-mono text-[13px] font-bold text-shell-ink">{formatCurrency(item.price)}</span>
-        <span className={cn('font-mono text-[11px]', low ? 'text-amber-400' : 'text-shell-muted')}>
+        <span className={cn('font-mono text-[11px]', low ? 'text-[var(--warning-500)]' : 'text-shell-muted')}>
           {stock} left
         </span>
       </div>
@@ -942,3 +942,4 @@ function QtyStepper({ qty, onDec, onInc }: { qty: number; onDec: () => void; onI
     </div>
   );
 }
+

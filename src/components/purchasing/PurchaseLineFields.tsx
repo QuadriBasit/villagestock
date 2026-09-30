@@ -4,7 +4,9 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { Input, inputShellClass } from '@/components/ui/Input';
+import { ComboboxField } from '@/components/ui/ComboboxField';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { mergeModelSuggestions, useInventoryModelNames } from '@/lib/modelNameSuggestions';
 import { PURCHASE_CATEGORIES, resizeUnitIds } from '@/lib/purchasing';
 import { getCategoryMode, type PurchaseLine } from '@/types';
 
@@ -22,6 +24,7 @@ export function PurchaseLineFields({
   stockFields = false,
   allowAdd = true,
 }: PurchaseLineFieldsProps) {
+  const inventoryNames = useInventoryModelNames();
   const setLine = (index: number, patch: Partial<PurchaseLine>) => {
     onChange(lines.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   };
@@ -53,13 +56,15 @@ export function PurchaseLineFields({
                   </Button>
                 ) : null}
               </div>
-              <Field label="Product">
-                <Input
-                  value={line.name}
-                  onChange={e => setLine(index, { name: e.target.value })}
-                  placeholder="iPhone 13, charger, screen…"
-                />
-              </Field>
+              <ComboboxField
+                id={`purchase-line-${index}-name`}
+                label="Product"
+                options={mergeModelSuggestions(line.category ?? 'accessories', line.brand ?? '', inventoryNames)}
+                value={line.name}
+                onChange={e => setLine(index, { name: e.target.value })}
+                placeholder="iPhone 13, charger, screen…"
+                emptyHint="Names you have used before show up here."
+              />
               <div className="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-2">
                 <Field label="Kind">
                   <Select

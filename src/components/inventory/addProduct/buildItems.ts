@@ -4,33 +4,37 @@ import {
   type AppleLaptopDeviceDetails,
   type AppleMobileDeviceDetails,
   type InventoryItemInput,
+  type PurchaseLine,
 } from '@/types';
 import { blankNetworkState, formatNetworkDescription, mobileNetworkDeviceDetails } from '@/lib/networkLock';
 import { toLocalDatetimeValue } from '@/components/ui/DateTimeField';
 import { normalizeImeiDigits } from '@/lib/serializedIdentifiers';
 import {
   CAT_META,
+  isHandheldCat,
+  isSimpleStockCat,
   mapIntakeCondition,
+  syncVariants,
   type AddProductState,
   type ProductCat,
   type VariantRow,
 } from './types';
 
 function needsInspect(state: AddProductState): boolean {
-  return (state.cat === 'Phone' || state.cat === 'Laptop') && state.condition !== 'New';
+  return (isHandheldCat(state.cat) || state.cat === 'Laptop') && state.condition !== 'New';
 }
 
 function buildDescription(state: AddProductState, variant: VariantRow): string | undefined {
   const parts: string[] = [];
   if (state.condition !== 'New') parts.push(state.condition);
-  if (state.cat === 'Accessory' && state.spec.trim()) parts.push(state.spec.trim());
+  if (isSimpleStockCat(state.cat) && state.spec.trim()) parts.push(state.spec.trim());
   if (state.shelf.trim()) parts.push(`Shelf ${state.shelf.trim()}`);
   if (needsInspect(state)) parts.push(`Grade ${state.insp.grade}`);
   if (state.cat === 'Laptop' && state.processor.trim()) parts.push(state.processor.trim());
   if (state.cat !== 'Accessory' && variant.label !== 'Stock' && variant.label !== 'Standard') {
     parts.push(variant.label);
   }
-  if (state.cat === 'Phone') {
+  if (isHandheldCat(state.cat)) {
     const networkDesc = formatNetworkDescription(mobileNetworkDeviceDetails(state.network));
     if (networkDesc) parts.push(networkDesc);
   }
@@ -82,12 +86,13 @@ function buildDeviceDetails(state: AddProductState, variant: VariantRow) {
   const brand = state.brand;
   if (isAppleMobileDevice(brand, category)) return buildAppleMobileDetails(state, variant);
   if (isAppleLaptopDevice(brand, category)) return buildAppleLaptopDetails(state, variant);
-  if (state.cat === 'Phone') {
+  if (isHandheldCat(state.cat)) {
     const specs = phoneSpecDetails(variant);
     const network = state.network.status ? mobileNetworkDeviceDetails(state.network) : {};
     const details = { ...specs, ...network };
     return Object.values(details).some(v => v !== undefined && v !== '') ? details : undefined;
   }
+  if (state.cat === 'Laptop') return buildAppleLaptopDetails(state, variant);
   return undefined;
 }
 
@@ -108,13 +113,13 @@ export function buildIntakeItems(state: AddProductState): InventoryItemInput[] {
   const category = CAT_META[state.cat].category;
   const condition = mapIntakeCondition(state.condition);
   const items: InventoryItemInput[] = [];
-  const variants = state.cat === 'Accessory' ? ensureAccessoryVariant(state) : state.variants;
+  const variants = isSimpleStockCat(state.cat) ? ensureAccessoryVariant(state) : state.variants;
 
   for (const variant of variants) {
-    if (state.cat === 'Accessory') {
+    if (isSimpleStockCat(state.cat)) {
       items.push({
         name: state.model.trim(),
-        category: 'accessories',
+        category,
         brand: state.brand,
         price: variant.price,
         cost_price: variant.cost || undefined,
@@ -143,7 +148,7 @@ export function buildIntakeItems(state: AddProductState): InventoryItemInput[] {
       };
 
       if (state.track) {
-        if (state.cat === 'Phone') {
+        if (isHandheldCat(state.cat)) {
           const digits = normalizeImeiDigits(code);
           if (digits) input.imei = digits;
         } else if (state.cat === 'Laptop' && code) {
@@ -158,36 +163,82 @@ export function buildIntakeItems(state: AddProductState): InventoryItemInput[] {
   return items;
 }
 
-export function flowSteps(state: AddProductState): string[] {
-  const hasVariants = state.cat !== 'Accessory';
-  const tracks = (state.cat === 'Phone' || state.cat === 'Laptop') && state.track;
+export function flowSteps(state: AddProductState, options?: { skipSerials?: boolean }): string[] {
+  const hasVariants = !isSimpleStockCat(state.cat);
+  const tracks = (isHandheldCat(state.cat) || state.cat === 'Laptop') && state.track && !options?.skipSerials;
   const inspect = needsInspect(state);
   return [
     'Identify',
     hasVariants ? 'Variants' : 'Stock',
     ...(tracks ? ['Serials'] : []),
-    ...(state.cat === 'Phone' ? ['Network'] : []),
+    ...(isHandheldCat(state.cat) ? ['Network'] : []),
     ...(inspect ? ['Inspect'] : []),
     'Review',
   ];
 }
 
 export function idTypeFor(state: AddProductState): 'IMEI' | 'Serial' {
-  return state.cat === 'Phone' ? 'IMEI' : 'Serial';
+  return state.cat === 'Laptop' ? 'Serial' : 'IMEI';
 }
 
 export function isIdmFlagged(state: AddProductState): boolean {
-  return state.cat === 'Phone' && needsInspect(state) && state.insp.display === 'Changed';
+  return isHandheldCat(state.cat) && needsInspect(state) && state.insp.display === 'Changed';
 }
 
 export function totalUnits(state: AddProductState): number {
-  const variants = state.cat === 'Accessory' ? ensureAccessoryVariant(state) : state.variants;
+  const variants = isSimpleStockCat(state.cat) ? ensureAccessoryVariant(state) : state.variants;
   return variants.reduce((a, v) => a + (v.qty || 0), 0);
 }
 
 export function stockValue(state: AddProductState): number {
-  const variants = state.cat === 'Accessory' ? ensureAccessoryVariant(state) : state.variants;
+  const variants = isSimpleStockCat(state.cat) ? ensureAccessoryVariant(state) : state.variants;
   return variants.reduce((a, v) => a + (v.qty || 0) * (v.price || 0), 0);
+}
+
+export function switchCategory(state: AddProductState, cat: ProductCat): AddProductState {
+  if (cat === state.cat) return state;
+  const fresh = resetForCategory(cat, state.engineer);
+  const cost = state.variants[0]?.cost || state.baseCost;
+  const price = state.variants[0]?.price || state.basePrice;
+  const qty = state.variants.reduce((sum, variant) => sum + (variant.qty || 0), 0) || 1;
+  const kept: AddProductState = {
+    ...fresh,
+    brand: state.brand,
+    model: state.model,
+    condition: state.condition,
+    baseCost: cost,
+    basePrice: price,
+    reorder: state.reorder,
+    shelf: state.shelf,
+    spec: isSimpleStockCat(cat) ? state.spec : '',
+    stockedAt: state.stockedAt,
+    serials: isSimpleStockCat(cat) ? {} : state.serials,
+    track: isSimpleStockCat(cat) ? false : state.track,
+  };
+  if (isSimpleStockCat(cat)) {
+    return {
+      ...kept,
+      variants: [{ label: 'Stock', attrs: {}, qty, cost, price }],
+    };
+  }
+  return syncVariants(kept, {});
+}
+
+export function purchaseLinesFromIntake(state: AddProductState): PurchaseLine[] {
+  const category = CAT_META[state.cat].category;
+  const variants = isSimpleStockCat(state.cat) ? ensureAccessoryVariant(state) : state.variants;
+  const serialized = category === 'phones' || category === 'laptops' || category === 'tablets';
+  return variants
+    .filter(variant => variant.qty > 0)
+    .map(variant => ({
+      name: state.model.trim(),
+      brand: state.brand.trim(),
+      category,
+      qty: variant.qty,
+      unit_cost: variant.cost,
+      sell_price: variant.price,
+      unit_ids: serialized ? (state.serials[variant.label] ?? []).slice(0, variant.qty) : undefined,
+    }));
 }
 
 export function resetForCategory(cat: ProductCat, engineerDefault: string): AddProductState {
@@ -219,7 +270,7 @@ export function resetForCategory(cat: ProductCat, engineerDefault: string): AddP
     fault: '',
     engineer: engineerDefault,
     partsEst: 0,
-    track: cat !== 'Accessory',
+    track: !isSimpleStockCat(cat),
     serials: {},
     faults: [],
     network: blankNetworkState(),

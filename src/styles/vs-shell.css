@@ -2,25 +2,31 @@
 
 .app-shell .vs-num {
   font-family: var(--font-mono);
-  font-feature-settings: 'tnum' 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .app-shell .vs-card {
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition-property: border-color, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
 .app-shell .vs-hover:hover {
   border-color: color-mix(in oklch, var(--accent) 45%, var(--line));
-  transform: translateY(-2px);
 }
 
 .app-shell .vs-btn:hover {
   filter: brightness(1.06);
-  transform: translateY(-1px);
 }
 
 .app-shell .vs-btn:active {
-  transform: translateY(0);
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .vs-btn:active {
+    transform: none;
+  }
 }
 
 .app-shell .vs-row:hover {

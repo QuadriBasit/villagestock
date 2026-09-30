@@ -3,42 +3,85 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Design system: fintech-style inventory dashboard (Updated to match Landing Page) */
-  --color-primary: #00b398;
-  --color-primary-dark: #009982;
-  --color-primary-light: #33eed1;
-  --color-teal: #00e5c3;
-  --color-teal-dark: #00c6a7;
-  --color-accent: #0af;
-  --color-accent-dark: #008ecc;
-  --color-dark: #080b10;
-  --color-muted: #6b7280;
-  --color-surface: #f8fafc;
-  --color-border: #e2e8f0;
+  /* Primitives — culori/OKLCH ramps. Never apply these in components. */
+  --neutral-50: #fbf6ee;
+  --neutral-100: #f3ede4;
+  --neutral-200: #e6dfd4;
+  --neutral-300: #cfc8bc;
+  --neutral-400: #a49d94;
+  --neutral-500: #7a736a;
+  --neutral-600: #5d574e;
+  --neutral-700: #433e35;
+  --neutral-800: #2c271f;
+  --neutral-900: #1a1711;
+  --neutral-950: #0f0c07;
 
-  /* Interactive accent scale (matches --color-primary) */
-  --color-brand-200: #a7f4e7;
-  --color-brand-300: #33eed1;
-  --color-brand-400: #10c2a6;
-  --color-brand-500: #00b398;
-  --color-brand-600: #00907c;
+  --accent-50: #e5fbf5;
+  --accent-100: #c3ede1;
+  --accent-200: #a1decf;
+  --accent-300: #7dd0bc;
+  --accent-400: #54c2aa;
+  --accent-500: #00b398;
+  --accent-600: #01937c;
+  --accent-700: #017462;
+  --accent-800: #015648;
+  --accent-900: #013a30;
+  --accent-950: #01201a;
 
-  /* Prototype app shell (prototype-development-request) */
-  --color-shell-bg: #0b0f1a;
-  --color-shell-surface: #141a28;
-  --color-shell-surface-2: #1b2435;
-  --color-shell-line: #28324a;
-  --color-shell-ink: #eef2f9;
-  --color-shell-muted: #8794ab;
+  --danger-50: #fff0ee;
+  --danger-500: #c53637;
+  --danger-600: #a62b2c;
+  --warning-50: #fff3df;
+  --warning-500: #e2a000;
+  --success-50: #ebfaeb;
+  --success-500: #38853e;
 
-  --font-heading: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-display: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Semantics — roles only. Aliases keep existing Tailwind --color-* working. */
+  --color-bg-page: var(--neutral-50);
+  --color-bg-surface: #fffdf8;
+  --color-bg-sunken: var(--neutral-100);
+  --color-text-primary: var(--neutral-900);
+  --color-text-secondary: var(--neutral-600);
+  --color-text-on-accent: var(--accent-950);
+  --color-border-subtle: var(--neutral-200);
+  --color-accent-solid: var(--accent-500);
+  --color-accent-solid-hover: var(--accent-600);
+  --color-accent-text: var(--accent-700);
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
+  --color-primary: var(--accent-500);
+  --color-primary-dark: var(--accent-600);
+  --color-primary-light: var(--accent-300);
+  --color-teal: var(--accent-400);
+  --color-teal-dark: var(--accent-600);
+  --color-accent: #3d9ad6;
+  --color-accent-dark: #2b7fb8;
+  --color-dark: var(--neutral-900);
+  --color-muted: var(--neutral-600);
+  --color-surface: var(--neutral-50);
+  --color-border: var(--neutral-200);
+
+  --color-brand-200: var(--accent-200);
+  --color-brand-300: var(--accent-300);
+  --color-brand-400: var(--accent-400);
+  --color-brand-500: var(--accent-500);
+  --color-brand-600: var(--accent-600);
+
+  --color-shell-bg: var(--neutral-950);
+  --color-shell-surface: var(--neutral-900);
+  --color-shell-surface-2: var(--neutral-800);
+  --color-shell-line: var(--neutral-700);
+  --color-shell-ink: var(--neutral-50);
+  --color-shell-muted: var(--neutral-300);
+
+  --font-heading: 'Fraunces', ui-serif, Georgia, serif;
+  --font-body: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
   --radius-lg: 16px;
-  --radius-xl: 20px;
+  --radius-xl: 24px;
 
   --spacing-app-sidebar: 16rem;
 
@@ -235,41 +278,52 @@ body {
   font-size: 15px;
   line-height: 1.5;
   letter-spacing: -0.011em;
-  color: var(--color-dark);
+  color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  background-color: #f8fafc;
+  background-color: var(--color-bg-page);
   background-image:
-    radial-gradient(ellipse 100% 80% at 0% -25%, rgba(0, 229, 195, 0.06), transparent 52%),
-    radial-gradient(ellipse 70% 55% at 100% 0%, rgba(0, 170, 255, 0.04), transparent 48%),
-    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0, 229, 195, 0.04), transparent 45%);
-  background-size: 100% 100%, 100% 100%, 100% 100%;
+    radial-gradient(ellipse 90% 70% at 0% -20%, color-mix(in oklab, var(--accent-500) 7%, transparent), transparent 52%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, color-mix(in oklab, var(--warning-500) 5%, transparent), transparent 48%);
+  background-size: 100% 100%, 100% 100%;
 }
 
-/* Semantic tokens: matches Landing Page dark theme */
 .dark {
-  --color-primary: #00e5c3;
-  --color-primary-dark: #00c6a7;
-  --color-primary-light: #33eacc;
-  --color-dark: #f0f4f8;
-  --color-surface: #10151e;
-  --color-border: rgba(255,255,255,0.07);
+  --color-bg-page: var(--neutral-950);
+  --color-bg-surface: var(--neutral-900);
+  --color-bg-sunken: var(--neutral-800);
+  --color-text-primary: var(--neutral-50);
+  --color-text-secondary: var(--neutral-300);
+  --color-border-subtle: color-mix(in oklab, var(--neutral-50) 10%, transparent);
+  --color-accent-solid: var(--accent-400);
+  --color-accent-solid-hover: var(--accent-300);
+  --color-accent-text: var(--accent-300);
+  --color-primary: var(--accent-400);
+  --color-primary-dark: var(--accent-500);
+  --color-primary-light: var(--accent-300);
+  --color-dark: var(--neutral-50);
+  --color-muted: var(--neutral-300);
+  --color-surface: var(--neutral-900);
+  --color-border: color-mix(in oklab, var(--neutral-50) 10%, transparent);
+  --destructive-foreground: var(--color-red-400);
 }
 
 .dark body {
-  background-color: #080b10;
+  background-color: var(--color-bg-page);
   background-image:
-    radial-gradient(ellipse 100% 75% at 15% -15%, rgba(0, 229, 195, 0.08), transparent 52%),
-    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(0, 170, 255, 0.05), transparent 45%),
-    radial-gradient(ellipse 90% 40% at 50% 110%, rgba(0, 229, 195, 0.04), transparent 42%);
-  background-size: 100% 100%, 100% 100%, 100% 100%;
-  color: #f0f4f8;
+    radial-gradient(ellipse 90% 65% at 12% -12%, color-mix(in oklab, var(--accent-500) 10%, transparent), transparent 52%),
+    radial-gradient(ellipse 60% 45% at 100% 100%, color-mix(in oklab, var(--warning-500) 6%, transparent), transparent 45%);
+  background-size: 100% 100%, 100% 100%;
+  color: var(--color-text-primary);
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   letter-spacing: -0.025em;
   font-weight: 600;
+  line-height: 1.15;
+  text-wrap: balance;
 }
 
 #root {
@@ -279,8 +333,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::selection {
-  background-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
-  color: inherit;
+  background-color: color-mix(in oklab, var(--accent-500) 28%, var(--neutral-100));
+  color: var(--color-text-primary);
 }
 
 :focus-visible {
@@ -289,8 +343,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @utility ui-card {
-  @apply rounded-2xl border border-zinc-200/90 bg-white/95 text-zinc-900 backdrop-blur-sm
-    dark:border-white/[0.07] dark:bg-[#10151e]/95 dark:text-zinc-50;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-subtle);
+  background: color-mix(in oklab, var(--color-bg-surface) 95%, transparent);
+  color: var(--color-text-primary);
+  backdrop-filter: blur(8px);
   box-shadow: var(--shadow-card);
 }
 
@@ -404,24 +461,25 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 :root {
-  --accent: #00b398;
+  --accent: var(--accent-500);
+  --destructive-foreground: var(--color-red-500);
 }
 
 /* Authenticated app chrome — matches prototype-development-request shell */
 .app-shell {
-  --bg: #0b0f1a;
-  --surface: #141a28;
-  --surface-2: #1b2435;
-  --line: #28324a;
-  --ink: #eef2f9;
-  --muted: #8794ab;
-  --accent: #00b398;
-  --accent-2: #34d399;
-  --accent-3: #60a5fa;
-  --accent-4: #fbbf24;
-  --font-display: 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'Geist Mono', monospace;
+  --bg: var(--neutral-950);
+  --surface: var(--neutral-900);
+  --surface-2: var(--neutral-800);
+  --line: var(--neutral-700);
+  --ink: var(--neutral-50);
+  --muted: var(--neutral-300);
+  --accent: var(--accent-500);
+  --accent-2: var(--success-500);
+  --accent-3: #3d9ad6;
+  --accent-4: var(--warning-500);
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-body: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
   font-family: var(--font-body);
 }
 
@@ -439,7 +497,7 @@ h1, h2, h3, h4, h5, h6 {
 @layer components {
   .shell-accent-bg {
     background-color: var(--accent);
-    color: #04231d;
+    color: var(--color-text-on-accent);
   }
 
   .shell-accent-bg:hover {
@@ -501,29 +559,29 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Light appearance — Settings → Appearance (html.dark removed by ThemeProvider) */
 html:not(.dark) .app-shell {
-  --bg: #eef2f7;
-  --surface: #ffffff;
-  --surface-2: #f8fafc;
-  --line: #e2e8f0;
-  --ink: #0f172a;
-  --muted: #64748b;
-  --color-shell-bg: #eef2f7;
-  --color-shell-surface: #ffffff;
-  --color-shell-surface-2: #f8fafc;
-  --color-shell-line: #e2e8f0;
-  --color-shell-ink: #0f172a;
-  --color-shell-muted: #64748b;
+  --bg: var(--neutral-50);
+  --surface: #fffdf8;
+  --surface-2: var(--neutral-100);
+  --line: var(--neutral-200);
+  --ink: var(--neutral-900);
+  --muted: var(--neutral-600);
+  --color-shell-bg: var(--neutral-50);
+  --color-shell-surface: #fffdf8;
+  --color-shell-surface-2: var(--neutral-100);
+  --color-shell-line: var(--neutral-200);
+  --color-shell-ink: var(--neutral-900);
+  --color-shell-muted: var(--neutral-600);
 }
 
 /* Modals/sheets render through a portal on document.body — outside .app-shell —
    so the light shell tokens must also live at the root, or overlays stay dark. */
 html:not(.dark) {
-  --color-shell-bg: #eef2f7;
-  --color-shell-surface: #ffffff;
-  --color-shell-surface-2: #f8fafc;
-  --color-shell-line: #e2e8f0;
-  --color-shell-ink: #0f172a;
-  --color-shell-muted: #64748b;
+  --color-shell-bg: var(--neutral-50);
+  --color-shell-surface: #fffdf8;
+  --color-shell-surface-2: var(--neutral-100);
+  --color-shell-line: var(--neutral-200);
+  --color-shell-ink: var(--neutral-900);
+  --color-shell-muted: var(--neutral-600);
 }
 
 html:not(.dark) .app-shell .shell-nav-active {
@@ -531,7 +589,12 @@ html:not(.dark) .app-shell .shell-nav-active {
 }
 
 @utility label-caps {
-  @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 dark:text-zinc-400;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
 }
 
 /* Secondary body copy: theme token stays mid-gray for light; in dark, bump contrast on blue-gray backgrounds. */
@@ -547,9 +610,9 @@ html:not(.dark) .app-shell .shell-nav-active {
 }
 
 .dark .reports-calendar.rdp-root {
-  --rdp-accent-color: #00e5c3;
-  --rdp-accent-background-color: rgba(0, 229, 195, 0.15);
-  color: #f0f4f8;
+  --rdp-accent-color: var(--accent-400);
+  --rdp-accent-background-color: color-mix(in oklab, var(--accent-400) 16%, transparent);
+  color: var(--neutral-50);
 }
 
 .dark .reports-calendar .rdp-weekday {

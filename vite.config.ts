@@ -15,8 +15,8 @@ export default defineConfig({
         name: 'VillageStock',
         short_name: 'VillageStock',
         description: 'Inventory management for electronics retailers',
-        theme_color: '#09090b',
-        background_color: '#ffffff',
+        theme_color: '#0f0c07',
+        background_color: '#fbf6ee',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
@@ -51,7 +51,10 @@ export default defineConfig({
     strictPort: true,
   },
   resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
+    alias: {
+      '@/registry': path.resolve(__dirname, './registry'),
+      '@': path.resolve(__dirname, './src'),
+    },
   },
   build: {
     rollupOptions: {

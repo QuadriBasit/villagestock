@@ -19,7 +19,7 @@ export default function ContactsPage() {
   const [tab, setTab] = useState<ContactType>('supplier');
   const { contacts: allContacts, isLoading: allLoading } = useContacts();
   const { contacts, isLoading: tabLoading } = useContacts(tab);
-  const { addContact } = useContactActions();
+  const { addContact, updateContact } = useContactActions();
   const [addOpen, setAddOpen] = useState(false);
   const [selected, setSelected] = useState<ContactRecord | null>(null);
 
@@ -124,7 +124,11 @@ export default function ContactsPage() {
 
       {selected ? (
         <Suspense fallback={null}>
-          <ContactDetailModal contact={selected} onClose={() => setSelected(null)} />
+          <ContactDetailModal
+            contact={allContacts?.find(c => c.id === selected.id) ?? selected}
+            onClose={() => setSelected(null)}
+            onUpdate={updateContact}
+          />
         </Suspense>
       ) : null}
     </div>

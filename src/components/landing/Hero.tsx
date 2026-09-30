@@ -3,43 +3,39 @@ import { Link } from 'react-router-dom';
 export function Hero() {
   return (
     <section className="landing-hero" id="top">
-      <div className="hero-inner">
-        <div className="hero-badge" data-reveal>
-          <span className="landing-dot" />
+      <div className="hero-copy">
+        <p className="hero-eyebrow" data-reveal>
           Built for electronics &amp; gadget retailers
-        </div>
+        </p>
 
         <h1 className="hero-title" data-reveal>
-          The business OS for
+          Run the counter.
           <br />
-          <em>every gadget shop.</em>
+          Know the stock.
+          <br />
+          <span className="hero-title-accent">Get paid.</span>
         </h1>
 
         <p className="hero-sub" data-reveal>
-          Inventory, sales, repairs, credits and reporting — all in one place.
-          Works fully offline, syncs everywhere, and is built for the way you
-          actually run your shop.
+          Inventory, sales, repairs, credits, and reporting in one place. Works offline on
+          the shop floor, syncs when you are back online.
         </p>
 
         <div className="hero-ctas" data-reveal>
           <Link to="/auth" className="landing-btn landing-btn-primary landing-btn-lg">
             Start free trial
-            <svg className="btn-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            <svg className="btn-arrow" viewBox="0 0 24 24" aria-hidden>
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </Link>
-          <a href="#features" className="landing-btn landing-btn-ghost landing-btn-lg">See how it works</a>
+          <a href="#how" className="landing-btn landing-btn-ghost landing-btn-lg">
+            See how it works
+          </a>
         </div>
 
-        <div className="hero-trust" data-reveal>
-          <div className="trust-faces">
-            <span className="face f1">AY</span>
-            <span className="face f2">CE</span>
-            <span className="face f3">FZ</span>
-            <span className="face f4">JO</span>
-          </div>
-          <span className="trust-text">
-            <strong>14-day free trial</strong> · no credit card · cancel anytime
-          </span>
-        </div>
+        <p className="hero-trust" data-reveal>
+          14-day free trial · no card · cancel anytime
+        </p>
       </div>
 
       <HeroMockup />
