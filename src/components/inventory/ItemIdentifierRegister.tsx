@@ -44,36 +44,56 @@ export function ItemIdentifierRegister({
   const kind = identifierKindForItem(item);
   const { units } = useProductUnits(item);
   const [q, setQ] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+
+  const sellable = useMemo(
+    () => units.filter(u => u.status === 'in_stock' || u.status === 'reserved'),
+    [units],
+  );
+  const soldCount = units.length - sellable.length;
+  const pool = showHistory ? units : sellable;
 
   const shown = useMemo(() => {
     const query = q.trim().toLowerCase();
-    if (!query) return units;
-    return units.filter(u => {
+    if (!query) return pool;
+    return pool.filter(u => {
       const code = primaryIdentifier(u) ?? '';
       const meta = unitRegisterMeta(u);
       const haystack = [code, meta.intake, meta.variant, meta.grade ?? ''].join(' ').toLowerCase();
       return haystack.includes(query) || u.id.toLowerCase().includes(query);
     });
-  }, [units, q]);
+  }, [pool, q]);
 
   if (!kind) return null;
 
-  const inStock = units.filter(u => u.status === 'in_stock').length;
   const label = kind;
 
   return (
     <Card className="border-shell-line bg-shell-surface p-0 shadow-none">
-      <div className="flex items-center justify-between gap-3 border-b border-shell-line px-4 py-3">
-        <span className="inline-flex items-center gap-2 font-display text-[15px] font-semibold text-shell-ink">
-          <Hash size={16} className="text-shell-muted" />
-          {label} register
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-shell-line px-4 py-3">
+        <span className="inline-flex items-center gap-2 text-sm font-medium text-shell-ink">
+          <Hash size={15} className="text-shell-muted" />
+          {sellable.length === 1 ? `${label} on hand` : `${label}s to sell`}
         </span>
-        <span className="text-xs text-shell-muted">
-          {inStock} of {units.length} ready
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-shell-muted">
+            {sellable.length} {sellable.length === 1 ? 'unit' : 'units'}
+          </span>
+          {soldCount > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[11px] text-shell-muted hover:text-shell-ink"
+              onClick={() => setShowHistory(v => !v)}
+            >
+              {showHistory ? 'Hide sold' : `Sold (${soldCount})`}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
-      {units.length > 4 ? (
+      {pool.length > 4 ? (
         <div className="border-b border-shell-line px-3 py-2">
           <Input
             type="text"
@@ -88,7 +108,9 @@ export function ItemIdentifierRegister({
 
       <div className="max-h-[420px] overflow-y-auto">
         {shown.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-shell-muted">No {label} matches that.</p>
+          <p className="px-4 py-6 text-center text-sm text-shell-muted">
+            {showHistory ? `No ${label} matches that.` : 'Nothing in stock to sell right now.'}
+          </p>
         ) : (
           <ul className="divide-y divide-shell-line">
             {shown.map(unit => {
@@ -164,16 +186,16 @@ export function ItemIdentifierRegister({
                               {f}
                             </Badge>
                           ))}
-                        {unit.cost_price != null ? (
-                          <span className="ml-auto font-mono text-[11px] text-shell-muted">
-                            cost {formatCurrency(unit.cost_price)}
-                          </span>
-                        ) : null}
-                        {getMarginPct(unit) > 0 ? (
-                          <span className="font-mono text-[11px] text-emerald-400/90">
-                            {getMarginPct(unit)}%
-                          </span>
-                        ) : null}
+                        <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 font-mono text-[11px] tabular-nums">
+                          {unit.cost_price != null ? (
+                            <span className="text-shell-muted">
+                              cost {formatCurrency(unit.cost_price)}
+                            </span>
+                          ) : null}
+                          {getMarginPct(unit) > 0 ? (
+                            <span className="text-emerald-400/90">{getMarginPct(unit)}%</span>
+                          ) : null}
+                        </span>
                       </div>
                     </button>
 

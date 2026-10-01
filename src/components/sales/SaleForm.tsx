@@ -269,7 +269,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
             <div className="flex items-center gap-2">
               <ShoppingCart size={18} className="text-brand-300" />
               <h2 className="font-display text-base font-bold text-shell-ink">
-                Record Sale
+                Sell
               </h2>
             </div>
             <ModalSheetClose />
@@ -655,7 +655,7 @@ export default function SaleForm({ item, onClose, onSuccess }: SaleFormProps) {
                   )
                 ) : (
                   <>
-                    <ShoppingCart size={16} /> Confirm Sale
+                    <ShoppingCart size={16} /> Done — record sale
                   </>
                 )}
               </button>

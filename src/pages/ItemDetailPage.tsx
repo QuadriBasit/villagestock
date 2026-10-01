@@ -1,10 +1,8 @@
 import { lazy, Suspense, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle,
   ArrowLeft,
   ArrowRightLeft,
-  CheckCircle2,
   ChevronRight,
   Pencil,
   ShoppingCart,
@@ -114,7 +112,12 @@ export default function ItemDetailPage() {
   const stockCanSell = !tradeLocked && (isSerialized ? status === 'in_stock' : item.quantity > 0);
   const stockCanSwap = !tradeLocked && isSerialized && status === 'in_stock';
   const stockCanEngineer = !tradeLocked && isSerialized && status === 'in_stock';
-  const canSell = stockCanSell && hasPermission('record_sales');
+  const inStockUnits = units.filter(u => u.status === 'in_stock').length;
+  const onBenchUnits = units.filter(u => u.status === 'with_engineer' || u.status === 'defective').length;
+  const firstSellable =
+    units.find(u => u.status === 'in_stock' || u.status === 'reserved') ?? null;
+  const sellTarget = stockCanSell ? item : firstSellable;
+  const canSell = !tradeLocked && !!sellTarget && hasPermission('record_sales');
   const canSwap = stockCanSwap && hasPermission('record_swaps');
   const canEngineer = stockCanEngineer && hasPermission('access_repairs');
   const canEditItem = hasPermission('edit_items');
@@ -122,8 +125,6 @@ export default function ItemDetailPage() {
   const engineerName = repairs.find(r => r.item_id === item.id)?.engineer_name;
   const idKind = identifierKindForItem(item);
   const idCode = primaryIdentifier(item);
-  const inStockUnits = units.filter(u => u.status === 'in_stock').length;
-  const onBenchUnits = units.filter(u => u.status === 'with_engineer' || u.status === 'defective').length;
   const fleetMix = isSerialized && units.length > 1 ? computeProductUnitMix(units) : null;
   const showFleetStats = fleetMix && (fleetMix.priceMin !== fleetMix.priceMax || fleetMix.costMin !== fleetMix.costMax);
   const benchItem = engineerTarget ?? item;
@@ -248,13 +249,19 @@ export default function ItemDetailPage() {
           <Card className="border-shell-line bg-shell-surface p-0 shadow-none">
             <CardContent className="flex flex-col gap-2 p-3">
               <Button
-                className="h-10 w-full justify-start bg-brand-400 text-[#04231d] hover:bg-brand-300"
+                className="h-11 w-full justify-center bg-brand-400 text-[#04231d] hover:bg-brand-300 text-sm font-semibold"
                 disabled={!canSell}
                 onClick={() => setSellOpen(true)}
               >
                 <ShoppingCart size={16} />
-                Sell this item
+                {stockCanSell ? 'Sell' : firstSellable ? 'Sell in-stock unit' : 'Not available to sell'}
               </Button>
+              {!canSell && !hasPermission('record_sales') ? (
+                <p className="px-1 text-center text-xs text-shell-muted">Your role cannot record sales.</p>
+              ) : null}
+              {!canSell && hasPermission('record_sales') && tradeLocked ? (
+                <p className="px-1 text-center text-xs text-shell-muted">{tradingGate.message}</p>
+              ) : null}
               <Button
                 variant="outline"
                 className="h-10 w-full justify-start border-shell-line bg-transparent text-shell-ink hover:bg-shell-surface-2"
@@ -309,13 +316,16 @@ export default function ItemDetailPage() {
             />
           ) : null}
 
-          <StockAlert item={item} qty={qty} />
         </div>
       </div>
 
-      {sellOpen ? (
+      {sellOpen && sellTarget ? (
         <Suspense fallback={null}>
-          <SaleForm item={item} onClose={() => setSellOpen(false)} onSuccess={() => setSellOpen(false)} />
+          <SaleForm
+            item={sellTarget}
+            onClose={() => setSellOpen(false)}
+            onSuccess={() => setSellOpen(false)}
+          />
         </Suspense>
       ) : null}
       {swapOpen ? (
@@ -405,34 +415,3 @@ function DetailField({
   );
 }
 
-function StockAlert({ item, qty }: { item: InventoryItem; qty: number }) {
-  const low = item.mode === 'non_serialized' ? qty <= item.low_stock_threshold : qty <= 1 && qty > 0;
-  const out = qty === 0;
-  const healthy = !out && !low;
-
-  return (
-    <Card
-      className={cn(
-        'border-shell-line p-0 shadow-none',
-        out || low ? 'border-amber-500/25 bg-amber-500/10' : 'bg-shell-surface'
-      )}
-    >
-      <CardContent className="flex gap-3 p-4">
-        {healthy ? (
-          <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-400" />
-        ) : (
-          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-300" />
-        )}
-        <p className="text-[13px] leading-relaxed text-shell-ink">
-          {out
-            ? 'Out of stock — reorder before you lose sales.'
-            : low
-              ? item.mode === 'serialized'
-                ? 'Last unit for this model at this branch.'
-                : `Only ${qty} left. You usually reorder at ${item.low_stock_threshold}.`
-              : 'Healthy stock level. No action needed.'}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
