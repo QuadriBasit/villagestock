@@ -300,7 +300,7 @@ export function TrackToggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-shell-line bg-shell-surface-2/40 px-3.5 py-3">
+    <div className="flex flex-col gap-3 rounded-xl border border-shell-line bg-shell-surface-2/40 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-2.5">
         <Hash size={17} className="text-brand-400" />
         <div>
@@ -315,9 +315,10 @@ export function TrackToggle({
 
 export function StepProgress({ steps, step }: { steps: string[]; step: number }) {
   return (
-    <div className="mt-4 flex gap-1.5">
+    <div className="-mx-1 mt-4 overflow-x-auto px-1 pb-1 [-webkit-overflow-scrolling:touch]">
+      <div className="flex min-w-max gap-1.5 sm:min-w-0 sm:w-full">
       {steps.map((st, i) => (
-        <div key={st} className="min-w-0 flex-1">
+        <div key={st} className="min-w-[4.5rem] flex-1 sm:min-w-0">
           <div
             className={cn('h-1 rounded-full transition-colors', i <= step ? 'bg-brand-400' : 'bg-shell-line')}
           />
@@ -331,6 +332,7 @@ export function StepProgress({ steps, step }: { steps: string[]; step: number })
           </p>
         </div>
       ))}
+      </div>
     </div>
   );
 }
@@ -363,7 +365,7 @@ export function VariantTable({
               <p className="text-[11px] text-emerald-400">{existingStock[v.label]} in stock</p>
             ) : null}
           </div>
-          <div className="mt-2 grid grid-cols-3 gap-2">
+          <div className="mt-2 grid grid-cols-1 gap-2 min-[400px]:grid-cols-3">
             <APLabel label="Qty">
               <APTextField
                 type="number"

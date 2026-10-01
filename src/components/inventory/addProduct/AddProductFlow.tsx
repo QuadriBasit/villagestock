@@ -71,6 +71,8 @@ import {
   INTAKE_FAULTS,
   isHandheldCat,
   isSimpleStockCat,
+  resizeUnitPricing,
+  unitEconomicsForVariant,
   syncVariants,
   syncVariantsForEdit,
   type AddProductState,
@@ -293,10 +295,35 @@ export default function AddProductFlow({ open, onClose, itemId, purchase }: AddP
   };
 
   const setVar = (i: number, patch: Partial<(typeof state.variants)[0]>) => {
-    setState(prev => ({
-      ...prev,
-      variants: prev.variants.map((variant, index) => (index === i ? { ...variant, ...patch } : variant)),
-    }));
+    setState(prev => {
+      const variants = prev.variants.map((variant, index) =>
+        index === i ? { ...variant, ...patch } : variant,
+      );
+      const touched = variants[i];
+      if (!touched) return { ...prev, variants };
+      const unitPricing = resizeUnitPricing(prev.unitPricing, touched.label, touched.qty, {
+        cost: touched.cost,
+        price: touched.price,
+      });
+      return { ...prev, variants, unitPricing };
+    });
+  };
+
+  const setUnitEconomics = (
+    label: string,
+    index: number,
+    patch: Partial<{ cost: number; price: number }>,
+  ) => {
+    setState(prev => {
+      const variant = prev.variants.find(v => v.label === label);
+      const fallback = {
+        cost: variant?.cost ?? prev.baseCost,
+        price: variant?.price ?? prev.basePrice,
+      };
+      const base = resizeUnitPricing(prev.unitPricing, label, variant?.qty ?? 0, fallback)[label] ?? [];
+      const next = base.map((row, i) => (i === index ? { ...row, ...patch } : row));
+      return { ...prev, unitPricing: { ...prev.unitPricing, [label]: next } };
+    });
   };
 
   const applyBase = (key: 'baseCost' | 'basePrice', val: number) => {
@@ -322,6 +349,12 @@ export default function AddProductFlow({ open, onClose, itemId, purchase }: AddP
       return Boolean(v && v.qty > 0 && v.price > 0 && v.cost > 0);
     }
     if (cur === 'Network') return networkStateIsComplete(state.network);
+    if (cur === 'Serials') {
+      return state.variants.every(v => {
+        if (v.qty <= 0) return true;
+        return unitEconomicsForVariant(state, v).every(u => u.cost > 0 && u.price > 0);
+      });
+    }
     return true;
   };
 
@@ -693,10 +726,16 @@ export default function AddProductFlow({ open, onClose, itemId, purchase }: AddP
                   <APLabel label="Default cost" hint="fills empty rows">
                     <APMoney value={state.baseCost} onChange={v => applyBase('baseCost', v)} />
                   </APLabel>
-                  <APLabel label="Default sell" hint="each row can differ">
+                  <APLabel label="Default sell" hint="per variant; per unit on Serials">
                     <APMoney value={state.basePrice} onChange={v => applyBase('basePrice', v)} />
                   </APLabel>
                 </div>
+                {state.variants.some(v => v.qty > 1) ? (
+                  <p className="text-[12px] leading-relaxed text-shell-muted">
+                    Bought several with the same spec but different cost or sell price? On the{' '}
+                    <span className="font-medium text-shell-ink">Serials</span> step, set cost and sell for each unit.
+                  </p>
+                ) : null}
                 {state.variants.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-shell-line py-[18px] text-center text-[13px] text-shell-muted">
                     Pick a {isHandheldCat(state.cat) ? 'RAM, storage, or colour' : 'RAM or storage'} above to build variants.
@@ -717,8 +756,8 @@ export default function AddProductFlow({ open, onClose, itemId, purchase }: AddP
               <>
                 <div className="-mt-1 flex items-start justify-between gap-3">
                   <p className="text-[13px] leading-relaxed text-shell-muted">
-                    Enter the {idType} for each unit. You can scan or type them now, or leave blanks and fill them in
-                    later from the product page.
+                    For each unit: {idType}, what you paid (cost), and what you will sell for. IMEI can be blank now and
+                    added later on the product page.
                   </p>
                   <Button
                     type="button"
@@ -742,30 +781,55 @@ export default function AddProductFlow({ open, onClose, itemId, purchase }: AddP
                         {codesOf(v.label).filter(c => (c || '').trim()).length}/{v.qty} entered
                       </span>
                     </div>
-                    <div className="flex flex-col gap-2 p-3">
-                      {Array.from({ length: v.qty }, (_, k) => (
-                        <div key={k} className="flex items-center gap-2.5">
-                          <span className="w-[22px] shrink-0 font-mono text-xs text-shell-muted">{k + 1}</span>
-                          <APTextField
-                            value={codesOf(v.label)[k] || ''}
-                            onChange={e => setSerial(v.label, k, e.target.value)}
-                            inputMode={idType === 'IMEI' ? 'numeric' : 'text'}
-                            maxLength={idType === 'IMEI' ? 17 : 24}
-                            placeholder={idType === 'IMEI' ? '15-digit IMEI' : 'Serial number'}
-                            className="flex-1 font-mono text-[13.5px]"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="size-10 shrink-0"
-                            onClick={() => setScanTarget({ label: v.label, index: k })}
-                            aria-label={`Scan ${idType} ${k + 1} for ${v.label}`}
+                    <div className="flex flex-col gap-3 p-3">
+                      {Array.from({ length: v.qty }, (_, k) => {
+                        const econ = unitEconomicsForVariant(state, v)[k] ?? {
+                          cost: v.cost,
+                          price: v.price,
+                        };
+                        return (
+                          <div
+                            key={k}
+                            className="space-y-2 rounded-lg border border-shell-line/70 bg-shell-surface-2/25 p-2.5"
                           >
-                            <ScanLine size={18} />
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-[22px] shrink-0 font-mono text-xs text-shell-muted">{k + 1}</span>
+                              <APTextField
+                                value={codesOf(v.label)[k] || ''}
+                                onChange={e => setSerial(v.label, k, e.target.value)}
+                                inputMode={idType === 'IMEI' ? 'numeric' : 'text'}
+                                maxLength={idType === 'IMEI' ? 17 : 24}
+                                placeholder={idType === 'IMEI' ? '15-digit IMEI' : 'Serial number'}
+                                className="min-w-0 flex-1 font-mono text-[13.5px]"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="size-10 shrink-0"
+                                onClick={() => setScanTarget({ label: v.label, index: k })}
+                                aria-label={`Scan ${idType} ${k + 1} for ${v.label}`}
+                              >
+                                <ScanLine size={18} />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-1 gap-2 pl-0 min-[420px]:grid-cols-2 min-[420px]:pl-7 sm:pl-7">
+                              <APLabel label="Cost">
+                                <APMoney
+                                  value={econ.cost}
+                                  onChange={n => setUnitEconomics(v.label, k, { cost: n })}
+                                />
+                              </APLabel>
+                              <APLabel label="Sell">
+                                <APMoney
+                                  value={econ.price}
+                                  onChange={n => setUnitEconomics(v.label, k, { price: n })}
+                                />
+                              </APLabel>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}

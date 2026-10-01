@@ -15,6 +15,7 @@ import {
   isSimpleStockCat,
   mapIntakeCondition,
   syncVariants,
+  unitEconomicsForVariant,
   type AddProductState,
   type ProductCat,
   type VariantRow,
@@ -131,15 +132,17 @@ export function buildIntakeItems(state: AddProductState): InventoryItemInput[] {
       continue;
     }
 
+    const economics = unitEconomicsForVariant(state, variant);
     for (let u = 0; u < variant.qty; u++) {
       const codes = state.serials[variant.label] ?? [];
       const code = (codes[u] ?? '').trim();
+      const unit = economics[u] ?? { cost: variant.cost, price: variant.price };
       const input: InventoryItemInput = {
         name: state.model.trim(),
         category,
         brand: state.brand,
-        price: variant.price,
-        cost_price: variant.cost || undefined,
+        price: unit.price,
+        cost_price: unit.cost || undefined,
         quantity: 1,
         low_stock_threshold: 0,
         condition,
@@ -192,7 +195,10 @@ export function totalUnits(state: AddProductState): number {
 
 export function stockValue(state: AddProductState): number {
   const variants = isSimpleStockCat(state.cat) ? ensureAccessoryVariant(state) : state.variants;
-  return variants.reduce((a, v) => a + (v.qty || 0) * (v.price || 0), 0);
+  return variants.reduce((a, v) => {
+    const units = unitEconomicsForVariant(state, v);
+    return a + units.reduce((sum, u) => sum + (u.price || 0), 0);
+  }, 0);
 }
 
 export function switchCategory(state: AddProductState, cat: ProductCat): AddProductState {
@@ -213,6 +219,7 @@ export function switchCategory(state: AddProductState, cat: ProductCat): AddProd
     spec: isSimpleStockCat(cat) ? state.spec : '',
     stockedAt: state.stockedAt,
     serials: isSimpleStockCat(cat) ? {} : state.serials,
+    unitPricing: isSimpleStockCat(cat) ? {} : state.unitPricing,
     track: isSimpleStockCat(cat) ? false : state.track,
   };
   if (isSimpleStockCat(cat)) {
@@ -228,17 +235,39 @@ export function purchaseLinesFromIntake(state: AddProductState): PurchaseLine[] 
   const category = CAT_META[state.cat].category;
   const variants = isSimpleStockCat(state.cat) ? ensureAccessoryVariant(state) : state.variants;
   const serialized = category === 'phones' || category === 'laptops' || category === 'tablets';
-  return variants
-    .filter(variant => variant.qty > 0)
-    .map(variant => ({
-      name: state.model.trim(),
-      brand: state.brand.trim(),
-      category,
-      qty: variant.qty,
-      unit_cost: variant.cost,
-      sell_price: variant.price,
-      unit_ids: serialized ? (state.serials[variant.label] ?? []).slice(0, variant.qty) : undefined,
-    }));
+  const lines: PurchaseLine[] = [];
+
+  for (const variant of variants.filter(v => v.qty > 0)) {
+    if (!serialized) {
+      lines.push({
+        name: state.model.trim(),
+        brand: state.brand.trim(),
+        category,
+        qty: variant.qty,
+        unit_cost: variant.cost,
+        sell_price: variant.price,
+      });
+      continue;
+    }
+
+    const economics = unitEconomicsForVariant(state, variant);
+    const codes = state.serials[variant.label] ?? [];
+    for (let i = 0; i < variant.qty; i++) {
+      const unit = economics[i] ?? { cost: variant.cost, price: variant.price };
+      const code = (codes[i] ?? '').trim();
+      lines.push({
+        name: state.model.trim(),
+        brand: state.brand.trim(),
+        category,
+        qty: 1,
+        unit_cost: unit.cost,
+        sell_price: unit.price,
+        unit_ids: code ? [code] : undefined,
+      });
+    }
+  }
+
+  return lines;
 }
 
 export function resetForCategory(cat: ProductCat, engineerDefault: string): AddProductState {
@@ -272,6 +301,7 @@ export function resetForCategory(cat: ProductCat, engineerDefault: string): AddP
     partsEst: 0,
     track: !isSimpleStockCat(cat),
     serials: {},
+    unitPricing: {},
     faults: [],
     network: blankNetworkState(),
     stockedAt: toLocalDatetimeValue(new Date()),

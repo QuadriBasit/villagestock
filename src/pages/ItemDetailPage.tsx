@@ -172,7 +172,7 @@ export default function ItemDetailPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               <StatTile
                 label={showFleetStats ? 'Price range' : 'Selling price'}
                 value={

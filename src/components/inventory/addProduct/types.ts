@@ -23,6 +23,8 @@ export type VariantRow = {
   price: number;
 };
 
+export type UnitEconomics = { cost: number; price: number };
+
 export type InspectionState = {
   display: 'Original' | 'Changed';
   battery: 'Original' | 'Changed';
@@ -55,6 +57,8 @@ export type AddProductState = {
   partsEst: number;
   track: boolean;
   serials: Record<string, string[]>;
+  /** Per-unit cost/sell when qty &gt; 1 (key = variant label). Falls back to variant row defaults. */
+  unitPricing: Record<string, UnitEconomics[]>;
   faults: string[];
   network: NetworkState;
   stockedAt: string;
@@ -153,10 +157,34 @@ export function blankAddProductState(engineerDefault = ''): AddProductState {
     partsEst: 0,
     track: true,
     serials: {},
+    unitPricing: {},
     faults: [],
     network: blankNetworkState(),
     stockedAt: toLocalDatetimeValue(new Date()),
   };
+}
+
+export function resizeUnitPricing(
+  prev: Record<string, UnitEconomics[]>,
+  label: string,
+  qty: number,
+  fallback: UnitEconomics,
+): Record<string, UnitEconomics[]> {
+  const arr = [...(prev[label] ?? [])];
+  while (arr.length < qty) arr.push({ ...fallback });
+  return { ...prev, [label]: arr.slice(0, qty) };
+}
+
+export function unitEconomicsForVariant(
+  state: Pick<AddProductState, 'unitPricing'>,
+  variant: VariantRow,
+): UnitEconomics[] {
+  const fallback = { cost: variant.cost, price: variant.price };
+  const stored = state.unitPricing[variant.label];
+  return Array.from({ length: Math.max(0, variant.qty) }, (_, i) => ({
+    cost: stored?.[i]?.cost ?? fallback.cost,
+    price: stored?.[i]?.price ?? fallback.price,
+  }));
 }
 
 export function mapIntakeCondition(condition: IntakeCondition): DeviceCondition {
@@ -176,7 +204,7 @@ export function variantLabel(cat: ProductCat, attrs: Record<string, string | und
 }
 
 export function syncVariants(state: AddProductState, patch: Partial<AddProductState>): AddProductState {
-  const st = { ...state, ...patch };
+  let st = { ...state, ...patch };
   let combos: Record<string, string>[];
   if (isHandheldCat(st.cat)) {
     combos = cartesian([
@@ -221,9 +249,24 @@ export function syncVariants(state: AddProductState, patch: Partial<AddProductSt
     if (carried?.some(code => code.trim()) && !already) {
       serials = { ...serials, [variants[0].label]: carried };
     }
+    const carriedPricing = st.unitPricing[previous.label];
+    if (carriedPricing?.length && !st.unitPricing[variants[0].label]?.length) {
+      st = {
+        ...st,
+        unitPricing: { ...st.unitPricing, [variants[0].label]: carriedPricing },
+      };
+    }
   }
 
-  return { ...st, variants, serials };
+  const unitPricing = { ...st.unitPricing };
+  for (const v of variants) {
+    Object.assign(
+      unitPricing,
+      resizeUnitPricing(unitPricing, v.label, v.qty, { cost: v.cost, price: v.price }),
+    );
+  }
+
+  return { ...st, variants, serials, unitPricing };
 }
 
 /** Edit uses the same variant rows as add, including quantity and each row's prices. */

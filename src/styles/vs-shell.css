@@ -169,4 +169,15 @@
   .app-shell .vs-hide-xs {
     display: none;
   }
+  .app-shell .vs-inv-grid,
+  .app-shell .vs-sale-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .app-shell .vs-inv-grid > *,
+  .app-shell .vs-sale-grid > * {
+    width: 100%;
+  }
 }

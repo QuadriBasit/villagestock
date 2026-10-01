@@ -33,8 +33,11 @@ function AppLayoutInner() {
       <DesktopSidebar />
       <div className="flex min-h-svh min-w-0 flex-1 flex-col lg:ml-[252px]">
         <TopBar />
-        <main className="flex-1 overflow-y-auto pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
-          <div key={location.pathname} className="route-enter w-full px-4 py-0 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
+        <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
+          <div
+            key={location.pathname}
+            className="route-enter w-full min-w-0 px-4 py-0 sm:px-6 lg:px-8 xl:px-10 2xl:px-12"
+          >
             <Outlet />
           </div>
         </main>

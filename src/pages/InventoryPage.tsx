@@ -215,17 +215,19 @@ export default function InventoryPage() {
             autoComplete="off"
           />
         </div>
-        <div className={shellSegmentTrack}>
-          {CATEGORY_PILLS.map(cat => (
-            <button
-              key={cat.value}
-              type="button"
-              onClick={() => setFilters({ category: cat.value })}
-              className={shellSegmentBtn(filters.category === cat.value)}
-            >
-              {cat.label}
-            </button>
-          ))}
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0 [-webkit-overflow-scrolling:touch]">
+          <div className={cn(shellSegmentTrack, 'inline-flex w-max min-w-full flex-nowrap sm:flex sm:w-full')}>
+            {CATEGORY_PILLS.map(cat => (
+              <button
+                key={cat.value}
+                type="button"
+                onClick={() => setFilters({ category: cat.value })}
+                className={cn(shellSegmentBtn(filters.category === cat.value), 'shrink-0 whitespace-nowrap')}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -292,7 +294,24 @@ export default function InventoryPage() {
       ) : groups.length === 0 ? (
         <EmptyState isFiltered={isFiltered} onAdd={openAddProduct} query={filters.search} />
       ) : (
-        <Card className="overflow-hidden border-shell-line bg-shell-surface p-0">
+        <>
+        <div className="space-y-2 md:hidden">
+          {groups.map(group => (
+            <InventoryMobileGroup
+              key={group.key}
+              group={group}
+              tradeLocked={tradeLocked}
+              tradeLockedMessage={tradingGate.message}
+              onView={id => navigate(`/inventory/${id}`)}
+              onEdit={() => openEditProduct(group.primaryItem.id)}
+              onSell={item => setSellTarget(item)}
+              onSwap={item => setSwapTarget(item)}
+              onEngineer={item => setEngineerTarget(item)}
+              onDelete={item => setDeleteTarget(item)}
+            />
+          ))}
+        </div>
+        <Card className="hidden overflow-hidden border-shell-line bg-shell-surface p-0 md:block">
           <div className="overflow-x-auto">
             <div className="min-w-[640px]">
               <div
@@ -329,6 +348,7 @@ export default function InventoryPage() {
             </div>
           </div>
         </Card>
+        </>
       )}
 
       <ConfirmDialog
@@ -372,6 +392,86 @@ export default function InventoryPage() {
         <EditProductModal open itemId={editItemId} onClose={closeEditProduct} />
       ) : null}
     </div>
+  );
+}
+
+function InventoryMobileGroup({
+  group,
+  tradeLocked,
+  tradeLockedMessage,
+  onView,
+  onEdit,
+  onSell,
+  onSwap,
+  onEngineer,
+  onDelete,
+}: {
+  group: InventoryListGroup;
+  tradeLocked: boolean;
+  tradeLockedMessage: string;
+  onView: (id: string) => void;
+  onEdit: () => void;
+  onSell: (item: InventoryItem) => void;
+  onSwap: (item: InventoryItem) => void;
+  onEngineer: (item: InventoryItem) => void;
+  onDelete: (item: InventoryItem) => void;
+}) {
+  const { primaryItem, mix } = group;
+  const sellable = sellableItemsInGroup(group);
+  const sellTarget = sellable[0];
+  const isSerialized = primaryItem.mode === 'serialized';
+  const priceSpread = mix.priceMin !== mix.priceMax;
+  const canSell = !tradeLocked && sellable.length > 0;
+  const canSwap = !tradeLocked && isSerialized && sellable.some(i => i.status === 'in_stock');
+  const canEngineer = !tradeLocked && isSerialized && sellable.some(i => i.status === 'in_stock');
+  const canDelete = group.items.length === 1;
+
+  return (
+    <Card className="border-shell-line bg-shell-surface p-0 shadow-none">
+      <div className="flex items-start gap-3 p-3">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-start gap-3 text-left"
+          onClick={() => onView(primaryItem.id)}
+        >
+          <CategoryThumb category={group.category} size="sm" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[15px] font-semibold text-shell-ink">{group.name}</p>
+            <p className="mt-0.5 line-clamp-2 text-xs text-shell-muted">{productSpecLine(group)}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              <span className="font-mono font-semibold tabular-nums text-shell-ink">
+                {priceSpread
+                  ? formatCurrencyRange(mix.priceMin, mix.priceMax, true)
+                  : formatCurrency(mix.priceMin)}
+              </span>
+              <span
+                className={cn(
+                  'font-semibold tabular-nums',
+                  mix.qty === 0 ? 'text-red-400' : 'text-shell-muted',
+                )}
+              >
+                {mix.qty} in stock
+              </span>
+            </div>
+          </div>
+        </button>
+        <GroupActions
+          tradeLocked={tradeLocked}
+          tradeLockedMessage={tradeLockedMessage}
+          canSell={canSell}
+          canSwap={canSwap}
+          canEngineer={canEngineer}
+          canDelete={canDelete}
+          isSerialized={isSerialized}
+          onView={() => onView(primaryItem.id)}
+          onEdit={onEdit}
+          onSell={() => sellTarget && onSell(sellTarget)}
+          onSwap={() => sellTarget && onSwap(sellTarget)}
+          onEngineer={() => sellTarget && onEngineer(sellTarget)}
+          onDelete={() => onDelete(primaryItem)}
+        />
+      </div>
+    </Card>
   );
 }
 

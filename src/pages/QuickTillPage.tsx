@@ -99,6 +99,7 @@ export default function QuickTillPage() {
   const { activeLocationId, ready: locationReady } = useShopLocation();
   const { checkoutQuickTill } = useSalesActions();
   const checkoutLock = useRef(false);
+  const cartAnchorRef = useRef<HTMLDivElement>(null);
   const { contacts } = useContacts('customer');
   const tradingGate = useTradingGateState();
 
@@ -334,8 +335,17 @@ export default function QuickTillPage() {
     );
   }
 
+  const showMobileCharge = tillMode === 'sell' && count > 0;
+  const mobileChargeAmount =
+    payTerms === 'paid' ? total : payTerms === 'part' ? paidNow || total : total;
+
   return (
-    <div className="app-page space-y-4 py-4 md:py-5">
+    <div
+      className={cn(
+        'app-page space-y-4 py-4 md:py-5',
+        showMobileCharge && 'pb-[calc(5.5rem+env(safe-area-inset-bottom))] xl:pb-5',
+      )}
+    >
       <PageHeader
         title="Quick till"
         subtitle={
@@ -369,7 +379,7 @@ export default function QuickTillPage() {
         <div className="flex flex-col gap-3.5">
           <TillCatalogToolbar q={q} onQChange={setQ} cat={cat} onCatChange={setCat} />
 
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,128px),1fr))] gap-2.5 sm:gap-3 sm:grid-cols-[repeat(auto-fill,minmax(148px,1fr))]">
             {prods.map(item => (
               <ProductTile
                 key={item.id}
@@ -393,7 +403,7 @@ export default function QuickTillPage() {
         </div>
 
         {/* Cart */}
-        <div className="xl:sticky xl:top-20">
+        <div ref={cartAnchorRef} id="till-cart" className="scroll-mt-4 xl:sticky xl:top-20">
           {tillMode === 'swap' ? (
             <TillSwapHint />
           ) : (
@@ -436,6 +446,34 @@ export default function QuickTillPage() {
           )}
         </div>
       </div>
+
+      {showMobileCharge ? (
+        <div
+          className="fixed inset-x-0 z-40 border-t border-shell-line bg-shell-surface/95 px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur-md xl:hidden"
+          style={{ bottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))' }}
+        >
+          <div className="mx-auto flex max-w-lg items-center gap-2">
+            <button
+              type="button"
+              className="shrink-0 rounded-lg border border-shell-line px-3 py-2.5 text-xs font-semibold text-shell-muted"
+              onClick={() => cartAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
+              Cart · {count}
+            </button>
+            <button
+              type="button"
+              disabled={checkingOut || tradeLocked}
+              onClick={() => void checkout()}
+              className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg bg-brand-400 px-4 py-2.5 text-sm font-semibold text-[#04231d] disabled:opacity-60"
+            >
+              <span>{checkingOut ? 'Processing…' : 'Charge'}</span>
+              <span className="font-mono text-base font-bold tabular-nums">
+                {formatCurrency(mobileChargeAmount)}
+              </span>
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {swapTarget ? (
         <Suspense fallback={null}>
