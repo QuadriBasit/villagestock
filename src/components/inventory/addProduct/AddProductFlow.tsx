@@ -247,6 +247,8 @@ export default function AddProductFlow({ open, onClose, itemId, purchase }: AddP
   }, [open, isEdit, itemId, editItem, editItemLoading, engineerDefault]);
 
   const syncVar = isEdit ? syncVariantsForEdit : syncVariants;
+  const variantQtySectionRef = useRef<HTMLDivElement>(null);
+  const prevVariantRowCountRef = useRef(0);
 
   const set = (patch: Partial<AddProductState>) => setState(p => ({ ...p, ...patch }));
 
@@ -263,6 +265,17 @@ export default function AddProductFlow({ open, onClose, itemId, purchase }: AddP
   const idm = isIdmFlagged(state);
   const units = totalUnits(state);
   const value = stockValue(state);
+
+  useEffect(() => {
+    if (!open || cur !== 'Variants') return;
+    const count = state.variants.length;
+    if (count > 0 && prevVariantRowCountRef.current === 0) {
+      requestAnimationFrame(() => {
+        variantQtySectionRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+    }
+    prevVariantRowCountRef.current = count;
+  }, [open, cur, state.variants.length]);
 
   const codesOf = (label: string) => state.serials[label] ?? [];
   const setSerial = (label: string, index: number, value: string) => {
@@ -722,35 +735,50 @@ export default function AddProductFlow({ open, onClose, itemId, purchase }: AddP
                     </APLabel>
                   </>
                 )}
-                <div className="grid grid-cols-2 gap-2.5">
-                  <APLabel label="Default cost" hint="fills empty rows">
-                    <APMoney value={state.baseCost} onChange={v => applyBase('baseCost', v)} />
-                  </APLabel>
-                  <APLabel label="Default sell" hint="per variant; per unit on Serials">
-                    <APMoney value={state.basePrice} onChange={v => applyBase('basePrice', v)} />
-                  </APLabel>
-                </div>
-                {state.variants.some(v => v.qty > 1) ? (
-                  <p className="text-[12px] leading-relaxed text-shell-muted">
-                    Bought several with the same spec but different cost or sell price? On the{' '}
-                    <span className="font-medium text-shell-ink">Serials</span> step, set cost and sell for each unit.
-                  </p>
-                ) : null}
                 {state.variants.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-shell-line py-[18px] text-center text-[13px] text-shell-muted">
-                    Pick a {isHandheldCat(state.cat) ? 'RAM, storage, or colour' : 'RAM or storage'} above to build variants.
+                    Pick a {isHandheldCat(state.cat) ? 'storage, colour, or RAM' : 'RAM or storage'} above — then
+                    set <span className="font-medium text-shell-ink">Qty</span> for each row.
                   </div>
                 ) : (
-                  <VariantTable
-                    variants={state.variants}
-                    totalUnits={units}
-                    stockValue={value}
-                    existingStock={!isEdit ? existingStock : undefined}
-                    onQty={(i, qty) => setVar(i, { qty })}
-                    onCost={(i, cost) => setVar(i, { cost })}
-                    onPrice={(i, price) => setVar(i, { price })}
-                  />
+                  <div
+                    ref={variantQtySectionRef}
+                    id="add-product-variant-qty"
+                    className="scroll-mt-3 space-y-2.5 rounded-xl border border-brand-400/35 bg-brand-400/5 p-3"
+                  >
+                    <p className="text-[13px] font-semibold text-shell-ink">
+                      How many of each? Set <span className="text-brand-300">Qty</span>, cost, and sell here.
+                    </p>
+                    <VariantTable
+                      variants={state.variants}
+                      totalUnits={units}
+                      stockValue={value}
+                      existingStock={!isEdit ? existingStock : undefined}
+                      onQty={(i, qty) => setVar(i, { qty })}
+                      onCost={(i, cost) => setVar(i, { cost })}
+                      onPrice={(i, price) => setVar(i, { price })}
+                    />
+                  </div>
                 )}
+                {state.variants.length !== 1 ? (
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    <APLabel
+                      label="Default cost"
+                      hint={state.variants.length === 0 ? 'applies when you pick specs' : 'fills empty variant rows'}
+                    >
+                      <APMoney value={state.baseCost} onChange={v => applyBase('baseCost', v)} />
+                    </APLabel>
+                    <APLabel label="Default sell" hint="optional; per unit on Serials if prices differ">
+                      <APMoney value={state.basePrice} onChange={v => applyBase('basePrice', v)} />
+                    </APLabel>
+                  </div>
+                ) : null}
+                {state.variants.some(v => v.qty > 1) ? (
+                  <p className="text-[12px] leading-relaxed text-shell-muted">
+                    Different cost or sell per phone? Set each unit on the{' '}
+                    <span className="font-medium text-shell-ink">Serials</span> step.
+                  </p>
+                ) : null}
               </>
             ) : cur === 'Serials' ? (
               <>
@@ -1282,6 +1310,12 @@ export default function AddProductFlow({ open, onClose, itemId, purchase }: AddP
                 </Button>
               ) : null}
               <div className="flex-1" />
+              {cur === 'Variants' && state.variants.length > 0 ? (
+                <p className="max-w-[min(46vw,200px)] text-[11px] leading-snug text-shell-muted">
+                  {units} unit{units !== 1 ? 's' : ''}
+                  {units === 1 ? ' · change Qty in green box above' : ''}
+                </p>
+              ) : null}
               {purchase && cur === 'Review' ? (
                 <Button
                   type="button"

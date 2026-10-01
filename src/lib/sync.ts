@@ -683,7 +683,15 @@ async function syncStockSession(item: SyncQueueItem) {
 async function markLocalShopOpsSynced(item: SyncQueueItem) {
   const id = item.payload.id;
   if (typeof id !== 'string') return;
-  if (item.table === 'contacts') await db.contacts.update(id, { sync_status: 'synced' });
+  if (item.table === 'inventory_items') await db.inventory_items.update(id, { sync_status: 'synced' });
+  else if (item.table === 'sales_records') await db.sales_records.update(id, { sync_status: 'synced' });
+  else if (item.table === 'return_records') await db.return_records.update(id, { sync_status: 'synced' });
+  else if (item.table === 'swap_records') await db.swap_records.update(id, { sync_status: 'synced' });
+  else if (item.table === 'credit_records') await db.credit_records.update(id, { sync_status: 'synced' });
+  else if (item.table === 'repair_records') await db.repair_records.update(id, { sync_status: 'synced' });
+  else if (item.table === 'business_profiles') await db.business_profiles.update(id, { sync_status: 'synced' });
+  else if (item.table === 'shop_locations') await db.shop_locations.update(id, { sync_status: 'synced' });
+  else if (item.table === 'contacts') await db.contacts.update(id, { sync_status: 'synced' });
   else if (item.table === 'expense_records') await db.expense_records.update(id, { sync_status: 'synced' });
   else if (item.table === 'recurring_expenses') await db.recurring_expenses.update(id, { sync_status: 'synced' });
   else if (item.table === 'purchase_records') await db.purchase_records.update(id, { sync_status: 'synced' });
@@ -939,10 +947,18 @@ export async function pullRemoteInventory(userId: string): Promise<void> {
   });
 
   const locals = await db.inventory_items.bulkGet(mapped.map(row => row.id));
+  const queuedInventoryIds = new Set(
+    (await db.sync_queue.where('table').equals('inventory_items').toArray())
+      .map(entry => (entry.payload as { id?: unknown }).id)
+      .filter((id): id is string => typeof id === 'string'),
+  );
   const merged = mapped.map((row, index) => {
     const local = locals[index];
-    if (local?.sync_status === 'pending') return local;
-    return row;
+    if (local?.sync_status !== 'pending') return row;
+    if (queuedInventoryIds.has(local.id)) return local;
+    // Upload succeeded but local was never marked synced — take server if it is at least as new.
+    if (row.updated_at >= local.updated_at) return row;
+    return local;
   });
   await db.inventory_items.bulkPut(merged);
 }

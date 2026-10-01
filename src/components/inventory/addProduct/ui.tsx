@@ -356,7 +356,7 @@ export function VariantTable({
   existingStock?: Record<string, number>;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-shell-line">
+    <div className="overflow-hidden rounded-xl border border-shell-line bg-shell-surface-2/20">
       {variants.map((v, i) => (
         <div key={v.label} className="border-t border-shell-line px-3.5 py-2.5 first:border-t-0">
           <div className="min-w-0">
@@ -373,7 +373,7 @@ export function VariantTable({
                 inputMode="numeric"
                 value={v.qty}
                 onChange={e => onQty(i, Math.max(0, Number(e.target.value) || 0))}
-                className="px-2 py-2 text-center font-mono"
+                className="border-brand-400/40 px-2 py-2 text-center font-mono text-[15px] font-semibold"
               />
             </APLabel>
             <APLabel label="Cost">
